@@ -1,0 +1,16 @@
+[package]
+name = "jpeg-visualizer"
+version = "0.1.0"
+authors = ["Konrad Bochnia <kbochnia@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2.73"
+
+
+[dependencies.web-sys]
+version = "0.3.50"
+features = [ "Window", "Document", "HtmlElement", "Element", "File", "FileReader", "HtmlImageElement", "ProgressEvent", "ImageData", "CanvasRenderingContext2d", "HtmlCanvasElement" ]

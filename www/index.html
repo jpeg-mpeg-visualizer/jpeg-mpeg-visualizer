@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>jpeg-visualizer</title>
+    <style>
+        canvas {
+            border: 1px solid black;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="canvas" width="500" height="500"></canvas>
+    <input type="file" name="plik" id="input" accept=".jpg,.png">
+    <script type="module">
+        import init, { load_img } from "../pkg/jpeg_visualizer.js"
+
+        function loadImg() {
+            load_img(this.files[0]);
+        }
+
+        async function run() {
+            await init();
+        }
+
+        run()
+        document.getElementById("input").addEventListener("change", loadImg);
+    </script>
+</body>
+
+</html>
