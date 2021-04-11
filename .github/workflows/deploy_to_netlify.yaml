@@ -1,0 +1,29 @@
+name: Deploy to Netlify
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - name: Build WebAssembly package
+        run: curl https://rustwasm.github.io/wasm-pack/installer/init.sh -sSf | sh
+
+      - run: wasm-pack build --target web
+        
+      - run: cp --parents ./pkg/* ./www/
+        
+      - name: Deploy
+        uses: nwtgck/actions-netlify@v1.1
+        with:
+          publish-dir: './www'
+          production-branch: master
+          deploy-message: "Deploy from GitHub Actions"
+        env:
+          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+        timeout-minutes: 1
