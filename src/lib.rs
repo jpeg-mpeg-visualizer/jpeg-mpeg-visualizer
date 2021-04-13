@@ -50,7 +50,7 @@ struct JPEGState {
     ycbcr: Option<Vec<YCbCr>>,
 }
 
-static state: Lazy<Mutex<JPEGState>> = Lazy::new(|| Mutex::new(Default::default()));
+static STATE: Lazy<Mutex<JPEGState>> = Lazy::new(|| Mutex::new(Default::default()));
 
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
@@ -64,24 +64,33 @@ pub fn main() -> Result<(), JsValue> {
 
     body.append_child(&val)?;
 
+    console_error_panic_hook::set_once();
+
     Ok(())
+}
+
+fn get_canvas_context(id: &str) -> web_sys::CanvasRenderingContext2d {
+    let window = web_sys::window().expect("no global `window` exists");
+    let document = window.document().expect("should have a document on window");
+
+    let canvas = document.get_element_by_id(id).unwrap();
+    canvas.set_class_name("");
+    let canvas = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
+
+    canvas
+        .get_context("2d")
+        .unwrap()
+        .unwrap()
+        .dyn_into::<web_sys::CanvasRenderingContext2d>()
+        .unwrap()
 }
 
 #[wasm_bindgen]
 pub fn load_img(file: web_sys::File) {
-    let document = web_sys::window().unwrap().document().unwrap();
-    let canvas = document.get_element_by_id("canvas").unwrap();
-    let canvas = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
-
     let fr = web_sys::FileReader::new().unwrap();
 
     let onload = Closure::wrap(Box::new(move |e: web_sys::ProgressEvent| {
-        let context = canvas
-            .get_context("2d")
-            .unwrap()
-            .unwrap()
-            .dyn_into::<web_sys::CanvasRenderingContext2d>()
-            .unwrap();
+        let context = get_canvas_context("canvas");
 
         let image = Rc::new(web_sys::HtmlImageElement::new().unwrap());
         let t = e.target().unwrap();
@@ -96,18 +105,13 @@ pub fn load_img(file: web_sys::File) {
                 .unwrap();
 
             let image_data = context.get_image_data(0.0, 0.0, 500.0, 500.0).unwrap();
-            let mut data: Vec<u8> = image_data.data().to_vec();
-
-            // for i in (0..data.len()).step_by(4) {
-            //     data[i + 1] = 0;
-            //     data[i + 2] = 0;
-            // }
+            let data: Vec<u8> = image_data.data().to_vec();
 
             let new_image_data =
                 web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&data), 500)
                     .unwrap();
             context.put_image_data(&new_image_data, 0.0, 0.0).unwrap();
-            state.lock().unwrap().image_data = data;
+            STATE.lock().unwrap().image_data = data;
             get_ycbcr();
         }) as Box<dyn FnMut()>);
         image.set_onload(Some(imageonload.as_ref().unchecked_ref()));
@@ -120,7 +124,7 @@ pub fn load_img(file: web_sys::File) {
 }
 
 fn get_ycbcr() {
-    let mut state_lock = state.lock().unwrap();
+    let mut state_lock = STATE.lock().unwrap();
     let data = &state_lock.image_data;
 
     let mut ycbcr = Vec::new();
@@ -128,11 +132,6 @@ fn get_ycbcr() {
         let r = data[i];
         let g = data[i + 1];
         let b = data[i + 2];
-
-        // let y = 0.299 * r as f32 + 0.587 * g as f32 + 0.114 * b as f32;
-        // let cb = 128.0.299 * r as f32 + 0.587 * g as f32 + 0.114 * b as f32;
-        // let cb = 0;
-        // let cr = 0;
 
         let tuple = RGB((r, g, b)).to_ycbcr();
         ycbcr.push(tuple);
@@ -144,23 +143,7 @@ fn get_ycbcr() {
 }
 
 fn draw_ycbcr() {
-    let window = web_sys::window().expect("no global `window` exists");
-    let document = window.document().expect("should have a document on window");
-    let body = document.body().expect("document should have a body");
-
-    let y = document.get_element_by_id("y").unwrap();
-    let y = y.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
-    y.set_class_name("");
-
-    let cb = document.get_element_by_id("cb").unwrap();
-    let cb = cb.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
-    cb.set_class_name("");
-
-    let cr = document.get_element_by_id("cr").unwrap();
-    let cr = cr.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
-    cr.set_class_name("");
-
-    let state_lock = state.lock().unwrap();
+    let state_lock = STATE.lock().unwrap();
     let ycbcr = state_lock.ycbcr.as_ref().unwrap();
 
     let ys = ycbcr
@@ -187,31 +170,9 @@ fn draw_ycbcr() {
         })
         .collect::<Vec<u8>>();
 
-    // let ys = [1];
-    // log("test");
-
-    // log(&ys.len().to_string());
-
-    let y = y
-        .get_context("2d")
-        .unwrap()
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()
-        .unwrap();
-
-    let cb = cb
-        .get_context("2d")
-        .unwrap()
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()
-        .unwrap();
-
-    let cr = cr
-        .get_context("2d")
-        .unwrap()
-        .unwrap()
-        .dyn_into::<web_sys::CanvasRenderingContext2d>()
-        .unwrap();
+    let y = get_canvas_context("y");
+    let cb = get_canvas_context("cb");
+    let cr = get_canvas_context("cr");
 
     let ys =
         web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&ys), 500).unwrap();
