@@ -18,10 +18,11 @@
 
 <body>
     <canvas id="canvas" width="500" height="500"></canvas>
+    <input type="file" name="plik" id="input" accept=".jpg,.png">
+    <br>
     <canvas class="hidden" id="y" width="500" height="500"></canvas>
     <canvas class="hidden" id="cb" width="500" height="500"></canvas>
     <canvas class="hidden" id="cr" width="500" height="500"></canvas>
-    <input type="file" name="plik" id="input" accept=".jpg,.png">
     <script type="module">
         import init, { load_img } from "../pkg/jpeg_visualizer.js"
 
