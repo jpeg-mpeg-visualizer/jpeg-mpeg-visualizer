@@ -177,47 +177,39 @@ fn draw_ycbcr() {
 fn draw_spatial() {
     let state_lock = STATE.lock().unwrap();
     let ycbcr = state_lock.ycbcr.as_ref().unwrap();
-    let data = &state_lock.image_data;
 
     let ys = ycbcr.iter().map(|x| x.0 .0).collect::<Vec<u8>>();
+    let cbs = ycbcr.iter().map(|x| x.0 .1).collect::<Vec<u8>>();
+    let crs = ycbcr.iter().map(|x| x.0 .2).collect::<Vec<u8>>();
 
+    let y_context = get_canvas_context("y_spatial");
+    let cb_context = get_canvas_context("cb_spatial");
+    let cr_context = get_canvas_context("cr_spatial");
+
+    draw_spatial_channel(&ys, &y_context);
+    draw_spatial_channel(&cbs, &cb_context);
+    draw_spatial_channel(&crs, &cr_context);
+}
+
+fn draw_spatial_channel(data: &Vec<u8>, canvas_context: &web_sys::CanvasRenderingContext2d) {
     let mut image_data = vec![0; 500 * 500 * 4];
-
-    let block_count = data.len() / (8 * 4 * 500);
+    let block_count = data.len() / (8 * 500);
 
     for v in 0..block_count {
         for u in 0..block_count {
-            let block = get_block(u, v, &ys);
+            let block = get_block(u, v, &data);
             let spatial = dct::spatial_to_freq(&block);
             write_to_image_data(&mut image_data, &spatial, u, v);
-
-            // if (u, v) == (15, 21) {
-            //     for y in 0..8 {
-            //         let mut row = "".to_string();
-            //         for x in 0..8 {
-            //             row.push_str(block[y][x].to_string().as_ref());
-            //             row.push(' ')
-            //         }
-            //         log(&row)
-            //     }
-            //     log("spatial");
-            //     for y in 0..8 {
-            //         let mut row = "".to_string();
-            //         for x in 0..8 {
-            //             row.push_str(spatial[y][x].to_string().as_ref());
-            //             row.push(' ')
-            //         }
-            //         log(&row)
-            //     }
-            // }
         }
     }
 
     let image_data =
         web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image_data), 500)
             .unwrap();
-    let spatial = get_canvas_context("spatial");
-    spatial.put_image_data(&image_data, 0.0, 0.0).unwrap();
+
+    canvas_context
+        .put_image_data(&image_data, 0.0, 0.0)
+        .unwrap();
 }
 
 fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &Vec<Vec<u8>>, u: usize, v: usize) {
@@ -227,9 +219,6 @@ fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &Vec<Vec<u8>>, u: usiz
             image_data[offset] = 255 - spatial[y][x];
             image_data[offset + 1] = 255 - spatial[y][x];
             image_data[offset + 2] = 255 - spatial[y][x];
-            // image_data[offset] = 128;
-            // image_data[offset + 1] = 128;
-            // image_data[offset + 2] = 128;
             image_data[offset + 3] = 255;
         }
     }
