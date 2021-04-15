@@ -27,11 +27,18 @@
     <canvas class="hidden" id="y_spatial" width="500" height="500"></canvas>
     <canvas class="hidden" id="cb_spatial" width="500" height="500"></canvas>
     <canvas class="hidden" id="cr_spatial" width="500" height="500"></canvas>
+    <input id="quality" type="range" min="1" max="100" value="50" disabled>
     <script type="module">
-        import init, { load_img } from "../pkg/jpeg_visualizer.js"
+        import init, { load_img, set_quality } from "../pkg/jpeg_visualizer.js"
 
         function loadImg() {
             load_img(this.files[0]);
+            document.getElementById("quality").disabled = false;
+        }
+
+        function changeQuality(e) {
+            console.log(e.target.value);
+            set_quality(e.target.value);
         }
 
         async function run() {
@@ -40,6 +47,7 @@
 
         run()
         document.getElementById("input").addEventListener("change", loadImg);
+        document.getElementById("quality").addEventListener("change", changeQuality);
     </script>
 </body>
 

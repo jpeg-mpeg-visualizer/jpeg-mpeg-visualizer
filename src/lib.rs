@@ -5,6 +5,7 @@ use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
 
 mod dct;
+mod quant;
 
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
@@ -48,9 +49,15 @@ impl YCbCr {
 struct JPEGState {
     image_data: Vec<u8>,
     ycbcr: Option<Vec<YCbCr>>,
+    quality: u8,
 }
 
-static STATE: Lazy<Mutex<JPEGState>> = Lazy::new(|| Mutex::new(Default::default()));
+static STATE: Lazy<Mutex<JPEGState>> = Lazy::new(|| {
+    Mutex::new(JPEGState {
+        quality: 50,
+        ..Default::default()
+    })
+});
 
 #[wasm_bindgen(start)]
 pub fn main() -> Result<(), JsValue> {
@@ -109,6 +116,14 @@ pub fn load_img(file: web_sys::File) {
     fr.set_onload(Some(onload.as_ref().unchecked_ref()));
     onload.forget();
     fr.read_as_data_url(&file).unwrap();
+}
+
+#[wasm_bindgen]
+pub fn set_quality(quality: u8) {
+    let mut state_lock = STATE.lock().unwrap();
+    state_lock.quality = quality;
+    drop(state_lock);
+    draw_spatial();
 }
 
 fn get_ycbcr() {
@@ -177,6 +192,7 @@ fn draw_ycbcr() {
 fn draw_spatial() {
     let state_lock = STATE.lock().unwrap();
     let ycbcr = state_lock.ycbcr.as_ref().unwrap();
+    let quality = state_lock.quality;
 
     let ys = ycbcr.iter().map(|x| x.0 .0).collect::<Vec<u8>>();
     let cbs = ycbcr.iter().map(|x| x.0 .1).collect::<Vec<u8>>();
@@ -186,19 +202,25 @@ fn draw_spatial() {
     let cb_context = get_canvas_context("cb_spatial");
     let cr_context = get_canvas_context("cr_spatial");
 
-    draw_spatial_channel(&ys, &y_context);
-    draw_spatial_channel(&cbs, &cb_context);
-    draw_spatial_channel(&crs, &cr_context);
+    draw_spatial_channel(&ys, &y_context, quality, true);
+    draw_spatial_channel(&cbs, &cb_context, quality, false);
+    draw_spatial_channel(&crs, &cr_context, quality, false);
 }
 
-fn draw_spatial_channel(data: &Vec<u8>, canvas_context: &web_sys::CanvasRenderingContext2d) {
+fn draw_spatial_channel(
+    data: &Vec<u8>,
+    canvas_context: &web_sys::CanvasRenderingContext2d,
+    quality: u8,
+    luminance: bool,
+) {
     let mut image_data = vec![0; 500 * 500 * 4];
     let block_count = data.len() / (8 * 500);
 
     for v in 0..block_count {
         for u in 0..block_count {
             let block = get_block(u, v, &data);
-            let spatial = dct::spatial_to_freq(&block);
+            let mut spatial = dct::spatial_to_freq(&block);
+            quant::apply_quantization(&mut spatial, quality, luminance);
             write_to_image_data(&mut image_data, &spatial, u, v);
         }
     }
