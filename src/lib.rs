@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 use std::rc::Rc;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
-use wasm_bindgen::JsCast;
+use wasm_bindgen::{JsCast, Clamped};
 
 mod dct;
 mod quant;
@@ -244,6 +244,30 @@ fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &Vec<Vec<u8>>, u: usiz
             image_data[offset + 3] = 255;
         }
     }
+}
+
+#[wasm_bindgen]
+pub fn choose_block(global_x: u32, global_y: u32) {
+    let window = web_sys::window().expect("no global `window` exists");
+    let document = window.document().expect("should have a document on window");
+
+    let canvas = document.get_element_by_id("canvas").unwrap();
+    canvas.set_class_name("");
+    let canvas = canvas.dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
+    let rect = canvas.get_bounding_client_rect();
+    // Get rid of offset (due to canvas posistioning) and calculate the top-left corner of chosen block
+    let x: u32 = ((global_x - rect.left() as u32)/8)*8;
+    let y: u32 = ((global_y - rect.top() as u32)/8)*8;
+
+    let ctx = get_canvas_context("canvas");
+
+    // Reload original image (to get rid of previous choice rectangle)
+    let state_lock = STATE.lock().unwrap();
+    ctx.put_image_data(&web_sys::ImageData::new_with_u8_clamped_array(Clamped(&state_lock.image_data), 500).unwrap(), 0.0, 0.0).unwrap();
+
+    ctx.begin_path();
+    ctx.rect(x as f64, y as f64, 8.0, 8.0);
+    ctx.stroke();
 }
 
 fn get_block(u: usize, v: usize, data: &Vec<u8>) -> Vec<Vec<u8>> {

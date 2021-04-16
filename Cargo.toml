@@ -12,6 +12,7 @@ wasm-bindgen = "0.2.73"
 once_cell = "1.7.2"
 console_error_panic_hook = "0.1.6"
 
+
 [dependencies.web-sys]
 version = "0.3.50"
-features = [ "Window", "Document", "HtmlElement", "Element", "File", "FileReader", "HtmlImageElement", "ProgressEvent", "ImageData", "CanvasRenderingContext2d", "HtmlCanvasElement" ]
+features = [ "Window", "DomRect", "Document", "HtmlElement", "Element", "File", "FileReader", "HtmlImageElement", "ProgressEvent", "ImageData", "CanvasRenderingContext2d", "HtmlCanvasElement" ]

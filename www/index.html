@@ -29,7 +29,7 @@
     <canvas class="hidden" id="cr_spatial" width="500" height="500"></canvas>
     <input id="quality" type="range" min="1" max="100" value="50" disabled>
     <script type="module">
-        import init, { load_img, set_quality } from "../pkg/jpeg_visualizer.js"
+        import init, { load_img, set_quality, choose_block } from "../pkg/jpeg_visualizer.js"
 
         function loadImg() {
             load_img(this.files[0]);
@@ -45,9 +45,14 @@
             await init();
         }
 
+        function chooseBlock(e) {
+            choose_block(e.pageX, e.pageY);
+        }
+
         run()
         document.getElementById("input").addEventListener("change", loadImg);
         document.getElementById("quality").addEventListener("change", changeQuality);
+        document.getElementById("canvas").addEventListener("click", chooseBlock);
     </script>
 </body>
 
