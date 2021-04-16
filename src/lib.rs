@@ -3,9 +3,12 @@ use std::rc::Rc;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
+use crate::quant::{scale_quantization_table, LUMINANCE_QUANTIZATION_TABLE, CHROMINANCE_QUANTIZATION_TABLE};
 
 mod dct;
 mod quant;
+mod image;
+mod pixel;
 
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
@@ -17,38 +20,13 @@ extern "C" {
     fn log(s: &str);
 }
 
-struct RGB((u8, u8, u8));
 
-impl RGB {
-    fn to_ycbcr(&self) -> YCbCr {
-        let (r, g, b) = self.0;
-        let (r, g, b) = (r as f32, g as f32, b as f32);
-
-        let y = 0.299 * r + 0.587 * g + 0.114 * b;
-        let cb = 128.0 - 0.168736 * r - 0.331264 * g + 0.5 * b;
-        let cr = 128.0 + 0.5 * r - 0.418688 * g - 0.081312 * b;
-        YCbCr((y as u8, cb as u8, cr as u8))
-    }
-}
-
-struct YCbCr((u8, u8, u8));
-
-impl YCbCr {
-    fn to_rgb(&self) -> RGB {
-        let (y, cb, cr) = self.0;
-        let (y, cb, cr) = (y as f32, cb as f32, cr as f32);
-
-        let r = y + 1.402 * (cr - 128.0);
-        let g = y - 0.344136 * (cb - 128.0) - 0.714136 * (cr - 128.0);
-        let b = y + 1.772 * (cb - 128.0);
-        RGB((r as u8, g as u8, b as u8))
-    }
-}
 
 #[derive(Default)]
 struct JPEGState {
-    image_data: Vec<u8>,
-    ycbcr: Option<Vec<YCbCr>>,
+    image_data: image::RawImage,
+    ycbcr: Option<image::YCbCrImage>,
+    rgb: Option<image::RGBImage>,
     quality: u8,
 }
 
@@ -104,8 +82,8 @@ pub fn load_img(file: web_sys::File) {
             let data: Vec<u8> = image_data.data().to_vec();
 
             context.put_image_data(&image_data, 0.0, 0.0).unwrap();
-            STATE.lock().unwrap().image_data = data;
-            get_ycbcr();
+            STATE.lock().unwrap().image_data = image::RawImage(data);
+            process_image();
         }) as Box<dyn FnMut()>);
 
         image.set_onload(Some(imageonload.as_ref().unchecked_ref()));
@@ -122,54 +100,54 @@ pub fn load_img(file: web_sys::File) {
 pub fn set_quality(quality: u8) {
     let mut state_lock = STATE.lock().unwrap();
     state_lock.quality = quality;
+
+    let ys = state_lock.ycbcr.as_ref().unwrap().to_ys_channel();
+    let cbs = state_lock.ycbcr.as_ref().unwrap().to_cbs_channel();
+    let crs = state_lock.ycbcr.as_ref().unwrap().to_crs_channel();
+
     drop(state_lock);
-    draw_spatial();
+    draw_spatial(&ys, &cbs, &crs);
 }
 
-fn get_ycbcr() {
+fn process_image() {
     let mut state_lock = STATE.lock().unwrap();
-    let data = &state_lock.image_data;
 
-    let mut ycbcr = Vec::new();
-    for i in (0..data.len()).step_by(4) {
-        let r = data[i];
-        let g = data[i + 1];
-        let b = data[i + 2];
+    state_lock.rgb = Some(state_lock.image_data.to_rgb_image());
+    state_lock.ycbcr = Some(state_lock.rgb.as_ref().unwrap().to_ycbcr_image());
 
-        let tuple = RGB((r, g, b)).to_ycbcr();
-        ycbcr.push(tuple);
-    }
-    state_lock.ycbcr = Some(ycbcr);
+    let ys = state_lock.ycbcr.as_ref().unwrap().to_ys_channel();
+    let cbs = state_lock.ycbcr.as_ref().unwrap().to_cbs_channel();
+    let crs = state_lock.ycbcr.as_ref().unwrap().to_crs_channel();
+
     drop(state_lock);
 
-    draw_ycbcr();
-    draw_spatial();
+    draw_ycbcr(&ys, &cbs, &crs);
+
+    draw_spatial(&ys, &cbs, &crs);
 }
 
-fn draw_ycbcr() {
-    let state_lock = STATE.lock().unwrap();
-    let ycbcr = state_lock.ycbcr.as_ref().unwrap();
+fn draw_ycbcr(ys: &Vec<u8>, cbs: &Vec<u8>, crs: &Vec<u8>) {
 
-    let ys = ycbcr
+    let ys_image = ys
         .iter()
         .flat_map(|x| {
-            let (r, g, b) = YCbCr((x.0 .0, 128, 128)).to_rgb().0;
+            let (r, g, b) = pixel::YCbCr((*x, 128, 128)).to_rgb().0;
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
 
-    let cbs = ycbcr
+    let cbs_image = cbs
         .iter()
         .flat_map(|x| {
-            let (r, g, b) = YCbCr((128, x.0 .1, 128)).to_rgb().0;
+            let (r, g, b) = pixel::YCbCr((128, *x, 128)).to_rgb().0;
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
 
-    let crs = ycbcr
+    let crs_image = crs
         .iter()
         .flat_map(|x| {
-            let (r, g, b) = YCbCr((128, 128, x.0 .2)).to_rgb().0;
+            let (r, g, b) = pixel::YCbCr((128, 128, *x)).to_rgb().0;
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
@@ -179,39 +157,38 @@ fn draw_ycbcr() {
     let cr = get_canvas_context("cr");
 
     let ys =
-        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&ys), 500).unwrap();
+        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&ys_image), 500).unwrap();
     y.put_image_data(&ys, 0.0, 0.0).unwrap();
     let cbs =
-        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&cbs), 500).unwrap();
+        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&cbs_image), 500).unwrap();
     cb.put_image_data(&cbs, 0.0, 0.0).unwrap();
     let crs =
-        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&crs), 500).unwrap();
+        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&crs_image), 500).unwrap();
     cr.put_image_data(&crs, 0.0, 0.0).unwrap();
 }
 
-fn draw_spatial() {
+fn draw_spatial(ys: &Vec<u8>, cbs: &Vec<u8>, crs: &Vec<u8>) {
     let state_lock = STATE.lock().unwrap();
-    let ycbcr = state_lock.ycbcr.as_ref().unwrap();
     let quality = state_lock.quality;
-
-    let ys = ycbcr.iter().map(|x| x.0 .0).collect::<Vec<u8>>();
-    let cbs = ycbcr.iter().map(|x| x.0 .1).collect::<Vec<u8>>();
-    let crs = ycbcr.iter().map(|x| x.0 .2).collect::<Vec<u8>>();
 
     let y_context = get_canvas_context("y_spatial");
     let cb_context = get_canvas_context("cb_spatial");
     let cr_context = get_canvas_context("cr_spatial");
 
-    draw_spatial_channel(&ys, &y_context, quality, true);
-    draw_spatial_channel(&cbs, &cb_context, quality, false);
-    draw_spatial_channel(&crs, &cr_context, quality, false);
+    let scaled_luminance_quant_table =
+        scale_quantization_table(&LUMINANCE_QUANTIZATION_TABLE, quality);
+    let scaled_chrominance_quant_table =
+        scale_quantization_table(&CHROMINANCE_QUANTIZATION_TABLE, quality);
+
+    draw_spatial_channel(&ys, &y_context, &scaled_luminance_quant_table);
+    draw_spatial_channel(&cbs, &cb_context, &scaled_chrominance_quant_table);
+    draw_spatial_channel(&crs, &cr_context, &scaled_chrominance_quant_table);
 }
 
 fn draw_spatial_channel(
     data: &Vec<u8>,
     canvas_context: &web_sys::CanvasRenderingContext2d,
-    quality: u8,
-    luminance: bool,
+    quantization_table: &[[u8; 8]; 8],
 ) {
     let mut image_data = vec![0; 500 * 500 * 4];
     let block_count = data.len() / (8 * 500);
@@ -220,7 +197,7 @@ fn draw_spatial_channel(
         for u in 0..block_count {
             let block = get_block(u, v, &data);
             let mut spatial = dct::spatial_to_freq(&block);
-            quant::apply_quantization(&mut spatial, quality, luminance);
+            quant::apply_quantization(&mut spatial, quantization_table);
             write_to_image_data(&mut image_data, &spatial, u, v);
         }
     }
