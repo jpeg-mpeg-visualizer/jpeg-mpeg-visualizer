@@ -1,7 +1,8 @@
 use std::f32::consts::{FRAC_1_SQRT_2, PI};
+use crate::log;
 
-pub fn spatial_to_freq(block: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
-    let mut result = vec![vec![0; 8]; 8];
+pub fn spatial_to_freq(block: &[[u8; 8]; 8]) -> [[u8; 8]; 8] {
+    let mut result = [[0 as u8; 8]; 8];
 
     for x in 0..8 {
         for y in 0..8 {
@@ -12,7 +13,7 @@ pub fn spatial_to_freq(block: &Vec<Vec<u8>>) -> Vec<Vec<u8>> {
     result
 }
 
-fn G(u: usize, v: usize, block: &Vec<Vec<u8>>) -> f32 {
+fn G(u: usize, v: usize, block: &[[u8; 8]; 8]) -> f32 {
     let (u, v) = (u as f32, v as f32);
     let au = if u == 0.0 { FRAC_1_SQRT_2 } else { 1.0 };
     let av = if v == 0.0 { FRAC_1_SQRT_2 } else { 1.0 };

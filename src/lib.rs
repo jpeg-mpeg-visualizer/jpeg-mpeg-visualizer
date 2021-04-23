@@ -3,7 +3,7 @@ use std::rc::Rc;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use crate::quant::{scale_quantization_table, LUMINANCE_QUANTIZATION_TABLE, CHROMINANCE_QUANTIZATION_TABLE};
+use crate::quant::{scale_quantization_table, LUMINANCE_QUANTIZATION_TABLE, CHROMINANCE_QUANTIZATION_TABLE, BlockMatrix};
 
 mod dct;
 mod quant;
@@ -106,7 +106,38 @@ pub fn set_quality(quality: u8) {
     let crs = state_lock.ycbcr.as_ref().unwrap().to_crs_channel();
 
     drop(state_lock);
-    draw_spatial(&ys, &cbs, &crs);
+    process_spatial();
+}
+
+fn process_spatial() {
+    let mut state_lock = STATE.lock().unwrap();
+
+    let ys = state_lock.ycbcr.as_ref().unwrap().to_ys_channel();
+    let cbs = state_lock.ycbcr.as_ref().unwrap().to_cbs_channel();
+    let crs = state_lock.ycbcr.as_ref().unwrap().to_crs_channel();
+
+    let quality = state_lock.quality;
+
+    let scaled_luminance_quant_table =
+        scale_quantization_table(&LUMINANCE_QUANTIZATION_TABLE, quality);
+    let scaled_chrominance_quant_table =
+        scale_quantization_table(&CHROMINANCE_QUANTIZATION_TABLE, quality);
+
+    let ys_block_matrix = quant::split_to_block_matrix(&ys);
+    let cbs_block_matrix = quant::split_to_block_matrix(&cbs);
+    let crs_block_matrix = quant::split_to_block_matrix(&crs);
+
+    let ys_quantized = ys_block_matrix.apply_quantization(&scaled_luminance_quant_table);
+    let cbs_quantized = cbs_block_matrix.apply_quantization(&scaled_chrominance_quant_table);
+    let crs_quantized = crs_block_matrix.apply_quantization(&scaled_chrominance_quant_table);
+
+    draw_spatial(
+        &ys_quantized,
+        &cbs_quantized,
+        &crs_quantized,
+        crs_block_matrix.width,
+        crs_block_matrix.height
+    );
 }
 
 fn process_image() {
@@ -119,11 +150,13 @@ fn process_image() {
     let cbs = state_lock.ycbcr.as_ref().unwrap().to_cbs_channel();
     let crs = state_lock.ycbcr.as_ref().unwrap().to_crs_channel();
 
+    let quality = state_lock.quality;
+
     drop(state_lock);
 
     draw_ycbcr(&ys, &cbs, &crs);
 
-    draw_spatial(&ys, &cbs, &crs);
+    process_spatial();
 }
 
 fn draw_ycbcr(ys: &Vec<u8>, cbs: &Vec<u8>, crs: &Vec<u8>) {
@@ -167,37 +200,34 @@ fn draw_ycbcr(ys: &Vec<u8>, cbs: &Vec<u8>, crs: &Vec<u8>) {
     cr.put_image_data(&crs, 0.0, 0.0).unwrap();
 }
 
-fn draw_spatial(ys: &Vec<u8>, cbs: &Vec<u8>, crs: &Vec<u8>) {
-    let state_lock = STATE.lock().unwrap();
-    let quality = state_lock.quality;
+fn draw_spatial(
+    ys: &Vec<[[u8; 8]; 8]>,
+    cbs: &Vec<[[u8; 8]; 8]>,
+    crs: &Vec<[[u8; 8]; 8]>,
+    width: usize,
+    height: usize,
+) {
 
     let y_context = get_canvas_context("y_spatial");
     let cb_context = get_canvas_context("cb_spatial");
     let cr_context = get_canvas_context("cr_spatial");
 
-    let scaled_luminance_quant_table =
-        scale_quantization_table(&LUMINANCE_QUANTIZATION_TABLE, quality);
-    let scaled_chrominance_quant_table =
-        scale_quantization_table(&CHROMINANCE_QUANTIZATION_TABLE, quality);
-
-    draw_spatial_channel(&ys, &y_context, &scaled_luminance_quant_table);
-    draw_spatial_channel(&cbs, &cb_context, &scaled_chrominance_quant_table);
-    draw_spatial_channel(&crs, &cr_context, &scaled_chrominance_quant_table);
+    draw_spatial_channel(&ys, width, height, &y_context);
+    draw_spatial_channel(&cbs, width, height, &cb_context);
+    draw_spatial_channel(&crs, width, height, &cr_context);
 }
 
 fn draw_spatial_channel(
-    data: &Vec<u8>,
+    data: &Vec<[[u8; 8]; 8]>,
+    width: usize,
+    height: usize,
     canvas_context: &web_sys::CanvasRenderingContext2d,
-    quantization_table: &[[u8; 8]; 8],
 ) {
     let mut image_data = vec![0; 500 * 500 * 4];
-    let block_count = data.len() / (8 * 500);
 
-    for v in 0..block_count {
-        for u in 0..block_count {
-            let block = get_block(u, v, &data);
-            let mut spatial = dct::spatial_to_freq(&block);
-            quant::apply_quantization(&mut spatial, quantization_table);
+    for v in 0..width {
+        for u in 0..height {
+            let mut spatial = data[u + v * width];
             write_to_image_data(&mut image_data, &spatial, u, v);
         }
     }
@@ -211,7 +241,7 @@ fn draw_spatial_channel(
         .unwrap();
 }
 
-fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &Vec<Vec<u8>>, u: usize, v: usize) {
+fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[u8; 8]; 8], u: usize, v: usize) {
     for y in 0..8 {
         for x in 0..8 {
             let offset = ((v * 8 + y) * 500 + (u * 8) + x) * 4;
@@ -223,14 +253,4 @@ fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &Vec<Vec<u8>>, u: usiz
     }
 }
 
-fn get_block(u: usize, v: usize, data: &Vec<u8>) -> Vec<Vec<u8>> {
-    let mut result = vec![vec![0; 8]; 8];
 
-    for y in 0..8 {
-        for x in 0..8 {
-            result[y][x] = data[(v * 8 + y) * 500 + (u * 8) + x];
-        }
-    }
-
-    result
-}
