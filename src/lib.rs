@@ -3,12 +3,13 @@ use std::rc::Rc;
 use std::sync::Mutex;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen::JsCast;
-use crate::quant::{scale_quantization_table, LUMINANCE_QUANTIZATION_TABLE, CHROMINANCE_QUANTIZATION_TABLE, BlockMatrix};
+use crate::quant::{scale_quantization_table, LUMINANCE_QUANTIZATION_TABLE, CHROMINANCE_QUANTIZATION_TABLE};
+use crate::block::BlockMatrix;
 
 mod dct;
 mod quant;
 mod image;
-mod pixel;
+mod block;
 
 #[cfg(feature = "wee_alloc")]
 #[global_allocator]
@@ -123,9 +124,9 @@ fn process_spatial() {
     let scaled_chrominance_quant_table =
         scale_quantization_table(&CHROMINANCE_QUANTIZATION_TABLE, quality);
 
-    let ys_block_matrix = quant::split_to_block_matrix(&ys);
-    let cbs_block_matrix = quant::split_to_block_matrix(&cbs);
-    let crs_block_matrix = quant::split_to_block_matrix(&crs);
+    let ys_block_matrix = block::split_to_block_matrix(&ys);
+    let cbs_block_matrix = block::split_to_block_matrix(&cbs);
+    let crs_block_matrix = block::split_to_block_matrix(&crs);
 
     let ys_quantized = ys_block_matrix.apply_quantization(&scaled_luminance_quant_table);
     let cbs_quantized = cbs_block_matrix.apply_quantization(&scaled_chrominance_quant_table);
@@ -164,7 +165,7 @@ fn draw_ycbcr(ys: &Vec<u8>, cbs: &Vec<u8>, crs: &Vec<u8>) {
     let ys_image = ys
         .iter()
         .flat_map(|x| {
-            let (r, g, b) = pixel::YCbCr((*x, 128, 128)).to_rgb().0;
+            let (r, g, b) = image::pixel::YCbCr((*x, 128, 128)).to_rgb().0;
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
@@ -172,7 +173,7 @@ fn draw_ycbcr(ys: &Vec<u8>, cbs: &Vec<u8>, crs: &Vec<u8>) {
     let cbs_image = cbs
         .iter()
         .flat_map(|x| {
-            let (r, g, b) = pixel::YCbCr((128, *x, 128)).to_rgb().0;
+            let (r, g, b) = image::pixel::YCbCr((128, *x, 128)).to_rgb().0;
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
@@ -180,7 +181,7 @@ fn draw_ycbcr(ys: &Vec<u8>, cbs: &Vec<u8>, crs: &Vec<u8>) {
     let crs_image = crs
         .iter()
         .flat_map(|x| {
-            let (r, g, b) = pixel::YCbCr((128, 128, *x)).to_rgb().0;
+            let (r, g, b) = image::pixel::YCbCr((128, 128, *x)).to_rgb().0;
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
