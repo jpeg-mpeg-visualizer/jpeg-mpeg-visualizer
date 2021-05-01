@@ -2,53 +2,19 @@
 <html lang="en">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>jpeg-visualizer</title>
-    <style>
-        canvas {
-            border: 1px solid black;
-        }
+    <base href="http://localhost:63341/jpeg-visualizer/www/index.html">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no" />
+    <title>Pages example</title>
 
-        .hidden {
-            display: none;
-        }
-    </style>
+    <link rel="stylesheet" href="public/style.css">
 </head>
 
 <body>
-    <canvas id="canvas" width="500" height="500"></canvas>
-    <input type="file" name="plik" id="input" accept=".jpg,.png">
-    <br>
-    <canvas class="hidden" id="y" width="500" height="500"></canvas>
-    <canvas class="hidden" id="cb" width="500" height="500"></canvas>
-    <canvas class="hidden" id="cr" width="500" height="500"></canvas>
-    <br>
-    <canvas class="hidden" id="y_spatial" width="500" height="500"></canvas>
-    <canvas class="hidden" id="cb_spatial" width="500" height="500"></canvas>
-    <canvas class="hidden" id="cr_spatial" width="500" height="500"></canvas>
-    <input id="quality" type="range" min="1" max="100" value="50" disabled>
-    <script type="module">
-        import init, { load_img, set_quality } from "../pkg/jpeg_visualizer.js"
-
-        function loadImg() {
-            load_img(this.files[0]);
-            document.getElementById("quality").disabled = false;
-        }
-
-        function changeQuality(e) {
-            console.log(e.target.value);
-            set_quality(e.target.value);
-        }
-
-        async function run() {
-            await init();
-        }
-
-        run()
-        document.getElementById("input").addEventListener("change", loadImg);
-        document.getElementById("quality").addEventListener("change", changeQuality);
-    </script>
+<section id="app"></section>
+<script type="module">
+    import init from '../pkg/jpeg_visualizer.js';
+    init('../pkg/jpeg_visualizer_bg.wasm');
+  </script>
 </body>
-
 </html>

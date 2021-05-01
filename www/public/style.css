@@ -1,0 +1,127 @@
+* {
+    box-sizing: border-box;
+}
+
+
+
+a:link    { color: #337ab7; text-decoration: none;      }
+a:hover   { color: #23527c; text-decoration: underline; }
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 0.6em;
+    margin: 0;
+    color: rgb(51, 51, 51);
+    background-color: beige;
+}
+
+#app {
+    height: 100vh;
+}
+
+.navbar {
+    width: 100%;
+    background-color: blue;
+    margin: 0 auto;
+    position: fixed;
+    top: 0;
+    min-height: 2.7rem;
+
+    display: flex;
+    justify-content: center;
+}
+
+.navbar ul {
+    list-style-type: none;
+
+}
+
+.navbar ul li a {
+    font-weight: bolder;
+    font-size: 2em;
+    color: aliceblue;
+}
+
+.content {
+    margin-top: 2.7rem;
+    min-height: calc(100vh - 2.7rem);
+}
+
+
+.select_menu_area, .choose_file_wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 2.7rem);
+}
+
+.select_menu_button {
+    width: 27%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #23527c;
+}
+
+.select_menu_button:after {
+    content: "";
+    display: block;
+    padding-bottom: 100%;
+}
+
+.select_menu_button:hover {
+    box-shadow: 5px 10px #888888;
+    background-color: #326795;
+}
+
+.select_menu_button p {
+    font-size: 5em;
+    color: aliceblue;
+}
+
+.drop_area {
+    text-align: center;
+    padding: 20% 0;
+}
+
+.drop_area_wrapper {;
+    width: 70%;
+    background-color: antiquewhite;
+    outline: 2px dashed grey;
+    outline-offset: -10px;
+}
+
+.drop_area_wrapper.drop_active {
+    background-color: aliceblue;
+    outline: 2px dashed #888888;
+}
+
+
+.drop_area input {
+    display: none;
+}
+
+.drop_area label {
+    font-size: 4.5em;
+}
+
+.drop_area label:hover > strong {
+    color: grey;
+}
+
+.image_view {
+    padding: 1.5em;
+}
+
+.image_view details {
+    background: bisque;
+}
+
+.image_view details summary {
+    cursor: pointer;
+    padding: 1em;
+    border-bottom: 1px solid #ddd;
+}
