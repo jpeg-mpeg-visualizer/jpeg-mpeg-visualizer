@@ -39,7 +39,7 @@ struct ImagePack{
 enum State {
     FileChooser,
     PreImageView,
-    ImageView(ImagePack, u8)
+    ImageView(ImagePack)
 }
 
 // ------ ------
@@ -52,6 +52,7 @@ pub enum Msg {
     FileChooserDragStarted,
     FileChooserDragLeave,
     ImageLoaded(image::RawImage),
+    QualityUpdated(u8),
 }
 
 // ------ ------
@@ -69,6 +70,8 @@ pub struct Model {
     ys_quant_canvas: ElRef<HtmlCanvasElement>,
     cbs_quant_canvas: ElRef<HtmlCanvasElement>,
     crs_quant_canvas: ElRef<HtmlCanvasElement>,
+
+    quality: u8,
 }
 
 pub fn init(mut url: Url) -> Option<Model> {
@@ -85,6 +88,8 @@ pub fn init(mut url: Url) -> Option<Model> {
         ys_quant_canvas: ElRef::<HtmlCanvasElement>::default(),
         cbs_quant_canvas: ElRef::<HtmlCanvasElement>::default(),
         crs_quant_canvas: ElRef::<HtmlCanvasElement>::default(),
+
+        quality: 50,
     })
 }
 
@@ -96,7 +101,7 @@ pub fn view(model: &Model) -> Node<GMsg> {
     match &model.state {
         State::FileChooser => view_file_chooser(model),
         State::PreImageView => view_jpeg_visualization(model),
-        State::ImageView(raw_image, quality) => view_jpeg_visualization(model),
+        State::ImageView(raw_image) => view_jpeg_visualization(model),
     }
 }
 
@@ -293,8 +298,50 @@ fn view_dct_quantized(model: &Model) -> Node<GMsg> {
     ]
 }
 
+fn view_settings_sidebar(model: &Model) -> Node<GMsg> {
+    div![
+        C!["setting_sidebar"],
+        input![
+            C!["sidebar_activator"],
+            attrs!{
+                At::Type => "checkbox",
+                At::Id => "sidebar_activator",
+                At::Name => "sidebar_activator",
+            }
+        ],
+        label![
+            C!["sidebar_activator"],
+            attrs!{
+                At::For => "sidebar_activator"
+            },
+            span![]
+        ],
+        div![
+            C!["sidebar_settings"],
+            label![
+                attrs!{
+                    At::For => "quality"
+                },
+                "Quality:"
+            ],
+            input![
+                attrs!{
+                    At::Type => "range",
+                    At::Max => 100,
+                    At::Min => 1,
+                    At::Id => "quality",
+                },
+                input_ev("change", |value| {
+                    wrap(Msg::QualityUpdated(value.parse::<u8>().unwrap()))
+                })
+            ]
+        ]
+    ]
+}
+
 fn view_jpeg_visualization(model: &Model) -> Node<GMsg> {
     div![
+        view_settings_sidebar(&model),
         view_image_preview(&model),
         view_ycbcr(&model),
         view_dct_quantized(&model)
@@ -412,7 +459,13 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             model.state = State::ImageView(ImagePack{
                 raw_image,
                 ycbcr
-            }, 50);
+            });
         },
+        Msg::QualityUpdated(quality) => {
+            if let State::ImageView(pack) = &model.state {
+                model.quality = quality;
+                draw_dct_quantized(&model.ys_quant_canvas, &model.cbs_quant_canvas, &model.crs_quant_canvas, &pack.ycbcr, quality);
+            }
+        }
     }
 }

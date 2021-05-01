@@ -125,3 +125,103 @@ body {
     padding: 1em;
     border-bottom: 1px solid #ddd;
 }
+
+input.sidebar_activator {
+    display: none;
+}
+
+label.sidebar_activator {
+    position: fixed;
+    bottom: 3em;
+    right: 5%;
+    width: 4em;
+    height: 4em;
+    background: #fff;
+    border-radius: 1em;
+    box-shadow: 0 0 10px rgba(232, 74, 100, .4);
+    overflow: hidden;
+    text-indent: 100%;
+    white-space: nowrap;
+    z-index: 2;
+
+    cursor: pointer;
+}
+
+.sidebar_activator span{
+    position: absolute;
+    display: block;
+    width: 2em;
+    height: 2px;
+    background: black;
+    margin-top: -1px;
+    left: 50%;
+    margin-left: -1em;
+    top: 50%;
+}
+
+.sidebar_activator span::before, .sidebar_activator span::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    background: black;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    transition: transform .3s, background 0s;
+}
+
+.sidebar_activator span::before {
+    top: -6px;
+    transform: rotate(0);
+}
+
+.sidebar_activator span::after {
+    bottom: -6px;
+    transform: rotate(0);
+}
+
+input.sidebar_activator:checked ~ label {
+    box-shadow: none;
+}
+
+input.sidebar_activator:checked ~ label span::before {
+    top: 0;
+    transform: rotate(135deg);
+}
+
+input.sidebar_activator:checked ~ label span {
+    background: transparent;
+}
+
+input.sidebar_activator:checked ~ label span::after {
+    bottom: 0;
+    transform: rotate(225deg);
+}
+
+.sidebar_settings {
+    position: fixed;
+    width: 90%;
+    max-width: 400px;
+    right: 5%;
+    bottom: 3em;
+    border-radius: 1em;
+    box-shadow: 0 0 10px rgba(232, 74, 100, .4);
+    background: #fff;
+    visibility: hidden;
+    overflow: hidden;
+    z-index: 1;
+    backface-visibility: hidden;
+    transform: scale(0);
+    transform-origin: 100% 100%;
+    transition: transform .3s, visibility 0s .3s;
+
+    display: flex;
+    flex-direction: column;
+    padding: 1em 6em 1em 1em;
+}
+
+input.sidebar_activator:checked ~ .sidebar_settings {
+    visibility: visible;
+    transform: scale(1);
+    transition: transform .3s, visibility 0s 0s;
+}
