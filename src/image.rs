@@ -32,7 +32,7 @@ pub mod pixel {
 
 }
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct RawImage(pub Vec<u8>);
 
 impl RawImage {

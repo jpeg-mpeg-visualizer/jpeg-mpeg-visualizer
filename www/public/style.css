@@ -1,0 +1,227 @@
+* {
+    box-sizing: border-box;
+}
+
+
+
+a:link    { color: #337ab7; text-decoration: none;      }
+a:hover   { color: #23527c; text-decoration: underline; }
+
+body {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    font-family: "Helvetica Neue",Helvetica,Arial,sans-serif;
+    font-size: 0.6em;
+    margin: 0;
+    color: rgb(51, 51, 51);
+    background-color: beige;
+}
+
+#app {
+    height: 100vh;
+}
+
+.navbar {
+    width: 100%;
+    background-color: blue;
+    margin: 0 auto;
+    position: fixed;
+    top: 0;
+    min-height: 2.7rem;
+
+    display: flex;
+    justify-content: center;
+}
+
+.navbar ul {
+    list-style-type: none;
+
+}
+
+.navbar ul li a {
+    font-weight: bolder;
+    font-size: 2em;
+    color: aliceblue;
+}
+
+.content {
+    margin-top: 2.7rem;
+    min-height: calc(100vh - 2.7rem);
+}
+
+
+.select_menu_area, .choose_file_wrapper {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(100vh - 2.7rem);
+}
+
+.select_menu_button {
+    width: 27%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #23527c;
+}
+
+.select_menu_button:after {
+    content: "";
+    display: block;
+    padding-bottom: 100%;
+}
+
+.select_menu_button:hover {
+    box-shadow: 5px 10px #888888;
+    background-color: #326795;
+}
+
+.select_menu_button p {
+    font-size: 5em;
+    color: aliceblue;
+}
+
+.drop_area {
+    text-align: center;
+    padding: 20% 0;
+}
+
+.drop_area_wrapper {;
+    width: 70%;
+    background-color: antiquewhite;
+    outline: 2px dashed grey;
+    outline-offset: -10px;
+}
+
+.drop_area_wrapper.drop_active {
+    background-color: aliceblue;
+    outline: 2px dashed #888888;
+}
+
+
+.drop_area input {
+    display: none;
+}
+
+.drop_area label {
+    font-size: 4.5em;
+}
+
+.drop_area label:hover > strong {
+    color: grey;
+}
+
+.image_view {
+    padding: 1.5em;
+}
+
+.image_view details {
+    background: bisque;
+}
+
+.image_view details summary {
+    cursor: pointer;
+    padding: 1em;
+    border-bottom: 1px solid #ddd;
+}
+
+input.sidebar_activator {
+    display: none;
+}
+
+label.sidebar_activator {
+    position: fixed;
+    bottom: 3em;
+    right: 5%;
+    width: 4em;
+    height: 4em;
+    background: #fff;
+    border-radius: 1em;
+    box-shadow: 0 0 10px rgba(232, 74, 100, .4);
+    overflow: hidden;
+    text-indent: 100%;
+    white-space: nowrap;
+    z-index: 2;
+
+    cursor: pointer;
+}
+
+.sidebar_activator span{
+    position: absolute;
+    display: block;
+    width: 2em;
+    height: 2px;
+    background: black;
+    margin-top: -1px;
+    left: 50%;
+    margin-left: -1em;
+    top: 50%;
+}
+
+.sidebar_activator span::before, .sidebar_activator span::after {
+    content: "";
+    position: absolute;
+    left: 0;
+    background: black;
+    width: 100%;
+    height: 100%;
+    backface-visibility: hidden;
+    transition: transform .3s, background 0s;
+}
+
+.sidebar_activator span::before {
+    top: -6px;
+    transform: rotate(0);
+}
+
+.sidebar_activator span::after {
+    bottom: -6px;
+    transform: rotate(0);
+}
+
+input.sidebar_activator:checked ~ label {
+    box-shadow: none;
+}
+
+input.sidebar_activator:checked ~ label span::before {
+    top: 0;
+    transform: rotate(135deg);
+}
+
+input.sidebar_activator:checked ~ label span {
+    background: transparent;
+}
+
+input.sidebar_activator:checked ~ label span::after {
+    bottom: 0;
+    transform: rotate(225deg);
+}
+
+.sidebar_settings {
+    position: fixed;
+    width: 90%;
+    max-width: 400px;
+    right: 5%;
+    bottom: 3em;
+    border-radius: 1em;
+    box-shadow: 0 0 10px rgba(232, 74, 100, .4);
+    background: #fff;
+    visibility: hidden;
+    overflow: hidden;
+    z-index: 1;
+    backface-visibility: hidden;
+    transform: scale(0);
+    transform-origin: 100% 100%;
+    transition: transform .3s, visibility 0s .3s;
+
+    display: flex;
+    flex-direction: column;
+    padding: 1em 6em 1em 1em;
+}
+
+input.sidebar_activator:checked ~ .sidebar_settings {
+    visibility: visible;
+    transform: scale(1);
+    transition: transform .3s, visibility 0s 0s;
+}
