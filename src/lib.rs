@@ -41,7 +41,7 @@ const JPEG_VISUALIZER: &str = "jpeg-visualizer";
 
 enum Page {
     Home,
-    JPEGVisualizer(jpeg_visualization::page::Model),
+    JPEGVisualizer(jpeg_visualization::model::Model),
     NotFound,
 }
 
@@ -80,7 +80,7 @@ impl<'a> Urls<'a> {
 
 pub enum Msg {
     UrlChanged(subs::UrlChanged),
-    JPEGVisualizationMessage(jpeg_visualization::page::Msg)
+    JPEGVisualizationMessage(jpeg_visualization::model::Msg)
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {

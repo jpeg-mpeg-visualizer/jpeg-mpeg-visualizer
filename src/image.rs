@@ -33,15 +33,19 @@ pub mod pixel {
 }
 
 #[derive(Default, Clone)]
-pub struct RawImage(pub Vec<u8>);
+pub struct RawImage{
+    pub data: Vec<u8>,
+    pub height: u32,
+    pub width: u32,
+}
 
 impl RawImage {
     pub fn to_rgb_image(&self) -> RGBImage {
         let mut rgb = Vec::new();
-        for i in (0..self.0.len()).step_by(4) {
-            let r = self.0[i];
-            let g = self.0[i + 1];
-            let b = self.0[i + 2];
+        for i in (0..self.data.len()).step_by(4) {
+            let r = self.data[i];
+            let g = self.data[i + 1];
+            let b = self.data[i + 2];
             rgb.push(pixel::RGB((r, g, b)));
         }
         RGBImage(rgb)
