@@ -247,9 +247,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::PreviewCanvasClicked(x, y) => {
             if let State::ImageView(pack) = &model.state {
                 //pack.raw_image.move_viewed(x, y);
-                log(cmp::max(x - 250, 0));
-                log(cmp::max(y - 250, 0));
-                &model.original_canvas_scrollable_div_wrapper.get().unwrap().scroll_to_with_x_and_y(cmp::max(x*pack.raw_image.width/500 - 250, 0).into(), cmp::max(y*pack.raw_image.height/500 - 250, 0).into());
+                &model.original_canvas_scrollable_div_wrapper.get().unwrap().scroll_to_with_x_and_y(cmp::max((x*pack.raw_image.width/500) as i32 - 250, 0).into(), cmp::max((y*pack.raw_image.height/500) as i32 - 250, 0).into());
             }
         }
     }
