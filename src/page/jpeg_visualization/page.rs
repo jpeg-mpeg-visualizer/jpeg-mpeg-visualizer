@@ -74,6 +74,19 @@ fn draw_original_image(canvas: &ElRef<HtmlCanvasElement>, image: &image::RawImag
     ctx.put_image_data(&img, 0.0, 0.0).unwrap();
 }
 
+fn draw_block_choice_indicator(canvas: &ElRef<HtmlCanvasElement>, image: &image::RawImage, start_x: u32, start_y: u32) {
+    log("drawing");
+    let canvas = canvas.get().unwrap();
+    let ctx = canvas_context_2d(&canvas);
+    // Reset previous block choice indicator
+    let img = web_sys::ImageData::new_with_u8_clamped_array_and_sh(wasm_bindgen::Clamped(&image.all_data), image.width, image.height).unwrap();
+    ctx.put_image_data(&img, 0.0, 0.0).unwrap();
+    // Draw rect
+    ctx.begin_path();
+    ctx.rect(start_x.into(), start_y.into(), 8.0, 8.0);
+    ctx.stroke();
+}
+
 fn draw_ycbcr(canvas_ys: &ElRef<HtmlCanvasElement>, canvas_cbs: &ElRef<HtmlCanvasElement>, canvas_crs: &ElRef<HtmlCanvasElement>, image: &image::YCbCrImage) {
     let ctx_ys = canvas_context_2d(&canvas_ys.get().unwrap());
     let ctx_cbs = canvas_context_2d(&canvas_cbs.get().unwrap());
@@ -217,8 +230,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 context.draw_image_with_html_image_element(&image, 0.0, 0.0).unwrap();
                 let image_data = context.get_image_data(0.0, 0.0, image_width.into(), image_height.into()).unwrap();
                 let data: Vec<u8> = image_data.data().to_vec();
-                let mut raw_image: image::RawImage = image::RawImage::new(data, image_height, image_width);
-                //raw_image.move_viewed(250, 250);
+                let raw_image: image::RawImage = image::RawImage::new(data, image_height, image_width);
                 Msg::ImageLoaded(raw_image)
             });
             model.state = State::PreImageView
@@ -246,8 +258,27 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         },
         Msg::PreviewCanvasClicked(x, y) => {
             if let State::ImageView(pack) = &model.state {
-                //pack.raw_image.move_viewed(x, y);
-                &model.original_canvas_scrollable_div_wrapper.get().unwrap().scroll_to_with_x_and_y(cmp::max((x*pack.raw_image.width/500) as i32 - 250, 0).into(), cmp::max((y*pack.raw_image.height/500) as i32 - 250, 0).into());
+                let canvas_rect = &model.original_canvas_preview.get().unwrap().get_bounding_client_rect();
+                let canvas_x = canvas_rect.left();
+                let canvas_y = canvas_rect.top();
+
+                let start_x: u32 = cmp::max(((x - canvas_x as i32)*pack.raw_image.width as i32/500) - 250, 0) as u32;
+                let start_y: u32 = cmp::max(((y - canvas_y as i32)*pack.raw_image.height as i32/500) - 250, 0) as u32;
+                &model.original_canvas_scrollable_div_wrapper.get().unwrap().scroll_to_with_x_and_y(start_x.into(), start_y.into());
+            }
+        },
+        Msg::BlockChosen(x, y) => {
+            if let State::ImageView(pack) = &model.state {
+                let canvas_rect = &model.original_canvas.get().unwrap().get_bounding_client_rect();
+                let canvas_x = canvas_rect.left();
+                let canvas_y = canvas_rect.top();
+
+                let start_x: u32 = ((x - canvas_x as i32) as u32/8)*8;
+                let start_y: u32 = ((y - canvas_y as i32) as u32/8)*8;
+
+                log(start_x);
+                log(start_y );
+                draw_block_choice_indicator(&model.original_canvas, &pack.raw_image, start_x, start_y);
             }
         }
     }

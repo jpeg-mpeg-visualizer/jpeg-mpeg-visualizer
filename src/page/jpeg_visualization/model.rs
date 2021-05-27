@@ -29,7 +29,8 @@ pub enum Msg {
     FileChooserDragLeave,
     ImageLoaded(image::RawImage),
     QualityUpdated(u8),
-    PreviewCanvasClicked(u32, u32)
+    PreviewCanvasClicked(i32, i32),
+    BlockChosen(i32, i32)
 }
 
 // ------ ------

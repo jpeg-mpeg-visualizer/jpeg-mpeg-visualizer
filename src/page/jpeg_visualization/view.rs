@@ -39,14 +39,19 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                 ],
                 ev(Ev::Click, |event| {
                     let mouse_event: MouseEvent = event.unchecked_into();
-                    wrap(Msg::PreviewCanvasClicked(mouse_event.x() as u32, mouse_event.y() as u32))
+                    wrap(Msg::PreviewCanvasClicked(mouse_event.x(), mouse_event.y()))
                 })
             ],
             div![
                 C!["scrollable-canvas-wrapper"],
                 el_ref(&model.original_canvas_scrollable_div_wrapper),
                 canvas![
-                    el_ref(&model.original_canvas)
+                    C!["original-canvas"],
+                    el_ref(&model.original_canvas),
+                    ev(Ev::Click, |event| {
+                        let mouse_event: MouseEvent = event.unchecked_into();
+                        wrap(Msg::BlockChosen(mouse_event.x(), mouse_event.y()))
+                    })
                 ],
             ]
         ]
