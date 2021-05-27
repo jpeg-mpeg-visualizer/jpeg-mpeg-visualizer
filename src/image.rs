@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use crate::block::BlockMatrix;
 
 pub mod pixel {
     pub struct RGB {
@@ -173,6 +174,17 @@ impl RGBImage {
 pub struct YCbCrImage(pub Vec<pixel::YCbCr>);
 
 impl YCbCrImage {
+    pub fn from_block_matrices(ys: &BlockMatrix, cb: &BlockMatrix, cr: &BlockMatrix) -> Self {
+        let ys_flat = ys.flatten();
+        let cb_flat = cb.flatten();
+        let cr_flat = cr.flatten();
+        
+        let pixels = ys_flat.iter().zip(cb_flat.iter()).zip(cr_flat.iter())
+            .map(|((y, cb), cr)| pixel::YCbCr { y: *y, cb: *cb, cr: *cr })
+            .collect::<Vec<pixel::YCbCr>>();
+        Self(pixels)
+    }
+
     pub fn to_rgb_image(&self) -> RGBImage {
         RGBImage(
             self.0
