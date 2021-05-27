@@ -17,4 +17,4 @@ gloo-events = "0.1.1"
 
 [dependencies.web-sys]
 version = "0.3.50"
-features = [ "Window", "Document", "HtmlElement", "Element", "File", "FileReader", "HtmlImageElement", "ProgressEvent", "ImageData", "CanvasRenderingContext2d", "HtmlCanvasElement", "OffscreenCanvas" ]
+features = [ "Window", "Document", "HtmlElement", "Element", "File", "FileReader", "HtmlImageElement", "ProgressEvent", "ImageData", "CanvasRenderingContext2d", "HtmlCanvasElement", "OffscreenCanvas", "HtmlDivElement" ]

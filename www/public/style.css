@@ -229,6 +229,6 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .scrollable-canvas-wrapper {
     max-width: 500px;
     max-height: 500px;
-    overflow: scroll;
+    overflow: hidden;
     display: inline-block;
 }

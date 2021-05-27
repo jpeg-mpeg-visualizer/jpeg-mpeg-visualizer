@@ -1,8 +1,10 @@
 use seed::*;
 use seed::prelude::*;
+use std::cmp;
 
 use crate::{Msg as GMsg, image, quant, block};
 use web_sys::HtmlCanvasElement;
+use web_sys::HtmlDivElement;
 use super::model::*;
 use super::view::*;
 
@@ -16,6 +18,7 @@ pub fn init(mut url: Url) -> Option<Model> {
         state: State::FileChooser,
         original_canvas_preview: ElRef::<HtmlCanvasElement>::default(),
         original_canvas: ElRef::<HtmlCanvasElement>::default(),
+        original_canvas_scrollable_div_wrapper: ElRef::<HtmlDivElement>::default(),
         ys_canvas: ElRef::<HtmlCanvasElement>::default(),
         cbs_canvas: ElRef::<HtmlCanvasElement>::default(),
         crs_canvas: ElRef::<HtmlCanvasElement>::default(),
@@ -239,6 +242,14 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             if let State::ImageView(pack) = &model.state {
                 model.quality = quality;
                 draw_dct_quantized(&model.ys_quant_canvas, &model.cbs_quant_canvas, &model.crs_quant_canvas, &pack.ycbcr, quality);
+            }
+        },
+        Msg::PreviewCanvasClicked(x, y) => {
+            if let State::ImageView(pack) = &model.state {
+                //pack.raw_image.move_viewed(x, y);
+                log(cmp::max(x - 250, 0));
+                log(cmp::max(y - 250, 0));
+                &model.original_canvas_scrollable_div_wrapper.get().unwrap().scroll_to_with_x_and_y(cmp::max(x*pack.raw_image.width/500 - 250, 0).into(), cmp::max(y*pack.raw_image.height/500 - 250, 0).into());
             }
         }
     }

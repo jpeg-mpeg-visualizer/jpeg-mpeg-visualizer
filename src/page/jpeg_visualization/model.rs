@@ -2,6 +2,7 @@ use crate::image;
 use seed::*;
 use seed::prelude::*;
 use web_sys::HtmlCanvasElement;
+use web_sys::HtmlDivElement;
 
 
 pub struct ImagePack{
@@ -28,6 +29,7 @@ pub enum Msg {
     FileChooserDragLeave,
     ImageLoaded(image::RawImage),
     QualityUpdated(u8),
+    PreviewCanvasClicked(u32, u32)
 }
 
 // ------ ------
@@ -40,6 +42,7 @@ pub struct Model {
     pub state: State,
     pub original_canvas_preview: ElRef<HtmlCanvasElement>,
     pub original_canvas: ElRef<HtmlCanvasElement>,
+    pub original_canvas_scrollable_div_wrapper: ElRef<HtmlDivElement>,
     pub ys_canvas: ElRef<HtmlCanvasElement>,
     pub cbs_canvas: ElRef<HtmlCanvasElement>,
     pub crs_canvas: ElRef<HtmlCanvasElement>,

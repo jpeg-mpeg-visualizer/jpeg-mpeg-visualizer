@@ -1,6 +1,6 @@
 use seed::*;
 use seed::prelude::*;
-use seed::prelude::web_sys::{DragEvent, Event};
+use seed::prelude::web_sys::{DragEvent, Event, MouseEvent};
 
 use crate::{Msg as GMsg, image, quant, block};
 use super::model::{Model, Msg};
@@ -36,13 +36,18 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                 attrs![
                     At::Width => px(500),
                     At::Height => px(500),
-                ]
+                ],
+                ev(Ev::Click, |event| {
+                    let mouse_event: MouseEvent = event.unchecked_into();
+                    wrap(Msg::PreviewCanvasClicked(mouse_event.x() as u32, mouse_event.y() as u32))
+                })
             ],
             div![
                 C!["scrollable-canvas-wrapper"],
+                el_ref(&model.original_canvas_scrollable_div_wrapper),
                 canvas![
                     el_ref(&model.original_canvas)
-                ]
+                ],
             ]
         ]
     ]
