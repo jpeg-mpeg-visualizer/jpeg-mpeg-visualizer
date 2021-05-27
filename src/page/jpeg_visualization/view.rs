@@ -38,11 +38,10 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                     At::Height => px(500),
                 ]
             ],
-            canvas![
-                el_ref(&model.original_canvas),
-                attrs![
-                    At::Width => px(500),
-                    At::Height => px(500),
+            div![
+                C!["scrollable-canvas-wrapper"],
+                canvas![
+                    el_ref(&model.original_canvas)
                 ]
             ]
         ]

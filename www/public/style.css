@@ -225,3 +225,10 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     transform: scale(1);
     transition: transform .3s, visibility 0s 0s;
 }
+
+.scrollable-canvas-wrapper {
+    max-width: 500px;
+    max-height: 500px;
+    overflow: scroll;
+    display: inline-block;
+}

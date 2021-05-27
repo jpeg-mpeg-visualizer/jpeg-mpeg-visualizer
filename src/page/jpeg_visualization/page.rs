@@ -64,8 +64,10 @@ fn draw_original_image_preview(original_canvas_preview: &ElRef<HtmlCanvasElement
 }
 fn draw_original_image(canvas: &ElRef<HtmlCanvasElement>, image: &image::RawImage) {
     let canvas = canvas.get().unwrap();
+    canvas.set_height(image.height);
+    canvas.set_width(image.width);
     let ctx = canvas_context_2d(&canvas);
-    let img = web_sys::ImageData::new_with_u8_clamped_array_and_sh(wasm_bindgen::Clamped(&image.data), 500, 500).unwrap();
+    let img = web_sys::ImageData::new_with_u8_clamped_array_and_sh(wasm_bindgen::Clamped(&image.all_data), image.width, image.height).unwrap();
     ctx.put_image_data(&img, 0.0, 0.0).unwrap();
 }
 
