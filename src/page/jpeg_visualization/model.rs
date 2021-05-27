@@ -38,6 +38,7 @@ pub struct Model {
     pub file_chooser_zone_active: bool,
     pub base_url: Url,
     pub state: State,
+    pub original_canvas_preview: ElRef<HtmlCanvasElement>,
     pub original_canvas: ElRef<HtmlCanvasElement>,
     pub ys_canvas: ElRef<HtmlCanvasElement>,
     pub cbs_canvas: ElRef<HtmlCanvasElement>,

@@ -34,9 +34,38 @@ pub mod pixel {
 
 #[derive(Default, Clone)]
 pub struct RawImage{
-    pub data: Vec<u8>,
+    pub all_data: Vec<u8>,
     pub height: u32,
     pub width: u32,
+    pub data: Vec<u8>
+}
+
+impl RawImage {
+    pub fn new(all_data: Vec<u8>, height: u32, width: u32) -> Self {
+        let mut viewed_data: Vec<u8> = Vec::with_capacity(500*500*4);
+        for i in 0..500 {
+            for j in 0..2000 {
+                viewed_data.push(all_data[(i * width * 4 + j) as usize]);
+            }
+        }
+
+        return RawImage {
+            all_data,
+            height,
+            width,
+            data: viewed_data
+        }
+    }
+}
+
+impl RawImage {
+    pub fn move_viewed(&mut self, start_x: u32, start_y: u32) {
+        for i in 0..500 {
+            for j in 0..2000 {
+                self.data[(i*500*4 + j) as usize] = self.all_data[((i+start_y) * self.width * 4 + (j+start_x*4)) as usize];
+            }
+        }
+    }
 }
 
 impl RawImage {

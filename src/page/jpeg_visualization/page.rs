@@ -14,6 +14,7 @@ pub fn init(mut url: Url) -> Option<Model> {
         file_chooser_zone_active: false,
         base_url,
         state: State::FileChooser,
+        original_canvas_preview: ElRef::<HtmlCanvasElement>::default(),
         original_canvas: ElRef::<HtmlCanvasElement>::default(),
         ys_canvas: ElRef::<HtmlCanvasElement>::default(),
         cbs_canvas: ElRef::<HtmlCanvasElement>::default(),
@@ -42,10 +43,29 @@ pub fn wrap(msg: Msg) -> GMsg {
     GMsg::JPEGVisualizationMessage(msg)
 }
 
+fn draw_original_image_preview(original_canvas_preview: &ElRef<HtmlCanvasElement>, image: &image::RawImage) {
+    let canvas = original_canvas_preview.get().unwrap();
+    let ctx = canvas_context_2d(&canvas);
+    let img = web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image.all_data), image.width).unwrap();
+
+    // Create temporary canvas1 so that we can draw scaled image to proper canvas
+    let tmp_canvas = web_sys::window().unwrap()
+        .document().unwrap()
+        .create_element("canvas").unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>().unwrap();
+    tmp_canvas.set_height(image.height);
+    tmp_canvas.set_width(image.width);
+    let tmp_ctx = canvas_context_2d(&tmp_canvas);
+    tmp_ctx.put_image_data(&img, 0.0, 0.0).unwrap();
+
+    // Set scale and draw scaled image from temporary canvas1
+    ctx.scale(500.0/image.width as f64, 500.0/image.height as f64);
+    ctx.draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0);
+}
 fn draw_original_image(canvas: &ElRef<HtmlCanvasElement>, image: &image::RawImage) {
     let canvas = canvas.get().unwrap();
     let ctx = canvas_context_2d(&canvas);
-    let img = web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image.data), 500).unwrap();
+    let img = web_sys::ImageData::new_with_u8_clamped_array_and_sh(wasm_bindgen::Clamped(&image.data), 500, 500).unwrap();
     ctx.put_image_data(&img, 0.0, 0.0).unwrap();
 }
 
@@ -190,9 +210,11 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     .dyn_into::<web_sys::CanvasRenderingContext2d>()
                     .unwrap();
                 context.draw_image_with_html_image_element(&image, 0.0, 0.0).unwrap();
-                let image_data = context.get_image_data(0.0, 0.0, 500.0, 500.0).unwrap();
+                let image_data = context.get_image_data(0.0, 0.0, image_width.into(), image_height.into()).unwrap();
                 let data: Vec<u8> = image_data.data().to_vec();
-                Msg::ImageLoaded(image::RawImage{data, height: image_height, width: image_width})
+                let mut raw_image: image::RawImage = image::RawImage::new(data, image_height, image_width);
+                //raw_image.move_viewed(250, 250);
+                Msg::ImageLoaded(raw_image)
             });
             model.state = State::PreImageView
         },
@@ -200,6 +222,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::ImageLoaded(raw_image) => {
             let ycbcr =  raw_image.to_rgb_image().to_ycbcr_image();
+            draw_original_image_preview(&model.original_canvas_preview, &raw_image);
             draw_original_image(&model.original_canvas, &raw_image);
             draw_ycbcr(&model.ys_canvas, &model.cbs_canvas, &model.crs_canvas, &ycbcr);
             draw_dct_quantized(&model.ys_quant_canvas, &model.cbs_quant_canvas, &model.crs_quant_canvas, &ycbcr, 50);

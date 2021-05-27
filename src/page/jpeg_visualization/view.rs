@@ -32,6 +32,13 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
         details![
             summary!["Image preview"],
             canvas![
+                el_ref(&model.original_canvas_preview),
+                attrs![
+                    At::Width => px(500),
+                    At::Height => px(500),
+                ]
+            ],
+            canvas![
                 el_ref(&model.original_canvas),
                 attrs![
                     At::Width => px(500),
