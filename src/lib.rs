@@ -11,6 +11,9 @@ mod dct;
 use seed::{prelude::*, *};
 use page::{*};
 
+const ZOOM: u32 = 8;
+const BLOCK_SIZE: u32 = 64;
+
 #[wasm_bindgen]
 extern "C" {
     #[wasm_bindgen(js_namespace = console)]

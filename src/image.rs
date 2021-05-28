@@ -1,3 +1,5 @@
+use crate::BLOCK_SIZE;
+
 pub mod pixel {
     pub struct RGB(pub (u8, u8, u8));
 
@@ -42,9 +44,9 @@ pub struct RawImage{
 
 impl RawImage {
     pub fn new(all_data: Vec<u8>, height: u32, width: u32) -> Self {
-        let mut viewed_data: Vec<u8> = Vec::with_capacity(500*500*4);
-        for i in 0..500 {
-            for j in 0..2000 {
+        let mut viewed_data: Vec<u8> = Vec::with_capacity((BLOCK_SIZE*BLOCK_SIZE*4) as usize);
+        for i in 0..BLOCK_SIZE {
+            for j in 0..BLOCK_SIZE*4 {
                 viewed_data.push(all_data[(i * width * 4 + j) as usize]);
             }
         }
@@ -60,9 +62,9 @@ impl RawImage {
 
 impl RawImage {
     pub fn move_viewed(&mut self, start_x: u32, start_y: u32) {
-        for i in 0..500 {
-            for j in 0..2000 {
-                self.data[(i*500*4 + j) as usize] = self.all_data[((i+start_y) * self.width * 4 + (j+start_x*4)) as usize];
+        for i in 0..BLOCK_SIZE {
+            for j in 0..BLOCK_SIZE*4 {
+                self.data[(i*BLOCK_SIZE*4 + j) as usize] = self.all_data[((i+start_y) * self.width * 4 + (j+start_x*4)) as usize];
             }
         }
     }

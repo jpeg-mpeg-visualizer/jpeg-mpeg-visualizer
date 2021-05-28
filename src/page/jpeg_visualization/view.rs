@@ -2,8 +2,8 @@ use seed::*;
 use seed::prelude::*;
 use seed::prelude::web_sys::{DragEvent, Event, MouseEvent};
 
-use crate::{Msg as GMsg, image, quant, block};
-use super::model::{Model, Msg};
+use crate::{Msg as GMsg, image, quant, block, BLOCK_SIZE, ZOOM};
+use super::model::{Model, State, Msg};
 use super::page::wrap;
 
 trait IntoDragEvent {
@@ -31,11 +31,14 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["Image preview"],
+            attrs![
+                //At::Open => IF!(matches!(&model.state, State::ImageView(_)) => [At::Open => true])
+            ],
             canvas![
                 el_ref(&model.original_canvas_preview),
                 attrs![
-                    At::Width => px(500),
-                    At::Height => px(500),
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
                 ],
                 ev(Ev::Click, |event| {
                     let mouse_event: MouseEvent = event.unchecked_into();
@@ -45,6 +48,14 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
             div![
                 C!["scrollable-canvas-wrapper"],
                 el_ref(&model.original_canvas_scrollable_div_wrapper),
+                style![
+                    St::MaxWidth => px(BLOCK_SIZE * ZOOM),
+                    St::MaxHeight => px(BLOCK_SIZE * ZOOM),
+                ],
+                attrs![
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
+                ],
                 canvas![
                     C!["original-canvas"],
                     el_ref(&model.original_canvas),
@@ -66,22 +77,22 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
             canvas![
                 el_ref(&model.ys_canvas),
                 attrs![
-                    At::Width => px(500),
-                    At::Height => px(500),
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ],
             canvas![
                 el_ref(&model.cbs_canvas),
                 attrs![
-                    At::Width => px(500),
-                    At::Height => px(500),
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ],
             canvas![
                 el_ref(&model.crs_canvas),
                 attrs![
-                    At::Width => px(500),
-                    At::Height => px(500),
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ]
         ]
@@ -96,22 +107,22 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
             canvas![
                 el_ref(&model.ys_quant_canvas),
                 attrs![
-                    At::Width => px(500),
-                    At::Height => px(500),
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ],
             canvas![
                 el_ref(&model.cbs_quant_canvas),
                 attrs![
-                    At::Width => px(500),
-                    At::Height => px(500),
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ],
             canvas![
                 el_ref(&model.crs_quant_canvas),
                 attrs![
-                    At::Width => px(500),
-                    At::Height => px(500),
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ]
         ]

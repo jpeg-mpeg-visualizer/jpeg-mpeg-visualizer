@@ -1,4 +1,5 @@
-use crate::{quant, dct};
+use crate::{quant, dct, BLOCK_SIZE};
+
 
 pub struct Block(pub [[u8; 8]; 8]);
 
@@ -9,7 +10,7 @@ pub struct BlockMatrix {
 }
 
 pub fn split_to_block_matrix(data: &Vec<u8>) -> BlockMatrix {
-    let block_count = data.len() / (8 * 500);
+    let block_count = data.len() / (8 * BLOCK_SIZE as usize);
     let mut blocks: Vec<Block> = Vec::with_capacity(block_count*block_count);
 
     for v in 0..block_count {
@@ -43,7 +44,7 @@ fn get_block(u: usize, v: usize, data: &Vec<u8>) -> Block {
 
     for y in 0..8 {
         for x in 0..8 {
-            result[y][x] = data[(v * 8 + y) * 500 + (u * 8) + x];
+            result[y][x] = data[(v * 8 + y) * BLOCK_SIZE as usize + (u * 8) + x];
         }
     }
 
