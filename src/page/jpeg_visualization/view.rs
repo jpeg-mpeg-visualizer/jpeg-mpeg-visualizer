@@ -32,7 +32,10 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
         details![
             summary!["Image preview"],
             attrs![
-                //At::Open => IF!(matches!(&model.state, State::ImageView(_)) => [At::Open => true])
+                At::Open => match &model.state {
+                    State::ImageView(pack) => AtValue::None,
+                    _ => AtValue::Ignored,
+                }
             ],
             canvas![
                 el_ref(&model.original_canvas_preview),
