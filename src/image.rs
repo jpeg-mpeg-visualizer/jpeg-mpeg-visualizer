@@ -1,84 +1,141 @@
-use crate::BLOCK_SIZE;
+use std::rc::Rc;
 
 pub mod pixel {
-    pub struct RGB(pub (u8, u8, u8));
+    pub struct RGB {
+        pub r: u8,
+        pub g: u8,
+        pub b: u8
+    }
 
     impl RGB {
         pub fn to_ycbcr(&self) -> YCbCr {
-            let (r, g, b) = self.0;
-            let (r, g, b) = (r as f32, g as f32, b as f32);
+            let (r, g, b) = (self.r as f32, self.g as f32, self.b as f32);
 
-            let y = 0.299 * r + 0.587 * g + 0.114 * b;
-            let cb = 128.0 - 0.168736 * r - 0.331264 * g + 0.5 * b;
-            let cr = 128.0 + 0.5 * r - 0.418688 * g - 0.081312 * b;
+            let y = (0.299 * r + 0.587 * g + 0.114 * b) as u8;
+            let cb = (128.0 - 0.168736 * r - 0.331264 * g + 0.5 * b) as u8;
+            let cr = (128.0 + 0.5 * r - 0.418688 * g - 0.081312 * b) as u8;
 
-            YCbCr((y as u8, cb as u8, cr as u8))
+            YCbCr{y, cb, cr}
         }
     }
 
-    pub struct YCbCr(pub (u8, u8, u8));
+    pub struct YCbCr {
+        pub y: u8,
+        pub cb: u8,
+        pub cr: u8
+    }
 
     impl YCbCr {
         pub fn to_rgb(&self) -> RGB {
-            let (y, cb, cr) = self.0;
-            let (y, cb, cr) = (y as f32, cb as f32, cr as f32);
+            let (y, cb, cr) = (self.y as f32, self.cb as f32, self.cr as f32);
 
-            let r = y + 1.402 * (cr - 128.0);
-            let g = y - 0.344136 * (cb - 128.0) - 0.714136 * (cr - 128.0);
-            let b = y + 1.772 * (cb - 128.0);
+            let r = (y + 1.402 * (cr - 128.0)) as u8;
+            let g = (y - 0.344136 * (cb - 128.0) - 0.714136 * (cr - 128.0)) as u8;
+            let b = (y + 1.772 * (cb - 128.0)) as u8;
 
-            RGB((r as u8, g as u8, b as u8))
+            RGB {r, g, b}
         }
     }
 }
 
 #[derive(Default, Clone)]
 pub struct RawImage {
-    pub all_data: Vec<u8>,
-    pub height: u32,
-    pub width: u32,
-    pub data: Vec<u8>,
+    width: u32,
+    height: u32,
+    data: Vec<u8>,
 }
 
 impl RawImage {
-    pub fn new(all_data: Vec<u8>, height: u32, width: u32) -> Self {
-        let mut viewed_data: Vec<u8> = Vec::with_capacity((BLOCK_SIZE * BLOCK_SIZE * 4) as usize);
-        for i in 0..BLOCK_SIZE {
-            for j in 0..BLOCK_SIZE * 4 {
-                viewed_data.push(all_data[(i * width * 4 + j) as usize]);
-            }
-        }
-
-        return RawImage {
-            all_data,
+    pub fn new(data: Vec<u8>, width: u32, height: u32) -> RawImage {
+        RawImage {
             height,
             width,
-            data: viewed_data,
-        };
-    }
-}
-
-impl RawImage {
-    pub fn move_viewed(&mut self, start_x: u32, start_y: u32) {
-        for i in 0..BLOCK_SIZE {
-            for j in 0..BLOCK_SIZE * 4 {
-                self.data[(i * BLOCK_SIZE * 4 + j) as usize] =
-                    self.all_data[((i + start_y) * self.width * 4 + (j + start_x * 4)) as usize];
-            }
+            data
         }
     }
-}
 
-impl RawImage {
     pub fn to_rgb_image(&self) -> RGBImage {
         let mut rgb = Vec::new();
         for i in (0..self.data.len()).step_by(4) {
             let r = self.data[i];
             let g = self.data[i + 1];
             let b = self.data[i + 2];
-            rgb.push(pixel::RGB((r, g, b)));
+            rgb.push(pixel::RGB{r, g, b});
         }
         RGBImage(rgb)
+    }
+
+    pub fn height(&self) -> u32 {
+        self.height
+    }
+
+    pub fn width(&self) -> u32 {
+        self.width
+    }
+}
+
+impl AsRef<[u8]> for RawImage {
+    fn as_ref(&self) -> &[u8] {
+        &self.data
+    }
+}
+
+impl<Idx> std::ops::Index<Idx> for RawImage
+where
+    Idx: std::slice::SliceIndex<[u8]>
+{
+    type Output = Idx::Output;
+
+    fn index(&self, index: Idx) -> &Self::Output {
+        &self.data[index]
+    }
+}
+
+pub struct RawImageWindow {
+    raw_image: Rc<RawImage>,
+
+    pub start_x: u32,
+    pub start_y: u32,
+
+    width: u32,
+    height: u32,
+}
+
+impl RawImageWindow {
+    pub fn new(raw_image: Rc<RawImage>, start_x: u32, start_y: u32, width: u32, height: u32) -> RawImageWindow {
+        RawImageWindow {
+            raw_image,
+            start_x,
+            start_y,
+            width,
+            height
+        }
+    }
+
+    pub fn height(self) -> u32 {
+        self.height
+    }
+
+    pub fn width(self) -> u32 {
+        self.width
+    }
+}
+
+impl std::ops::Index<usize> for RawImageWindow
+{
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        let chunk_index_x: u32 = index as u32 % self.width;
+        let chunk_index_y: u32= index as u32 / self.width;
+        assert!(chunk_index_y <= self.height);
+        assert!(chunk_index_y + self.start_y <= self.raw_image.height);
+        assert!(chunk_index_x + self.start_x <= self.raw_image.width);
+
+        let y = self.start_y + chunk_index_y;
+        let x = self.start_x + chunk_index_x;
+
+        &self.raw_image.data[(x + y * self.raw_image.width) as usize]
     }
 }
 
@@ -108,14 +165,14 @@ impl YCbCrImage {
     }
 
     pub fn to_ys_channel(&self) -> Vec<u8> {
-        self.0.iter().map(|x| x.0 .0).collect::<Vec<u8>>()
+        self.0.iter().map(|x| x.y).collect::<Vec<u8>>()
     }
 
     pub fn to_cbs_channel(&self) -> Vec<u8> {
-        self.0.iter().map(|x| x.0 .1).collect::<Vec<u8>>()
+        self.0.iter().map(|x| x.cb).collect::<Vec<u8>>()
     }
 
     pub fn to_crs_channel(&self) -> Vec<u8> {
-        self.0.iter().map(|x| x.0 .2).collect::<Vec<u8>>()
+        self.0.iter().map(|x| x.cr).collect::<Vec<u8>>()
     }
 }

@@ -1,7 +1,3 @@
-// ------ ------
-//     Init
-// ------ ------
-
 mod block;
 mod dct;
 mod image;

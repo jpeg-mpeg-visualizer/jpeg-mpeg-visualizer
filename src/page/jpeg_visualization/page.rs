@@ -3,10 +3,14 @@ use seed::*;
 use std::cmp;
 
 use super::model::*;
+use super::utils;
 use super::view::*;
 use crate::{block, image, quant, Msg as GMsg, BLOCK_SIZE, ZOOM};
 use web_sys::HtmlCanvasElement;
 use web_sys::HtmlDivElement;
+use crate::image::pixel::RGB;
+use crate::image::RawImageWindow;
+use std::rc::Rc;
 
 pub fn init(url: Url) -> Option<Model> {
     let base_url = url.to_base_url();
@@ -52,8 +56,8 @@ fn draw_original_image_preview(
     let canvas = original_canvas_preview.get().unwrap();
     let ctx = canvas_context_2d(&canvas);
     let img = web_sys::ImageData::new_with_u8_clamped_array(
-        wasm_bindgen::Clamped(&image.all_data),
-        image.width,
+        wasm_bindgen::Clamped(image.as_ref()),
+        image.width(),
     )
     .unwrap();
 
@@ -66,29 +70,29 @@ fn draw_original_image_preview(
         .unwrap()
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
-    tmp_canvas.set_height(image.height);
-    tmp_canvas.set_width(image.width);
+    tmp_canvas.set_height(image.height());
+    tmp_canvas.set_width(image.width());
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
     tmp_ctx.put_image_data(&img, 0.0, 0.0).unwrap();
 
     // Set scale and draw scaled image from temporary canvas1
     ctx.scale(
-        (BLOCK_SIZE * ZOOM) as f64 / image.width as f64,
-        (BLOCK_SIZE * ZOOM) as f64 / image.height as f64,
+        (BLOCK_SIZE * ZOOM) as f64 / image.width() as f64,
+        (BLOCK_SIZE * ZOOM) as f64 / image.height() as f64,
     )
     .unwrap();
+
     ctx.draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
 }
 fn draw_original_image(canvas: &ElRef<HtmlCanvasElement>, image: &image::RawImage) {
     let canvas = canvas.get().unwrap();
-    canvas.set_height(image.height * ZOOM);
-    canvas.set_width(image.width * ZOOM);
+    canvas.set_height(image.height() * ZOOM);
+    canvas.set_width(image.width() * ZOOM);
     let ctx = canvas_context_2d(&canvas);
-    let img = web_sys::ImageData::new_with_u8_clamped_array_and_sh(
-        wasm_bindgen::Clamped(&image.all_data),
-        image.width,
-        image.height,
+    let img = web_sys::ImageData::new_with_u8_clamped_array(
+        wasm_bindgen::Clamped(image.as_ref()),
+        image.width(),
     )
     .unwrap();
 
@@ -101,12 +105,12 @@ fn draw_original_image(canvas: &ElRef<HtmlCanvasElement>, image: &image::RawImag
         .unwrap()
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
-    tmp_canvas.set_height(image.height);
-    tmp_canvas.set_width(image.width);
+    tmp_canvas.set_height(image.height());
+    tmp_canvas.set_width(image.width());
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
     tmp_ctx.put_image_data(&img, 0.0, 0.0).unwrap();
 
-    ctx.scale(ZOOM as f64, ZOOM as f64).unwrap();
+    ctx.scale(ZOOM as f64, ZOOM as f64);
     ctx.draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
 }
@@ -148,7 +152,7 @@ fn draw_ycbcr(
     let ys_image = ys
         .iter()
         .flat_map(|x| {
-            let (r, g, b) = image::pixel::YCbCr((*x, 128, 128)).to_rgb().0;
+            let RGB{r, g, b} = image::pixel::YCbCr{y: *x, cb: 128, cr: 128}.to_rgb();
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
@@ -156,7 +160,7 @@ fn draw_ycbcr(
     let cbs_image = cbs
         .iter()
         .flat_map(|x| {
-            let (r, g, b) = image::pixel::YCbCr((128, *x, 128)).to_rgb().0;
+            let RGB{r, g, b} = image::pixel::YCbCr{y: 128, cb: *x, cr: 128}.to_rgb();
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
@@ -164,7 +168,7 @@ fn draw_ycbcr(
     let crs_image = crs
         .iter()
         .flat_map(|x| {
-            let (r, g, b) = image::pixel::YCbCr((128, 128, *x)).to_rgb().0;
+            let RGB{r, g, b} = image::pixel::YCbCr{y: 128, cb: 128, cr: *x}.to_rgb();
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
@@ -330,6 +334,7 @@ fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[u8; 8]; 8], u: usiz
 struct_urls!();
 #[allow(dead_code)]
 impl<'a> Urls<'a> {
+    #[allow(dead_code)]
     pub fn base(self) -> Url {
         self.base_url()
     }
@@ -344,39 +349,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserLoadImage(file) => {
             let file_blob = gloo_file::Blob::from(file);
             orders.perform_cmd(async move {
-                let url_data = gloo_file::futures::read_as_data_url(&file_blob)
-                    .await
-                    .unwrap();
-                let image = web_sys::HtmlImageElement::new().unwrap();
-                image.set_src(&url_data);
-                JsFuture::from(image.decode()).await.unwrap();
-                let image_height = image.natural_height();
-                let image_width = image.natural_width();
-                let canvas = web_sys::window()
-                    .unwrap()
-                    .document()
-                    .unwrap()
-                    .create_element("canvas")
-                    .unwrap()
-                    .dyn_into::<web_sys::HtmlCanvasElement>()
-                    .unwrap();
-                canvas.set_width(image_width);
-                canvas.set_height(image_height);
-                let context = canvas
-                    .get_context("2d")
-                    .unwrap()
-                    .unwrap()
-                    .dyn_into::<web_sys::CanvasRenderingContext2d>()
-                    .unwrap();
-                context
-                    .draw_image_with_html_image_element(&image, 0.0, 0.0)
-                    .unwrap();
-                let image_data = context
-                    .get_image_data(0.0, 0.0, image_width.into(), image_height.into())
-                    .unwrap();
-                let data: Vec<u8> = image_data.data().to_vec();
-                let raw_image: image::RawImage =
-                    image::RawImage::new(data, image_height, image_width);
+                let raw_image = utils::load_image(file_blob).await;
                 Msg::ImageLoaded(raw_image)
             });
             model.state = State::PreImageView
@@ -387,21 +360,23 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             let ycbcr = raw_image.to_rgb_image().to_ycbcr_image();
             draw_original_image_preview(&model.original_canvas_preview, &raw_image);
             draw_original_image(&model.original_canvas, &raw_image);
-            draw_ycbcr(
-                &model.ys_canvas,
-                &model.cbs_canvas,
-                &model.crs_canvas,
-                &ycbcr,
-            );
-            draw_dct_quantized(
-                &model.ys_quant_canvas,
-                &model.cbs_quant_canvas,
-                &model.crs_quant_canvas,
-                &ycbcr,
-                50,
-            );
+            // //draw_ycbcr(
+            //     &model.ys_canvas,
+            //     &model.cbs_canvas,
+            //     &model.crs_canvas,
+            //     &ycbcr,
+            // );
+            // //draw_dct_quantized(
+            //     &model.ys_quant_canvas,
+            //     &model.cbs_quant_canvas,
+            //     &model.crs_quant_canvas,
+            //     &ycbcr,
+            //     50,
+            // );
+            let raw_image_rc = Rc::new(raw_image);
             model.state = State::ImageView(ImagePack {
-                raw_image,
+                raw_image: raw_image_rc.clone(),
+                image_window: RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE),
                 start_x: 0,
                 start_y: 0,
                 ycbcr,
@@ -430,20 +405,20 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 let canvas_y = canvas_rect.top();
 
                 let start_x: u32 = cmp::max(
-                    (((x - canvas_x as i32) * pack.raw_image.width as i32
+                    (((x - canvas_x as i32) * pack.raw_image.width() as i32
                         / (BLOCK_SIZE * ZOOM) as i32)
                         * ZOOM as i32)
                         - (BLOCK_SIZE * ZOOM / 2) as i32,
                     0,
                 ) as u32;
                 let start_y: u32 = cmp::max(
-                    (((y - canvas_y as i32) * pack.raw_image.height as i32
+                    (((y - canvas_y as i32) * pack.raw_image.height() as i32
                         / (BLOCK_SIZE * ZOOM) as i32)
                         * ZOOM as i32)
                         - (BLOCK_SIZE * ZOOM / 2) as i32,
                     0,
                 ) as u32;
-                model
+                &model
                     .original_canvas_scrollable_div_wrapper
                     .get()
                     .unwrap()
@@ -451,7 +426,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             }
         }
         Msg::BlockChosen(x, y) => {
-            if let State::ImageView(pack) = &model.state {
+            if let State::ImageView(ref mut pack) = model.state {
                 let canvas_rect = &model
                     .original_canvas
                     .get()
@@ -462,6 +437,9 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
                 let start_x: u32 = ((x - canvas_x as i32) as u32 / (16 * ZOOM)) * 16;
                 let start_y: u32 = ((y - canvas_y as i32) as u32 / (16 * ZOOM)) * 16;
+
+                pack.image_window.start_x = start_x;
+                pack.image_window.start_y = start_y;
 
                 draw_block_choice_indicator(
                     &model.original_canvas,
