@@ -48,8 +48,8 @@ pub struct RawImage {
 impl RawImage {
     pub fn new(data: Vec<u8>, width: u32, height: u32) -> RawImage {
         RawImage {
-            height,
             width,
+            height,
             data
         }
     }

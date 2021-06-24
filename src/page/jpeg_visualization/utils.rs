@@ -35,5 +35,5 @@ pub(super) async fn load_image(file_blob: gloo_file::Blob) -> image::RawImage {
         .get_image_data(0.0, 0.0, width.into(), height.into())
         .unwrap();
     let data: Vec<u8> = image_data.data().to_vec();
-    image::RawImage::new(data, height, width)
+    image::RawImage::new(data, width, height)
 }

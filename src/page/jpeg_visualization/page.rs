@@ -70,6 +70,8 @@ fn draw_original_image_preview(
         .unwrap()
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
+    log!(image.height());
+    log!(image.width());
     tmp_canvas.set_height(image.height());
     tmp_canvas.set_width(image.width());
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
