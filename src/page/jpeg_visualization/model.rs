@@ -1,11 +1,9 @@
 use crate::image;
-use seed::*;
 use seed::prelude::*;
 use web_sys::HtmlCanvasElement;
 use web_sys::HtmlDivElement;
 
-
-pub struct ImagePack{
+pub struct ImagePack {
     pub raw_image: image::RawImage,
     pub start_x: u32,
     pub start_y: u32,
@@ -15,7 +13,7 @@ pub struct ImagePack{
 pub enum State {
     FileChooser,
     PreImageView,
-    ImageView(ImagePack)
+    ImageView(ImagePack),
 }
 
 // ------ ------
@@ -30,7 +28,7 @@ pub enum Msg {
     ImageLoaded(image::RawImage),
     QualityUpdated(u8),
     PreviewCanvasClicked(i32, i32),
-    BlockChosen(i32, i32)
+    BlockChosen(i32, i32),
 }
 
 // ------ ------

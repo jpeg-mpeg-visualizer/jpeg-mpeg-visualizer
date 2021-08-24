@@ -1,4 +1,3 @@
-
 pub fn apply_quantization(data: &mut [[u8; 8]; 8], quantization: &[[u8; 8]; 8]) {
     for y in 0..8 {
         for x in 0..8 {
@@ -16,7 +15,7 @@ pub fn scale_quantization_table(quantization_table: &[[u8; 8]; 8], quality: u8) 
         for x in 0..8 {
             scaled_quantization_table[y][x] = std::cmp::max(
                 ((quantization_table[y][x] as u32 * scaling_factor as u32) / 100) as u8,
-                1
+                1,
             );
         }
     }

@@ -1,10 +1,10 @@
-use seed::*;
-use seed::prelude::*;
 use seed::prelude::web_sys::{DragEvent, Event, MouseEvent};
+use seed::prelude::*;
+use seed::*;
 
-use crate::{Msg as GMsg, image, quant, block, BLOCK_SIZE, ZOOM};
-use super::model::{Model, State, Msg};
+use super::model::{Model, Msg};
 use super::page::wrap;
+use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
 
 trait IntoDragEvent {
     fn into_drag_event(self) -> DragEvent;
@@ -129,12 +129,12 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
     ]
 }
 
-pub fn view_settings_sidebar(model: &Model) -> Node<GMsg> {
+pub fn view_settings_sidebar(_model: &Model) -> Node<GMsg> {
     div![
         C!["setting_sidebar"],
         input![
             C!["sidebar_activator"],
-            attrs!{
+            attrs! {
                 At::Type => "checkbox",
                 At::Id => "sidebar_activator",
                 At::Name => "sidebar_activator",
@@ -142,7 +142,7 @@ pub fn view_settings_sidebar(model: &Model) -> Node<GMsg> {
         ],
         label![
             C!["sidebar_activator"],
-            attrs!{
+            attrs! {
                 At::For => "sidebar_activator"
             },
             span![]
@@ -150,13 +150,13 @@ pub fn view_settings_sidebar(model: &Model) -> Node<GMsg> {
         div![
             C!["sidebar_settings"],
             label![
-                attrs!{
+                attrs! {
                     At::For => "quality"
                 },
                 "Quality:"
             ],
             input![
-                attrs!{
+                attrs! {
                     At::Type => "range",
                     At::Max => 100,
                     At::Min => 1,
@@ -191,7 +191,7 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
                 C!["drop_area"],
                 input![
                     C!["drop_file"],
-                    attrs!{
+                    attrs! {
                         At::Type => "file",
                         At::Id => "file",
                         At::Name => "file",
@@ -201,17 +201,16 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
                             .target()
                             .and_then(|target| target.dyn_into::<web_sys::HtmlInputElement>().ok())
                             .and_then(|file_input| file_input.files())
-                            .and_then(|file_list| file_list.get(0)).unwrap();
+                            .and_then(|file_list| file_list.get(0))
+                            .unwrap();
                         wrap(Msg::FileChooserLoadImage(file))
                     }),
                 ],
                 label![
-                    attrs!{
+                    attrs! {
                         At::For => "file"
                     },
-                    strong![
-                        "Choose a file"
-                    ],
+                    strong!["Choose a file"],
                     " or drag it here"
                 ],
             ],
@@ -231,13 +230,13 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
             ev(Ev::Drop, |event| {
                 let drag_event = event.into_drag_event();
                 stop_and_prevent!(drag_event);
-                let file = drag_event.data_transfer()
+                let file = drag_event
+                    .data_transfer()
                     .and_then(|file_input| file_input.files())
-                    .and_then(|files| files.get(0)).unwrap();
+                    .and_then(|files| files.get(0))
+                    .unwrap();
                 wrap(Msg::FileChooserLoadImage(file))
             })
-
         ],
-
     ]
 }

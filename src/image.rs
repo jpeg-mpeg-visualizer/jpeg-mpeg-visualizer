@@ -29,24 +29,22 @@ pub mod pixel {
 
             RGB((r as u8, g as u8, b as u8))
         }
-
     }
-
 }
 
 #[derive(Default, Clone)]
-pub struct RawImage{
+pub struct RawImage {
     pub all_data: Vec<u8>,
     pub height: u32,
     pub width: u32,
-    pub data: Vec<u8>
+    pub data: Vec<u8>,
 }
 
 impl RawImage {
     pub fn new(all_data: Vec<u8>, height: u32, width: u32) -> Self {
-        let mut viewed_data: Vec<u8> = Vec::with_capacity((BLOCK_SIZE*BLOCK_SIZE*4) as usize);
+        let mut viewed_data: Vec<u8> = Vec::with_capacity((BLOCK_SIZE * BLOCK_SIZE * 4) as usize);
         for i in 0..BLOCK_SIZE {
-            for j in 0..BLOCK_SIZE*4 {
+            for j in 0..BLOCK_SIZE * 4 {
                 viewed_data.push(all_data[(i * width * 4 + j) as usize]);
             }
         }
@@ -55,16 +53,17 @@ impl RawImage {
             all_data,
             height,
             width,
-            data: viewed_data
-        }
+            data: viewed_data,
+        };
     }
 }
 
 impl RawImage {
     pub fn move_viewed(&mut self, start_x: u32, start_y: u32) {
         for i in 0..BLOCK_SIZE {
-            for j in 0..BLOCK_SIZE*4 {
-                self.data[(i*BLOCK_SIZE*4 + j) as usize] = self.all_data[((i+start_y) * self.width * 4 + (j+start_x*4)) as usize];
+            for j in 0..BLOCK_SIZE * 4 {
+                self.data[(i * BLOCK_SIZE * 4 + j) as usize] =
+                    self.all_data[((i + start_y) * self.width * 4 + (j + start_x * 4)) as usize];
             }
         }
     }
@@ -88,9 +87,10 @@ pub struct RGBImage(pub Vec<pixel::RGB>);
 impl RGBImage {
     pub fn to_ycbcr_image(&self) -> YCbCrImage {
         YCbCrImage(
-            self.0.iter()
+            self.0
+                .iter()
                 .map(|rgb| rgb.to_ycbcr())
-                .collect::<Vec<pixel::YCbCr>>()
+                .collect::<Vec<pixel::YCbCr>>(),
         )
     }
 }
@@ -100,9 +100,10 @@ pub struct YCbCrImage(pub Vec<pixel::YCbCr>);
 impl YCbCrImage {
     pub fn to_rgb_image(&self) -> RGBImage {
         RGBImage(
-            self.0.iter()
+            self.0
+                .iter()
                 .map(|ycbcr| ycbcr.to_rgb())
-                .collect::<Vec<pixel::RGB>>()
+                .collect::<Vec<pixel::RGB>>(),
         )
     }
 

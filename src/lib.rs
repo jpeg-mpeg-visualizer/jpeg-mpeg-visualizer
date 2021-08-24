@@ -2,14 +2,14 @@
 //     Init
 // ------ ------
 
-mod page;
-mod image;
-mod quant;
 mod block;
 mod dct;
+mod image;
+mod page;
+mod quant;
 
+use page::*;
 use seed::{prelude::*, *};
-use page::{*};
 
 const ZOOM: u32 = 8;
 const BLOCK_SIZE: u32 = 64;
@@ -42,6 +42,7 @@ struct Model {
 
 const JPEG_VISUALIZER: &str = "jpeg-visualizer";
 
+#[allow(clippy::large_enum_variant)]
 enum Page {
     Home,
     JPEGVisualizer(jpeg_visualization::model::Model),
@@ -52,12 +53,13 @@ impl Page {
     fn init(mut url: Url) -> Self {
         match url.next_hash_path_part() {
             None => Self::Home,
-            Some(JPEG_VISUALIZER) => jpeg_visualization::page::init(url).map_or(Self::NotFound, Self::JPEGVisualizer),
-            Some(_) => Self::NotFound
+            Some(JPEG_VISUALIZER) => {
+                jpeg_visualization::page::init(url).map_or(Self::NotFound, Self::JPEGVisualizer)
+            }
+            Some(_) => Self::NotFound,
         }
     }
 }
-
 
 // ------ ------
 //     Urls
@@ -72,10 +74,8 @@ impl<'a> Urls<'a> {
         let path = self.base_url().add_hash_path_part(JPEG_VISUALIZER);
         log(&path.to_string());
         path
-
     }
 }
-
 
 // ------ ------
 //    Update
@@ -83,7 +83,7 @@ impl<'a> Urls<'a> {
 
 pub enum Msg {
     UrlChanged(subs::UrlChanged),
-    JPEGVisualizationMessage(jpeg_visualization::model::Msg)
+    JPEGVisualizationMessage(jpeg_visualization::model::Msg),
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
@@ -93,7 +93,11 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::JPEGVisualizationMessage(child_message) => {
             if let Page::JPEGVisualizer(ref mut child_model) = model.page {
-                jpeg_visualization::page::update(child_message, child_model, &mut orders.proxy(Msg::JPEGVisualizationMessage))
+                jpeg_visualization::page::update(
+                    child_message,
+                    child_model,
+                    &mut orders.proxy(Msg::JPEGVisualizationMessage),
+                )
             }
         }
     }
@@ -109,12 +113,12 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
                     C!["select_menu_area"],
                     a![
                         C!["select_menu_button"],
-                        attrs!{ At::Href => Urls::new(model.base_url.clone()).jpeg_visualizer() },
+                        attrs! { At::Href => Urls::new(model.base_url.clone()).jpeg_visualizer() },
                         p!["Hello"]
                     ],
                 ],
                 Page::JPEGVisualizer(child_model) => jpeg_visualization::page::view(child_model),
-                Page::NotFound => div!["404"]
+                Page::NotFound => div!["404"],
             }
         ],
     ]
@@ -123,18 +127,12 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
 fn header(base_url: &Url) -> Node<Msg> {
     nav![
         C!["navbar"],
-        ul![
-            li![
-                a![
-                    attrs! { At::Href => Urls::new(base_url).home() },
-                    "Compression visualizer",
-                ]
-            ],
-        ]
+        ul![li![a![
+            attrs! { At::Href => Urls::new(base_url).home() },
+            "Compression visualizer",
+        ]],]
     ]
-
 }
-
 
 #[wasm_bindgen(start)]
 pub fn main() {
