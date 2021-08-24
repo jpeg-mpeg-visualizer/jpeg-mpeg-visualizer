@@ -70,8 +70,6 @@ fn draw_original_image_preview(
         .unwrap()
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
-    log!(image.height());
-    log!(image.width());
     tmp_canvas.set_height(image.height());
     tmp_canvas.set_width(image.width());
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
@@ -126,9 +124,6 @@ fn draw_block_choice_indicator(
     // Reset previous block choice indicator
     draw_original_image(canvas, image);
 
-    log(start_x);
-    log(start_y);
-
     let canvas = canvas.get().unwrap();
     let ctx = canvas_context_2d(&canvas);
     // Draw rect
@@ -143,6 +138,7 @@ fn draw_ycbcr(
     canvas_crs: &ElRef<HtmlCanvasElement>,
     image: &image::YCbCrImage,
 ) {
+    log("Drawing ycbcr, I guess");
     let ctx_ys = canvas_context_2d(&canvas_ys.get().unwrap());
     let ctx_cbs = canvas_context_2d(&canvas_cbs.get().unwrap());
     let ctx_crs = canvas_context_2d(&canvas_crs.get().unwrap());
@@ -359,30 +355,33 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserDragStarted => model.file_chooser_zone_active = true,
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::ImageLoaded(raw_image) => {
-            let ycbcr = raw_image.to_rgb_image().to_ycbcr_image();
+
             draw_original_image_preview(&model.original_canvas_preview, &raw_image);
             draw_original_image(&model.original_canvas, &raw_image);
-            // //draw_ycbcr(
-            //     &model.ys_canvas,
-            //     &model.cbs_canvas,
-            //     &model.crs_canvas,
-            //     &ycbcr,
-            // );
-            // //draw_dct_quantized(
+            //let ycbcr = raw_image.to_rgb_image().to_ycbcr_image();
+            let raw_image_rc = Rc::new(raw_image);
+            let image_window = RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
+            let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
+            draw_ycbcr(
+                &model.ys_canvas,
+                &model.cbs_canvas,
+                &model.crs_canvas,
+                &ycbcr
+            );
+            model.state = State::ImageView(ImagePack {
+                raw_image: raw_image_rc.clone(),
+                image_window,
+                start_x: 0,
+                start_y: 0,
+                ycbcr,
+            });
+            // draw_dct_quantized(
             //     &model.ys_quant_canvas,
             //     &model.cbs_quant_canvas,
             //     &model.crs_quant_canvas,
             //     &ycbcr,
             //     50,
             // );
-            let raw_image_rc = Rc::new(raw_image);
-            model.state = State::ImageView(ImagePack {
-                raw_image: raw_image_rc.clone(),
-                image_window: RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE),
-                start_x: 0,
-                start_y: 0,
-                ycbcr,
-            });
         }
         Msg::QualityUpdated(quality) => {
             if let State::ImageView(pack) = &model.state {
@@ -397,7 +396,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
-            if let State::ImageView(pack) = &model.state {
+            if let State::ImageView(ref mut pack) = model.state {
                 let canvas_rect = &model
                     .original_canvas_preview
                     .get()
@@ -406,20 +405,42 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 let canvas_x = canvas_rect.left();
                 let canvas_y = canvas_rect.top();
 
+                let image_click_x: u32 = (x - canvas_x as i32) as u32 * pack.raw_image.width()
+                    / (BLOCK_SIZE * ZOOM);
+                let image_click_y: u32 = (y - canvas_y as i32) as u32 * pack.raw_image.height()
+                    / (BLOCK_SIZE * ZOOM);
+
                 let start_x: u32 = cmp::max(
-                    (((x - canvas_x as i32) * pack.raw_image.width() as i32
-                        / (BLOCK_SIZE * ZOOM) as i32)
-                        * ZOOM as i32)
+                    (image_click_x * ZOOM) as i32
                         - (BLOCK_SIZE * ZOOM / 2) as i32,
                     0,
                 ) as u32;
                 let start_y: u32 = cmp::max(
-                    (((y - canvas_y as i32) * pack.raw_image.height() as i32
-                        / (BLOCK_SIZE * ZOOM) as i32)
-                        * ZOOM as i32)
+                    (image_click_y * ZOOM) as i32
                         - (BLOCK_SIZE * ZOOM / 2) as i32,
                     0,
                 ) as u32;
+
+                let image_x: u32 = cmp::min(
+                    image_click_x,
+                    pack.raw_image.width() - (BLOCK_SIZE * ZOOM)
+                );
+                let image_y: u32 = cmp::min(
+                    image_click_y,
+                    pack.raw_image.height() - (BLOCK_SIZE * ZOOM)
+                );
+
+                pack.image_window.start_x = image_x;
+                pack.image_window.start_y = image_y;
+
+                let ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
+                draw_ycbcr(
+                    &model.ys_canvas,
+                    &model.cbs_canvas,
+                    &model.crs_canvas,
+                    &ycbcr
+                );
+
                 &model
                     .original_canvas_scrollable_div_wrapper
                     .get()
@@ -440,8 +461,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 let start_x: u32 = ((x - canvas_x as i32) as u32 / (16 * ZOOM)) * 16;
                 let start_y: u32 = ((y - canvas_y as i32) as u32 / (16 * ZOOM)) * 16;
 
-                pack.image_window.start_x = start_x;
-                pack.image_window.start_y = start_y;
+                //pack.image_window.start_x = start_x;
+                //pack.image_window.start_y = start_y;
 
                 draw_block_choice_indicator(
                     &model.original_canvas,

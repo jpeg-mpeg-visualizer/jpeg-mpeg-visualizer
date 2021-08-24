@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use crate::BLOCK_SIZE;
 
 pub mod pixel {
     pub struct RGB {
@@ -119,6 +120,17 @@ impl RawImageWindow {
     pub fn width(self) -> u32 {
         self.width
     }
+
+    pub fn to_rgb_image(&self) -> RGBImage {
+        let mut rgb = Vec::new();
+        for i in (0..(self.width * self.height * 4) as usize).step_by(4) {
+            let r = self[i];
+            let g = self[i + 1];
+            let b = self[i + 2];
+            rgb.push(pixel::RGB{r, g, b});
+        }
+        RGBImage(rgb)
+    }
 }
 
 impl std::ops::Index<usize> for RawImageWindow
@@ -126,8 +138,10 @@ impl std::ops::Index<usize> for RawImageWindow
     type Output = u8;
 
     fn index(&self, index: usize) -> &Self::Output {
-        let chunk_index_x: u32 = index as u32 % self.width;
-        let chunk_index_y: u32= index as u32 / self.width;
+        let a = (index / 4) as u32;
+        let b = (index % 4) as u32;
+        let chunk_index_x: u32 = a % self.width;
+        let chunk_index_y: u32 = a / self.width;
         assert!(chunk_index_y <= self.height);
         assert!(chunk_index_y + self.start_y <= self.raw_image.height);
         assert!(chunk_index_x + self.start_x <= self.raw_image.width);
@@ -135,7 +149,7 @@ impl std::ops::Index<usize> for RawImageWindow
         let y = self.start_y + chunk_index_y;
         let x = self.start_x + chunk_index_x;
 
-        &self.raw_image.data[(x + y * self.raw_image.width) as usize]
+        &self.raw_image.data[((x + y * self.raw_image.width) * 4 + b) as usize]
     }
 }
 
