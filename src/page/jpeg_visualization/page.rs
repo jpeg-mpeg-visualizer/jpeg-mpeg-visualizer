@@ -407,30 +407,28 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 let canvas_x = canvas_rect.left();
                 let canvas_y = canvas_rect.top();
 
-                let image_click_x: u32 = (x - canvas_x as i32) as u32 * pack.raw_image.width()
-                    / (BLOCK_SIZE * ZOOM);
-                let image_click_y: u32 = (y - canvas_y as i32) as u32 * pack.raw_image.height()
-                    / (BLOCK_SIZE * ZOOM);
-
-                let start_x: u32 = cmp::max(
-                    (image_click_x * ZOOM) as i32
-                        - (BLOCK_SIZE * ZOOM / 2) as i32,
-                    0,
-                ) as u32;
-                let start_y: u32 = cmp::max(
-                    (image_click_y * ZOOM) as i32
-                        - (BLOCK_SIZE * ZOOM / 2) as i32,
-                    0,
-                ) as u32;
+                let image_click_x: i32 = ((x - canvas_x as i32) as u32 * pack.raw_image.width()
+                    / (BLOCK_SIZE * ZOOM)) as i32;
+                let image_click_y: i32 = ((y - canvas_y as i32) as u32 * pack.raw_image.height()
+                    / (BLOCK_SIZE * ZOOM)) as i32;
 
                 let image_x: u32 = cmp::min(
-                    image_click_x,
-                    pack.raw_image.width() - (BLOCK_SIZE * ZOOM)
-                );
+                    cmp::max(
+                        image_click_x - (BLOCK_SIZE / 2) as i32,
+                        0
+                    ),
+                    (pack.raw_image.width() - BLOCK_SIZE) as i32
+                ) as u32;
                 let image_y: u32 = cmp::min(
-                    image_click_y,
-                    pack.raw_image.height() - (BLOCK_SIZE * ZOOM)
-                );
+                    cmp::max(
+                        image_click_y - (BLOCK_SIZE / 2) as i32,
+                        0
+                    ),
+                    (pack.raw_image.height() - BLOCK_SIZE) as i32
+                ) as u32;
+
+                let start_x: u32 = image_x * ZOOM;
+                let start_y: u32 = image_y * ZOOM;
 
                 pack.image_window.start_x = image_x;
                 pack.image_window.start_y = image_y;
