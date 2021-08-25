@@ -138,7 +138,6 @@ fn draw_ycbcr(
     canvas_crs: &ElRef<HtmlCanvasElement>,
     image: &image::YCbCrImage,
 ) {
-    log("Drawing ycbcr, I guess");
     let ctx_ys = canvas_context_2d(&canvas_ys.get().unwrap());
     let ctx_cbs = canvas_context_2d(&canvas_cbs.get().unwrap());
     let ctx_crs = canvas_context_2d(&canvas_crs.get().unwrap());
@@ -192,6 +191,7 @@ fn draw_ycbcr(
     ctx_ys
         .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
+    ctx_ys.scale(1.0/ZOOM as f64, 1.0/ZOOM as f64);
 
     let cbs = web_sys::ImageData::new_with_u8_clamped_array(
         wasm_bindgen::Clamped(&cbs_image),
@@ -203,6 +203,7 @@ fn draw_ycbcr(
     ctx_cbs
         .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
+    ctx_cbs.scale(1.0/ZOOM as f64, 1.0/ZOOM as f64);
 
     let crs = web_sys::ImageData::new_with_u8_clamped_array(
         wasm_bindgen::Clamped(&crs_image),
@@ -214,6 +215,7 @@ fn draw_ycbcr(
     ctx_crs
         .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
+    ctx_crs.scale(1.0/ZOOM as f64, 1.0/ZOOM as f64);
 }
 
 fn draw_dct_quantized(
