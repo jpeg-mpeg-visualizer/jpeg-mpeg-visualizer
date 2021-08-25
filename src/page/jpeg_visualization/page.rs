@@ -352,6 +352,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 let raw_image = utils::load_image(file_blob).await;
                 Msg::ImageLoaded(raw_image)
             });
+            model.quality = 50;
             model.state = State::PreImageView
         }
         Msg::FileChooserDragStarted => model.file_chooser_zone_active = true,
@@ -360,7 +361,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
             draw_original_image_preview(&model.original_canvas_preview, &raw_image);
             draw_original_image(&model.original_canvas, &raw_image);
-            //let ycbcr = raw_image.to_rgb_image().to_ycbcr_image();
+
             let raw_image_rc = Rc::new(raw_image);
             let image_window = RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
@@ -370,6 +371,13 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 &model.crs_canvas,
                 &ycbcr
             );
+            draw_dct_quantized(
+                &model.ys_quant_canvas,
+                &model.cbs_quant_canvas,
+                &model.crs_quant_canvas,
+                &ycbcr,
+                50,
+            );
             model.state = State::ImageView(ImagePack {
                 raw_image: raw_image_rc.clone(),
                 image_window,
@@ -377,13 +385,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 start_y: 0,
                 ycbcr,
             });
-            // draw_dct_quantized(
-            //     &model.ys_quant_canvas,
-            //     &model.cbs_quant_canvas,
-            //     &model.crs_quant_canvas,
-            //     &ycbcr,
-            //     50,
-            // );
         }
         Msg::QualityUpdated(quality) => {
             if let State::ImageView(pack) = &model.state {
@@ -433,12 +434,19 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 pack.image_window.start_x = image_x;
                 pack.image_window.start_y = image_y;
 
-                let ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
+                pack.ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
                 draw_ycbcr(
                     &model.ys_canvas,
                     &model.cbs_canvas,
                     &model.crs_canvas,
-                    &ycbcr
+                    &pack.ycbcr
+                );
+                draw_dct_quantized(
+                    &model.ys_quant_canvas,
+                    &model.cbs_quant_canvas,
+                    &model.crs_quant_canvas,
+                    &pack.ycbcr,
+                    model.quality,
                 );
 
                 &model
@@ -460,9 +468,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
                 let start_x: u32 = ((x - canvas_x as i32) as u32 / (16 * ZOOM)) * 16;
                 let start_y: u32 = ((y - canvas_y as i32) as u32 / (16 * ZOOM)) * 16;
-
-                //pack.image_window.start_x = start_x;
-                //pack.image_window.start_y = start_y;
 
                 draw_block_choice_indicator(
                     &model.original_canvas,
