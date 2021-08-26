@@ -142,10 +142,8 @@ impl std::ops::Index<usize> for RawImageWindow {
     type Output = u8;
 
     fn index(&self, index: usize) -> &Self::Output {
-        let a = (index / 4) as u32;
-        let b = (index % 4) as u32;
-        let chunk_index_x: u32 = a % self.width;
-        let chunk_index_y: u32 = a / self.width;
+        let chunk_index_x: u32 = (index / 4) as u32 % self.width;
+        let chunk_index_y: u32 = (index / 4) as u32 / self.width;
         assert!(chunk_index_y <= self.height);
         assert!(chunk_index_y + self.start_y <= self.raw_image.height);
         assert!(chunk_index_x + self.start_x <= self.raw_image.width);
@@ -153,7 +151,7 @@ impl std::ops::Index<usize> for RawImageWindow {
         let y = self.start_y + chunk_index_y;
         let x = self.start_x + chunk_index_x;
 
-        &self.raw_image.data[((x + y * self.raw_image.width) * 4 + b) as usize]
+        &self.raw_image.data[((x + y * self.raw_image.width) * 4 + (index % 4) as u32) as usize]
     }
 }
 

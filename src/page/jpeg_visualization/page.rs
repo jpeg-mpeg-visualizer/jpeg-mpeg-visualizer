@@ -110,8 +110,11 @@ fn draw_original_image(canvas: &ElRef<HtmlCanvasElement>, image: &image::RawImag
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
     tmp_ctx.put_image_data(&img, 0.0, 0.0).unwrap();
 
-    ctx.scale(ZOOM as f64, ZOOM as f64);
-    ctx.draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
+    ctx
+        .scale(ZOOM as f64, ZOOM as f64)
+        .unwrap();
+    ctx
+        .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
 }
 
@@ -201,24 +204,35 @@ fn draw_ycbcr(
     let ys =
         web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&ys_image), BLOCK_SIZE)
             .unwrap();
-    tmp_ctx.put_image_data(&ys, 0.0, 0.0).unwrap();
-    ctx_ys.scale(ZOOM as f64, ZOOM as f64).unwrap();
+    tmp_ctx
+        .put_image_data(&ys, 0.0, 0.0)
+        .unwrap();
+    ctx_ys
+        .scale(ZOOM as f64, ZOOM as f64)
+        .unwrap();
     ctx_ys
         .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
-    ctx_ys.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64);
+    ctx_ys
+        .scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64)
+        .unwrap();
 
     let cbs = web_sys::ImageData::new_with_u8_clamped_array(
         wasm_bindgen::Clamped(&cbs_image),
         BLOCK_SIZE,
     )
     .unwrap();
-    tmp_ctx.put_image_data(&cbs, 0.0, 0.0).unwrap();
-    ctx_cbs.scale(ZOOM as f64, ZOOM as f64).unwrap();
-    ctx_cbs
-        .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
+    tmp_ctx
+        .put_image_data(&cbs, 0.0, 0.0)
         .unwrap();
-    ctx_cbs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64);
+    ctx_cbs
+        .scale(ZOOM as f64, ZOOM as f64)
+        .unwrap();
+    ctx_cbs.draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
+        .unwrap();
+    ctx_cbs
+        .scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64)
+        .unwrap();
 
     let crs = web_sys::ImageData::new_with_u8_clamped_array(
         wasm_bindgen::Clamped(&crs_image),
@@ -226,11 +240,15 @@ fn draw_ycbcr(
     )
     .unwrap();
     tmp_ctx.put_image_data(&crs, 0.0, 0.0).unwrap();
-    ctx_crs.scale(ZOOM as f64, ZOOM as f64).unwrap();
+    ctx_crs
+        .scale(ZOOM as f64, ZOOM as f64)
+        .unwrap();
     ctx_crs
         .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
-    ctx_crs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64);
+    ctx_crs
+        .scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64)
+        .unwrap();
 }
 
 fn draw_dct_quantized(
@@ -325,7 +343,9 @@ fn draw_spatial_channel(
     .unwrap();
 
     tmp_ctx.put_image_data(&image_data, 0.0, 0.0).unwrap();
-    canvas_context.scale(ZOOM as f64, ZOOM as f64).unwrap();
+    canvas_context
+        .scale(ZOOM as f64, ZOOM as f64)
+        .unwrap();
     canvas_context
         .draw_image_with_html_canvas_element(tmp_canvas, 0.0, 0.0)
         .unwrap();
@@ -393,7 +413,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 50,
             );
             model.state = State::ImageView(ImagePack {
-                raw_image: raw_image_rc.clone(),
+                raw_image: raw_image_rc,
                 image_window,
                 start_x: 0,
                 start_y: 0,
@@ -457,7 +477,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     model.quality,
                 );
 
-                &model
+                model
                     .original_canvas_scrollable_div_wrapper
                     .get()
                     .unwrap()

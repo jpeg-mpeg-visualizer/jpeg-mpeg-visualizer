@@ -9,7 +9,7 @@ pub(super) async fn load_image(file_blob: gloo_file::Blob) -> image::RawImage {
         .unwrap();
     let image = web_sys::HtmlImageElement::new().unwrap();
     image.set_src(&url_data);
-    JsFuture::from(image.decode()).await;
+    JsFuture::from(image.decode()).await.unwrap();
     let height = image.natural_height();
     let width = image.natural_width();
     let canvas = web_sys::window()
