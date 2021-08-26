@@ -2,7 +2,7 @@ use seed::prelude::web_sys::{DragEvent, Event, MouseEvent};
 use seed::prelude::*;
 use seed::*;
 
-use super::model::{Model, Msg};
+use super::model::{Model, Msg, State};
 use super::page::wrap;
 use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
 
@@ -32,7 +32,10 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
         details![
             summary!["Image preview"],
             attrs![
-                //At::Open => IF!(matches!(&model.state, State::ImageView(_)) => [At::Open => true])
+                At::Open => match &model.state {
+                    State::ImageView(_pack) => AtValue::None,
+                    _ => AtValue::Ignored,
+                }
             ],
             canvas![
                 el_ref(&model.original_canvas_preview),

@@ -1,10 +1,12 @@
 use crate::image;
 use seed::prelude::*;
+use std::rc::Rc;
 use web_sys::HtmlCanvasElement;
 use web_sys::HtmlDivElement;
 
 pub struct ImagePack {
-    pub raw_image: image::RawImage,
+    pub raw_image: Rc<image::RawImage>,
+    pub image_window: image::RawImageWindow,
     pub start_x: u32,
     pub start_y: u32,
     pub ycbcr: image::YCbCrImage,

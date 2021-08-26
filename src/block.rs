@@ -8,7 +8,7 @@ pub struct BlockMatrix {
     pub height: usize,
 }
 
-pub fn split_to_block_matrix(data: &Vec<u8>) -> BlockMatrix {
+pub fn split_to_block_matrix(data: &[u8]) -> BlockMatrix {
     let block_count = data.len() / (8 * BLOCK_SIZE as usize);
     let mut blocks: Vec<Block> = Vec::with_capacity(block_count * block_count);
 
@@ -38,7 +38,7 @@ impl BlockMatrix {
     }
 }
 
-fn get_block(u: usize, v: usize, data: &Vec<u8>) -> Block {
+fn get_block(u: usize, v: usize, data: &[u8]) -> Block {
     let mut result = [[0_u8; 8]; 8];
 
     for y in 0..8 {
