@@ -349,7 +349,6 @@ fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[u8; 8]; 8], u: usiz
 struct_urls!();
 #[allow(dead_code)]
 impl<'a> Urls<'a> {
-    #[allow(dead_code)]
     pub fn base(self) -> Url {
         self.base_url()
     }
