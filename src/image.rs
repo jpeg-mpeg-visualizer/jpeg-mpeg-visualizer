@@ -118,10 +118,12 @@ impl RawImageWindow {
         }
     }
 
+    #[allow(dead_code)]
     pub fn height(self) -> u32 {
         self.height
     }
 
+    #[allow(dead_code)]
     pub fn width(self) -> u32 {
         self.width
     }
