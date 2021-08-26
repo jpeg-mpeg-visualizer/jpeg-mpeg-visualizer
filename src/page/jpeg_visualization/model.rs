@@ -1,9 +1,8 @@
-use crate::{image, BLOCK_SIZE};
+use crate::image;
 use seed::prelude::*;
+use std::rc::Rc;
 use web_sys::HtmlCanvasElement;
 use web_sys::HtmlDivElement;
-use crate::image::RawImageWindow;
-use std::rc::Rc;
 
 pub struct ImagePack {
     pub raw_image: Rc<image::RawImage>,

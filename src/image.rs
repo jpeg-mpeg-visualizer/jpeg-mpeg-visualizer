@@ -1,11 +1,10 @@
 use std::rc::Rc;
-use crate::BLOCK_SIZE;
 
 pub mod pixel {
     pub struct RGB {
         pub r: u8,
         pub g: u8,
-        pub b: u8
+        pub b: u8,
     }
 
     impl RGB {
@@ -16,14 +15,14 @@ pub mod pixel {
             let cb = (128.0 - 0.168736 * r - 0.331264 * g + 0.5 * b) as u8;
             let cr = (128.0 + 0.5 * r - 0.418688 * g - 0.081312 * b) as u8;
 
-            YCbCr{y, cb, cr}
+            YCbCr { y, cb, cr }
         }
     }
 
     pub struct YCbCr {
         pub y: u8,
         pub cb: u8,
-        pub cr: u8
+        pub cr: u8,
     }
 
     impl YCbCr {
@@ -34,7 +33,7 @@ pub mod pixel {
             let g = (y - 0.344136 * (cb - 128.0) - 0.714136 * (cr - 128.0)) as u8;
             let b = (y + 1.772 * (cb - 128.0)) as u8;
 
-            RGB {r, g, b}
+            RGB { r, g, b }
         }
     }
 }
@@ -51,7 +50,7 @@ impl RawImage {
         RawImage {
             width,
             height,
-            data
+            data,
         }
     }
 
@@ -61,7 +60,7 @@ impl RawImage {
             let r = self.data[i];
             let g = self.data[i + 1];
             let b = self.data[i + 2];
-            rgb.push(pixel::RGB{r, g, b});
+            rgb.push(pixel::RGB { r, g, b });
         }
         RGBImage(rgb)
     }
@@ -83,7 +82,7 @@ impl AsRef<[u8]> for RawImage {
 
 impl<Idx> std::ops::Index<Idx> for RawImage
 where
-    Idx: std::slice::SliceIndex<[u8]>
+    Idx: std::slice::SliceIndex<[u8]>,
 {
     type Output = Idx::Output;
 
@@ -103,13 +102,19 @@ pub struct RawImageWindow {
 }
 
 impl RawImageWindow {
-    pub fn new(raw_image: Rc<RawImage>, start_x: u32, start_y: u32, width: u32, height: u32) -> RawImageWindow {
+    pub fn new(
+        raw_image: Rc<RawImage>,
+        start_x: u32,
+        start_y: u32,
+        width: u32,
+        height: u32,
+    ) -> RawImageWindow {
         RawImageWindow {
             raw_image,
             start_x,
             start_y,
             width,
-            height
+            height,
         }
     }
 
@@ -127,14 +132,13 @@ impl RawImageWindow {
             let r = self[i];
             let g = self[i + 1];
             let b = self[i + 2];
-            rgb.push(pixel::RGB{r, g, b});
+            rgb.push(pixel::RGB { r, g, b });
         }
         RGBImage(rgb)
     }
 }
 
-impl std::ops::Index<usize> for RawImageWindow
-{
+impl std::ops::Index<usize> for RawImageWindow {
     type Output = u8;
 
     fn index(&self, index: usize) -> &Self::Output {

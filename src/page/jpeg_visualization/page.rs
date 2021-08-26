@@ -5,12 +5,12 @@ use std::cmp;
 use super::model::*;
 use super::utils;
 use super::view::*;
-use crate::{block, image, quant, Msg as GMsg, BLOCK_SIZE, ZOOM};
-use web_sys::HtmlCanvasElement;
-use web_sys::HtmlDivElement;
 use crate::image::pixel::RGB;
 use crate::image::RawImageWindow;
+use crate::{block, image, quant, Msg as GMsg, BLOCK_SIZE, ZOOM};
 use std::rc::Rc;
+use web_sys::HtmlCanvasElement;
+use web_sys::HtmlDivElement;
 
 pub fn init(url: Url) -> Option<Model> {
     let base_url = url.to_base_url();
@@ -149,7 +149,12 @@ fn draw_ycbcr(
     let ys_image = ys
         .iter()
         .flat_map(|x| {
-            let RGB{r, g, b} = image::pixel::YCbCr{y: *x, cb: 128, cr: 128}.to_rgb();
+            let RGB { r, g, b } = image::pixel::YCbCr {
+                y: *x,
+                cb: 128,
+                cr: 128,
+            }
+            .to_rgb();
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
@@ -157,7 +162,12 @@ fn draw_ycbcr(
     let cbs_image = cbs
         .iter()
         .flat_map(|x| {
-            let RGB{r, g, b} = image::pixel::YCbCr{y: 128, cb: *x, cr: 128}.to_rgb();
+            let RGB { r, g, b } = image::pixel::YCbCr {
+                y: 128,
+                cb: *x,
+                cr: 128,
+            }
+            .to_rgb();
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
@@ -165,7 +175,12 @@ fn draw_ycbcr(
     let crs_image = crs
         .iter()
         .flat_map(|x| {
-            let RGB{r, g, b} = image::pixel::YCbCr{y: 128, cb: 128, cr: *x}.to_rgb();
+            let RGB { r, g, b } = image::pixel::YCbCr {
+                y: 128,
+                cb: 128,
+                cr: *x,
+            }
+            .to_rgb();
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
@@ -191,7 +206,7 @@ fn draw_ycbcr(
     ctx_ys
         .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
-    ctx_ys.scale(1.0/ZOOM as f64, 1.0/ZOOM as f64);
+    ctx_ys.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64);
 
     let cbs = web_sys::ImageData::new_with_u8_clamped_array(
         wasm_bindgen::Clamped(&cbs_image),
@@ -203,7 +218,7 @@ fn draw_ycbcr(
     ctx_cbs
         .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
-    ctx_cbs.scale(1.0/ZOOM as f64, 1.0/ZOOM as f64);
+    ctx_cbs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64);
 
     let crs = web_sys::ImageData::new_with_u8_clamped_array(
         wasm_bindgen::Clamped(&crs_image),
@@ -215,7 +230,7 @@ fn draw_ycbcr(
     ctx_crs
         .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();
-    ctx_crs.scale(1.0/ZOOM as f64, 1.0/ZOOM as f64);
+    ctx_crs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64);
 }
 
 fn draw_dct_quantized(
@@ -358,18 +373,18 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserDragStarted => model.file_chooser_zone_active = true,
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::ImageLoaded(raw_image) => {
-
             draw_original_image_preview(&model.original_canvas_preview, &raw_image);
             draw_original_image(&model.original_canvas, &raw_image);
 
             let raw_image_rc = Rc::new(raw_image);
-            let image_window = RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
+            let image_window =
+                RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
             draw_ycbcr(
                 &model.ys_canvas,
                 &model.cbs_canvas,
                 &model.crs_canvas,
-                &ycbcr
+                &ycbcr,
             );
             draw_dct_quantized(
                 &model.ys_quant_canvas,
@@ -414,18 +429,12 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     / (BLOCK_SIZE * ZOOM)) as i32;
 
                 let image_x: u32 = cmp::min(
-                    cmp::max(
-                        image_click_x - (BLOCK_SIZE / 2) as i32,
-                        0
-                    ),
-                    (pack.raw_image.width() - BLOCK_SIZE) as i32
+                    cmp::max(image_click_x - (BLOCK_SIZE / 2) as i32, 0),
+                    (pack.raw_image.width() - BLOCK_SIZE) as i32,
                 ) as u32;
                 let image_y: u32 = cmp::min(
-                    cmp::max(
-                        image_click_y - (BLOCK_SIZE / 2) as i32,
-                        0
-                    ),
-                    (pack.raw_image.height() - BLOCK_SIZE) as i32
+                    cmp::max(image_click_y - (BLOCK_SIZE / 2) as i32, 0),
+                    (pack.raw_image.height() - BLOCK_SIZE) as i32,
                 ) as u32;
 
                 let start_x: u32 = image_x * ZOOM;
@@ -439,7 +448,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.ys_canvas,
                     &model.cbs_canvas,
                     &model.crs_canvas,
-                    &pack.ycbcr
+                    &pack.ycbcr,
                 );
                 draw_dct_quantized(
                     &model.ys_quant_canvas,
