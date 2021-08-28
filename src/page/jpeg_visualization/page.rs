@@ -364,17 +364,6 @@ fn draw_ycbcr_recovered(
     let cbs_dequantized = cbs_quantized.undo_quantization(&scaled_chrominance_quant_table);
     let crs_dequantized = crs_quantized.undo_quantization(&scaled_chrominance_quant_table);
 
-    // log("dequantization table");
-    // log(scaled_luminance_quant_table[0]);
-    // log("dequantized");
-    // log(ys_dequantized.blocks[240].0[0]);
-    
-    // let (width, height) = (ys_dequantized.width, ys_dequantized.height);
-    
-    // draw_spatial_channel(&ys_dequantized.blocks, width, height, &ctx_ys);
-    // draw_spatial_channel(&cbs_dequantized.blocks, width, height, &ctx_cbs);
-    // draw_spatial_channel(&crs_dequantized.blocks, width, height, &ctx_crs);
-    
     let ys = ys_dequantized.flatten();
     let cbs  = cbs_dequantized.flatten();
     let crs = crs_dequantized.flatten();

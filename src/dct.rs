@@ -38,7 +38,9 @@ pub fn freq_to_spatial(block: &[[i16; 8]; 8]) -> [[i16; 8]; 8] {
 
     for x in 0..8 {
         for y in 0..8 {
-            result[y][x] = (f(y, x, block) + 128.0).round() as i16;
+            // we clamp the result, because it could land outside [0, 255] range after the dequantization step
+            // it would be flipped after the conversion to u8, this caused the "burned in" pixels
+            result[y][x] = (f(y, x, block) + 128.0).round().clamp(0.0, 255.0) as i16;
         }
     }
 
@@ -108,7 +110,7 @@ mod test {
 
         assert_eq!(spatial_to_freq(&spatial_block), expected_freq_block);
     }
-
+    
     #[test]
     pub fn test_freq_to_spatial() {
         // example from https://en.wikipedia.org/wiki/JPEG#Decoding

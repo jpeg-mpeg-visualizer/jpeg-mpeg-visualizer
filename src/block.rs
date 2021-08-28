@@ -1,5 +1,4 @@
 use crate::{dct, quant, BLOCK_SIZE};
-use seed::log;
 
 pub struct Block(pub [[i16; 8]; 8]);
 
