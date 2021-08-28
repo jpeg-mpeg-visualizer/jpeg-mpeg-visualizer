@@ -170,8 +170,13 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
             canvas![
                 el_ref(&model.image_recovered_canvas),
                 attrs![
+<<<<<<< HEAD
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
+=======
+                    At::Width => px(500),
+                    At::Height => px(500),
+>>>>>>> 8f49a84... Add 'restored image' view
                 ]
             ],
         ]
