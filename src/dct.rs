@@ -2,7 +2,7 @@ use std::f32::consts::{FRAC_1_SQRT_2, PI};
 
 #[allow(non_snake_case)]
 pub fn spatial_to_freq(block: &[[i16; 8]; 8]) -> [[i16; 8]; 8] {
-    let mut result = [[0 as i16; 8]; 8];
+    let mut result = [[0_i16; 8]; 8];
 
     for x in 0..8 {
         for y in 0..8 {
@@ -34,7 +34,7 @@ fn G(u: usize, v: usize, block: &[[i16; 8]; 8]) -> f32 {
 }
 
 pub fn freq_to_spatial(block: &[[i16; 8]; 8]) -> [[i16; 8]; 8] {
-    let mut result = [[0 as i16; 8]; 8];
+    let mut result = [[0_i16; 8]; 8];
 
     for x in 0..8 {
         for y in 0..8 {
@@ -65,6 +65,7 @@ fn f(x: usize, y: usize, block: &[[i16; 8]; 8]) -> f32 {
     0.25 * sum
 }
 
+#[cfg(test)]
 mod test {
     use std::convert::TryFrom;
 
@@ -110,7 +111,7 @@ mod test {
 
         assert_eq!(spatial_to_freq(&spatial_block), expected_freq_block);
     }
-    
+
     #[test]
     pub fn test_freq_to_spatial() {
         // example from https://en.wikipedia.org/wiki/JPEG#Decoding

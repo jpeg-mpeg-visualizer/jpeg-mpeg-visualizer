@@ -40,7 +40,7 @@ impl BlockMatrix {
             height: self.height,
         }
     }
-    
+
     pub fn flatten(&self) -> Vec<u8> {
         let mut result: Vec<u8> = vec![0; self.width * self.height * 8 * 8];
         for y in 0..self.height {
@@ -69,7 +69,7 @@ impl BlockMatrix {
         BlockMatrix {
             blocks: result,
             width: self.width,
-            height: self.height
+            height: self.height,
         }
     }
 }

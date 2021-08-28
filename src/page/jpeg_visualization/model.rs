@@ -53,6 +53,7 @@ pub struct Model {
     pub ys_recovered_canvas: ElRef<HtmlCanvasElement>,
     pub cbs_recovered_canvas: ElRef<HtmlCanvasElement>,
     pub crs_recovered_canvas: ElRef<HtmlCanvasElement>,
+    pub image_recovered_canvas: ElRef<HtmlCanvasElement>,
 
     pub quality: u8,
 }
