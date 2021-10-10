@@ -613,12 +613,12 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         }
         Msg::PreviewCanvasClicked(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
-                let original_canvas_preview = &model
+                let canvas_rect = &model
                     .original_canvas_preview
                     .get()
-                    .unwrap();
-                let canvas_rect = original_canvas_preview
+                    .unwrap()
                     .get_bounding_client_rect();
+
                 let canvas_x = canvas_rect.left();
                 let canvas_y = canvas_rect.top();
 
