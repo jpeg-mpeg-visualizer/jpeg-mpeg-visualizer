@@ -62,7 +62,6 @@ fn draw_original_image_preview(
     image: &image::RawImage,
 ) {
     let canvas = original_canvas_preview.get().unwrap();
-    let ctx = canvas_context_2d(&canvas);
     let img = web_sys::ImageData::new_with_u8_clamped_array(
         wasm_bindgen::Clamped(image.as_ref()),
         image.width(),
@@ -83,10 +82,16 @@ fn draw_original_image_preview(
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
     tmp_ctx.put_image_data(&img, 0.0, 0.0).unwrap();
 
+    // Adjust original image preview width so that it isn't squeezed
+    let new_width =
+        ((image.width() as f64 / image.height() as f64) * canvas.height() as f64) as u32;
+    canvas.set_width(new_width);
+
     // Set scale and draw scaled image from temporary canvas1
+    let ctx = canvas_context_2d(&canvas);
     ctx.scale(
-        (BLOCK_SIZE * ZOOM) as f64 / image.width() as f64,
-        (BLOCK_SIZE * ZOOM) as f64 / image.height() as f64,
+        canvas.width() as f64 / tmp_canvas.width() as f64,
+        canvas.height() as f64 / tmp_canvas.height() as f64,
     )
     .unwrap();
 
@@ -614,10 +619,11 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     .get()
                     .unwrap()
                     .get_bounding_client_rect();
+
                 let canvas_x = canvas_rect.left();
                 let canvas_y = canvas_rect.top();
 
-                let image_click_x: i32 = ((x - canvas_x as i32) as u32 * pack.raw_image.width()
+                let image_click_x: i32 = ((x - canvas_x as i32) as u32 * pack.raw_image.height()
                     / (BLOCK_SIZE * ZOOM)) as i32;
                 let image_click_y: i32 = ((y - canvas_y as i32) as u32 * pack.raw_image.height()
                     / (BLOCK_SIZE * ZOOM)) as i32;

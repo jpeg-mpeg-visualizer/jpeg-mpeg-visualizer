@@ -15,7 +15,7 @@ body {
     font-size: 0.6em;
     margin: 0;
     color: rgb(51, 51, 51);
-    background-color: beige;
+    background-color: #d4d4d4;
 }
 
 #app {
@@ -24,7 +24,7 @@ body {
 
 .navbar {
     width: 100%;
-    background-color: blue;
+    background-color: #23527c;
     margin: 0 auto;
     position: fixed;
     top: 0;
@@ -89,14 +89,15 @@ body {
 
 .drop_area_wrapper {;
     width: 70%;
-    background-color: antiquewhite;
+    background-color: #efefef;
     outline: 2px dashed grey;
     outline-offset: -10px;
 }
 
 .drop_area_wrapper.drop_active {
-    background-color: aliceblue;
-    outline: 2px dashed #888888;
+    background-color: #9f9f9f;
+    outline: 2px dashed #ececec;
+    color: #e9e9e9;
 }
 
 
@@ -117,13 +118,15 @@ body {
 }
 
 .image_view details {
-    background: bisque;
+    background: #717172;
 }
 
 .image_view details summary {
     cursor: pointer;
     padding: 1em;
     border-bottom: 1px solid #ddd;
+    font-size: 1.1em;
+    color: #eeeeee;
 }
 
 input.sidebar_activator {
