@@ -132,6 +132,52 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
     ]
 }
 
+fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
+    div![
+        C!["image_view"],
+        details![
+            summary!["YCbCr recovered from quantized DCT"],
+            canvas![
+                el_ref(&model.ys_recovered_canvas),
+                attrs![
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
+                ]
+            ],
+            canvas![
+                el_ref(&model.cbs_recovered_canvas),
+                attrs![
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
+                ]
+            ],
+            canvas![
+                el_ref(&model.crs_recovered_canvas),
+                attrs![
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
+                ]
+            ]
+        ]
+    ]
+}
+
+fn view_image_recovered(model: &Model) -> Node<GMsg> {
+    div![
+        C!["image_view"],
+        details![
+            summary!["Recovered image"],
+            canvas![
+                el_ref(&model.image_recovered_canvas),
+                attrs![
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
+                ]
+            ],
+        ]
+    ]
+}
+
 pub fn view_settings_sidebar(_model: &Model) -> Node<GMsg> {
     div![
         C!["setting_sidebar"],
@@ -178,7 +224,9 @@ pub fn view_jpeg_visualization(model: &Model) -> Node<GMsg> {
         view_settings_sidebar(&model),
         view_image_preview(&model),
         view_ycbcr(&model),
-        view_dct_quantized(&model)
+        view_dct_quantized(&model),
+        view_ycbcr_recovered(&model),
+        view_image_recovered(&model)
     ]
 }
 

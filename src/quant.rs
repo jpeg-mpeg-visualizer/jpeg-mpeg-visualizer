@@ -1,7 +1,15 @@
-pub fn apply_quantization(data: &mut [[u8; 8]; 8], quantization: &[[u8; 8]; 8]) {
+pub fn apply_quantization(data: &mut [[i16; 8]; 8], quantization: &[[u8; 8]; 8]) {
     for y in 0..8 {
         for x in 0..8 {
-            data[y][x] /= quantization[y][x];
+            data[y][x] /= quantization[y][x] as i16;
+        }
+    }
+}
+
+pub fn undo_quantization(data: &mut [[i16; 8]; 8], quantization: &[[u8; 8]; 8]) {
+    for y in 0..8 {
+        for x in 0..8 {
+            data[y][x] *= quantization[y][x] as i16;
         }
     }
 }

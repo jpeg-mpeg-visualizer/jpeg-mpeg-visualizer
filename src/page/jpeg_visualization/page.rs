@@ -7,8 +7,12 @@ use super::utils;
 use super::view::*;
 use crate::image::pixel::RGB;
 use crate::image::RawImageWindow;
-use crate::{block, image, quant, Msg as GMsg, BLOCK_SIZE, ZOOM};
+use crate::{
+    block::{self, Block, BlockMatrix},
+    image, quant, Msg as GMsg, BLOCK_SIZE, ZOOM,
+};
 use std::rc::Rc;
+
 use web_sys::HtmlCanvasElement;
 use web_sys::HtmlDivElement;
 
@@ -28,6 +32,10 @@ pub fn init(url: Url) -> Option<Model> {
         ys_quant_canvas: ElRef::<HtmlCanvasElement>::default(),
         cbs_quant_canvas: ElRef::<HtmlCanvasElement>::default(),
         crs_quant_canvas: ElRef::<HtmlCanvasElement>::default(),
+        ys_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),
+        cbs_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),
+        crs_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),
+        image_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),
 
         quality: 50,
     })
@@ -233,10 +241,15 @@ fn draw_ycbcr(
     ctx_crs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64).unwrap();
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_dct_quantized(
     canvas_ys: &ElRef<HtmlCanvasElement>,
     canvas_cbs: &ElRef<HtmlCanvasElement>,
     canvas_crs: &ElRef<HtmlCanvasElement>,
+    canvas_ys_recovered: &ElRef<HtmlCanvasElement>,
+    canvas_cbs_recovered: &ElRef<HtmlCanvasElement>,
+    canvas_crs_recovered: &ElRef<HtmlCanvasElement>,
+    canvas_image_recovered: &ElRef<HtmlCanvasElement>,
     image: &image::YCbCrImage,
     quality: u8,
 ) {
@@ -275,7 +288,7 @@ fn draw_dct_quantized(
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
 
     draw_spatial_channel(
-        &ys_quantized,
+        &ys_quantized.blocks,
         ys_block_matrix.width,
         ys_block_matrix.height,
         &ctx_ys,
@@ -283,7 +296,7 @@ fn draw_dct_quantized(
         &tmp_ctx,
     );
     draw_spatial_channel(
-        &cbs_quantized,
+        &cbs_quantized.blocks,
         cbs_block_matrix.width,
         cbs_block_matrix.height,
         &ctx_cbs,
@@ -291,18 +304,29 @@ fn draw_dct_quantized(
         &tmp_ctx,
     );
     draw_spatial_channel(
-        &crs_quantized,
+        &crs_quantized.blocks,
         crs_block_matrix.width,
         crs_block_matrix.height,
         &ctx_crs,
         &tmp_canvas,
         &tmp_ctx,
     );
+
+    draw_ycbcr_recovered(
+        canvas_ys_recovered,
+        canvas_cbs_recovered,
+        canvas_crs_recovered,
+        canvas_image_recovered,
+        &ys_quantized,
+        &cbs_quantized,
+        &crs_quantized,
+        quality,
+    );
 }
 
 #[allow(clippy::ptr_arg)]
 fn draw_spatial_channel(
-    data: &Vec<[[u8; 8]; 8]>,
+    data: &Vec<Block>,
     width: usize,
     height: usize,
     canvas_context: &web_sys::CanvasRenderingContext2d,
@@ -313,8 +337,8 @@ fn draw_spatial_channel(
 
     for v in 0..width {
         for u in 0..height {
-            let spatial = data[u + v * width];
-            write_to_image_data(&mut image_data, &spatial, u, v);
+            let spatial = &data[u + v * width];
+            write_to_image_data(&mut image_data, &spatial.0, u, v);
         }
     }
 
@@ -334,13 +358,176 @@ fn draw_spatial_channel(
         .unwrap();
 }
 
-fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[u8; 8]; 8], u: usize, v: usize) {
+#[allow(clippy::too_many_arguments)]
+fn draw_ycbcr_recovered(
+    canvas_ys_recovered: &ElRef<HtmlCanvasElement>,
+    canvas_cbs_recovered: &ElRef<HtmlCanvasElement>,
+    canvas_crs_recovered: &ElRef<HtmlCanvasElement>,
+    canvas_image_recovered: &ElRef<HtmlCanvasElement>,
+    ys_quantized: &BlockMatrix,
+    cbs_quantized: &BlockMatrix,
+    crs_quantized: &BlockMatrix,
+    quality: u8,
+) {
+    let ctx_ys = canvas_context_2d(&canvas_ys_recovered.get().unwrap());
+    let ctx_cbs = canvas_context_2d(&canvas_cbs_recovered.get().unwrap());
+    let ctx_crs = canvas_context_2d(&canvas_crs_recovered.get().unwrap());
+
+    let scaled_luminance_quant_table =
+        quant::scale_quantization_table(&quant::LUMINANCE_QUANTIZATION_TABLE, quality);
+    let scaled_chrominance_quant_table =
+        quant::scale_quantization_table(&quant::CHROMINANCE_QUANTIZATION_TABLE, quality);
+
+    let ys_dequantized = ys_quantized.undo_quantization(&scaled_luminance_quant_table);
+    let cbs_dequantized = cbs_quantized.undo_quantization(&scaled_chrominance_quant_table);
+    let crs_dequantized = crs_quantized.undo_quantization(&scaled_chrominance_quant_table);
+
+    let ys = ys_dequantized.flatten();
+    let cbs = cbs_dequantized.flatten();
+    let crs = crs_dequantized.flatten();
+
+    let ys_image = ys
+        .iter()
+        .flat_map(|x| {
+            let RGB { r, g, b } = image::pixel::YCbCr {
+                y: *x,
+                cb: 128,
+                cr: 128,
+            }
+            .to_rgb();
+            vec![r, g, b, 255]
+        })
+        .collect::<Vec<u8>>();
+
+    let cbs_image = cbs
+        .iter()
+        .flat_map(|x| {
+            let RGB { r, g, b } = image::pixel::YCbCr {
+                y: 128,
+                cb: *x,
+                cr: 128,
+            }
+            .to_rgb();
+            vec![r, g, b, 255]
+        })
+        .collect::<Vec<u8>>();
+
+    let crs_image = crs
+        .iter()
+        .flat_map(|x| {
+            let RGB { r, g, b } = image::pixel::YCbCr {
+                y: 128,
+                cb: 128,
+                cr: *x,
+            }
+            .to_rgb();
+            vec![r, g, b, 255]
+        })
+        .collect::<Vec<u8>>();
+
+    // Create temporary canvas1 so that we can draw scaled image to proper canvas
+    let tmp_canvas = web_sys::window()
+        .unwrap()
+        .document()
+        .unwrap()
+        .create_element("canvas")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .unwrap();
+    tmp_canvas.set_height(BLOCK_SIZE);
+    tmp_canvas.set_width(BLOCK_SIZE);
+    let tmp_ctx = canvas_context_2d(&tmp_canvas);
+
+    let ys_image_data =
+        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&ys_image), BLOCK_SIZE)
+            .unwrap();
+    tmp_ctx.put_image_data(&ys_image_data, 0.0, 0.0).unwrap();
+    ctx_ys.scale(ZOOM as f64, ZOOM as f64).unwrap();
+    ctx_ys
+        .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
+        .unwrap();
+    ctx_ys.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64).unwrap();
+
+    let cbs_image_data = web_sys::ImageData::new_with_u8_clamped_array(
+        wasm_bindgen::Clamped(&cbs_image),
+        BLOCK_SIZE,
+    )
+    .unwrap();
+    tmp_ctx.put_image_data(&cbs_image_data, 0.0, 0.0).unwrap();
+    ctx_cbs.scale(ZOOM as f64, ZOOM as f64).unwrap();
+    ctx_cbs
+        .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
+        .unwrap();
+    ctx_cbs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64).unwrap();
+
+    let crs_image_data = web_sys::ImageData::new_with_u8_clamped_array(
+        wasm_bindgen::Clamped(&crs_image),
+        BLOCK_SIZE,
+    )
+    .unwrap();
+    tmp_ctx.put_image_data(&crs_image_data, 0.0, 0.0).unwrap();
+    ctx_crs.scale(ZOOM as f64, ZOOM as f64).unwrap();
+    ctx_crs
+        .draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
+        .unwrap();
+    ctx_crs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64).unwrap();
+
+    draw_image_recovered(canvas_image_recovered, ys, cbs, crs);
+}
+
+fn draw_image_recovered(
+    image_recovered_canvas: &ElRef<HtmlCanvasElement>,
+    ys: Vec<u8>,
+    cbs: Vec<u8>,
+    crs: Vec<u8>,
+) {
+    let ctx = canvas_context_2d(&image_recovered_canvas.get().unwrap());
+
+    // Create temporary canvas1 so that we can draw scaled image to proper canvas
+    let tmp_canvas = web_sys::window()
+        .unwrap()
+        .document()
+        .unwrap()
+        .create_element("canvas")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .unwrap();
+    tmp_canvas.set_height(BLOCK_SIZE);
+    tmp_canvas.set_width(BLOCK_SIZE);
+    let tmp_ctx = canvas_context_2d(&tmp_canvas);
+
+    let image = ys
+        .iter()
+        .zip(cbs.iter())
+        .zip(crs.iter())
+        .flat_map(|((y, cb), cr)| {
+            let RGB { r, g, b } = image::pixel::YCbCr {
+                y: *y,
+                cb: *cb,
+                cr: *cr,
+            }
+            .to_rgb();
+            vec![r, g, b, 255]
+        })
+        .collect::<Vec<u8>>();
+
+    let image =
+        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image), BLOCK_SIZE)
+            .unwrap();
+    tmp_ctx.put_image_data(&image, 0.0, 0.0).unwrap();
+    ctx.scale(ZOOM as f64, ZOOM as f64).unwrap();
+    ctx.draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
+        .unwrap();
+    ctx.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64).unwrap();
+}
+
+fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[i16; 8]; 8], u: usize, v: usize) {
     for y in 0..8 {
         for x in 0..8 {
             let offset = ((v * 8 + y) * BLOCK_SIZE as usize + (u * 8) + x) * 4;
-            image_data[offset] = 255 - spatial[y][x];
-            image_data[offset + 1] = 255 - spatial[y][x];
-            image_data[offset + 2] = 255 - spatial[y][x];
+            image_data[offset] = 255 - spatial[y][x].abs().clamp(0, 255) as u8;
+            image_data[offset + 1] = 255 - spatial[y][x].abs().clamp(0, 255) as u8;
+            image_data[offset + 2] = 255 - spatial[y][x].abs().clamp(0, 255) as u8;
             image_data[offset + 3] = 255;
         }
     }
@@ -389,6 +576,10 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 &model.ys_quant_canvas,
                 &model.cbs_quant_canvas,
                 &model.crs_quant_canvas,
+                &model.ys_recovered_canvas,
+                &model.cbs_recovered_canvas,
+                &model.crs_recovered_canvas,
+                &model.image_recovered_canvas,
                 &ycbcr,
                 50,
             );
@@ -407,6 +598,10 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.ys_quant_canvas,
                     &model.cbs_quant_canvas,
                     &model.crs_quant_canvas,
+                    &model.ys_recovered_canvas,
+                    &model.cbs_recovered_canvas,
+                    &model.crs_recovered_canvas,
+                    &model.image_recovered_canvas,
                     &pack.ycbcr,
                     quality,
                 );
@@ -453,6 +648,10 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.ys_quant_canvas,
                     &model.cbs_quant_canvas,
                     &model.crs_quant_canvas,
+                    &model.ys_recovered_canvas,
+                    &model.cbs_recovered_canvas,
+                    &model.crs_recovered_canvas,
+                    &model.image_recovered_canvas,
                     &pack.ycbcr,
                     model.quality,
                 );
