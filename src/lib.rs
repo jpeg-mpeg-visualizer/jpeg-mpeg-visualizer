@@ -110,7 +110,7 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
                     a![
                         C!["select_menu_button"],
                         attrs! { At::Href => Urls::new(model.base_url.clone()).jpeg_visualizer() },
-                        p!["Hello"]
+                        p!["JPEG"]
                     ],
                 ],
                 Page::JPEGVisualizer(child_model) => jpeg_visualization::page::view(child_model),
