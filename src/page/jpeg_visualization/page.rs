@@ -83,7 +83,8 @@ fn draw_original_image_preview(
     tmp_ctx.put_image_data(&img, 0.0, 0.0).unwrap();
 
     // Adjust original image preview width so that it isn't squeezed
-    let new_width = ((image.width() as f64 / image.height() as f64) * canvas.height() as f64) as u32;
+    let new_width =
+        ((image.width() as f64 / image.height() as f64) * canvas.height() as f64) as u32;
     canvas.set_width(new_width);
 
     // Set scale and draw scaled image from temporary canvas1
