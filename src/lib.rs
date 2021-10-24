@@ -37,11 +37,13 @@ struct Model {
 // ------ Page ------
 
 const JPEG_VISUALIZER: &str = "jpeg-visualizer";
+const MPEG_VISUALIZER: &str = "mpeg-visualizer";
 
 #[allow(clippy::large_enum_variant)]
 enum Page {
     Home,
     JPEGVisualizer(jpeg_visualization::model::Model),
+    MPEGVisualizer(mpeg_visualization::model::Model),
     NotFound,
 }
 
@@ -51,6 +53,9 @@ impl Page {
             None => Self::Home,
             Some(JPEG_VISUALIZER) => {
                 jpeg_visualization::page::init(url).map_or(Self::NotFound, Self::JPEGVisualizer)
+            }
+            Some(MPEG_VISUALIZER) => {
+                mpeg_visualization::page::init(url).map_or(Self::NotFound, Self::MPEGVisualizer)
             }
             Some(_) => Self::NotFound,
         }
@@ -71,6 +76,11 @@ impl<'a> Urls<'a> {
         log(&path.to_string());
         path
     }
+    pub fn mpeg_visualizer(self) -> Url {
+        let path = self.base_url().add_hash_path_part(MPEG_VISUALIZER);
+        log(&path.to_string());
+        path
+    }
 }
 
 // ------ ------
@@ -80,6 +90,7 @@ impl<'a> Urls<'a> {
 pub enum Msg {
     UrlChanged(subs::UrlChanged),
     JPEGVisualizationMessage(jpeg_visualization::model::Msg),
+    MPEGVisualizationMessage(mpeg_visualization::model::Msg),
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
@@ -93,6 +104,15 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     child_message,
                     child_model,
                     &mut orders.proxy(Msg::JPEGVisualizationMessage),
+                )
+            }
+        }
+        Msg::MPEGVisualizationMessage(child_message) => {
+            if let Page::MPEGVisualizer(ref mut child_model) = model.page {
+                mpeg_visualization::page::update(
+                    child_message,
+                    child_model,
+                    &mut orders.proxy(Msg::MPEGVisualizationMessage),
                 )
             }
         }
@@ -112,8 +132,14 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
                         attrs! { At::Href => Urls::new(model.base_url.clone()).jpeg_visualizer() },
                         p!["JPEG"]
                     ],
+                    a![
+                        C!["select_menu_button"],
+                        attrs! { At::Href => Urls::new(model.base_url.clone()).mpeg_visualizer() },
+                        p!["MPEG"]
+                    ],
                 ],
                 Page::JPEGVisualizer(child_model) => jpeg_visualization::page::view(child_model),
+                Page::MPEGVisualizer(child_model) => mpeg_visualization::page::view(child_model),
                 Page::NotFound => div!["404"],
             }
         ],
