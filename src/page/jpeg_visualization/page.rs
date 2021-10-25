@@ -14,9 +14,9 @@ use crate::{
 };
 use std::rc::Rc;
 
+use std::collections::HashMap;
 use web_sys::HtmlCanvasElement;
 use web_sys::HtmlDivElement;
-use std::collections::HashMap;
 
 pub fn init(url: Url) -> Option<Model> {
     let base_url = url.to_base_url();
@@ -44,7 +44,6 @@ pub fn init(url: Url) -> Option<Model> {
         cbs_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),
         crs_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),
         image_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),*/
-
         quality: 50,
     })
 }
@@ -480,7 +479,12 @@ fn draw_ycbcr_recovered(
         .unwrap();
     ctx_crs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64).unwrap();
 
-    draw_image_recovered(canvas_map.get(&CanvasName::ImageRecovered).unwrap(), ys, cbs, crs);
+    draw_image_recovered(
+        canvas_map.get(&CanvasName::ImageRecovered).unwrap(),
+        ys,
+        cbs,
+        crs,
+    );
 }
 
 fn draw_image_recovered(
@@ -542,7 +546,7 @@ fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[i16; 8]; 8], u: usi
 }
 
 fn turn_antialiasing_off(canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>) {
-    for(_canvas_name, canvas) in canvas_map {
+    for (_canvas_name, canvas) in canvas_map {
         turn_antialising_off_for_specific_canvas(canvas)
     }
 
@@ -579,22 +583,21 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::ImageLoaded(raw_image) => {
             turn_antialiasing_off(&model.canvas_map);
-            draw_original_image_preview(&model.canvas_map.get(&CanvasName::OriginalPreview).unwrap(), &raw_image);
-            draw_original_image(&model.canvas_map.get(&CanvasName::Original).unwrap(), &raw_image);
+            draw_original_image_preview(
+                &model.canvas_map.get(&CanvasName::OriginalPreview).unwrap(),
+                &raw_image,
+            );
+            draw_original_image(
+                &model.canvas_map.get(&CanvasName::Original).unwrap(),
+                &raw_image,
+            );
 
             let raw_image_rc = Rc::new(raw_image);
             let image_window =
                 RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
-            draw_ycbcr(
-                &model.canvas_map,
-                &ycbcr,
-            );
-            draw_dct_quantized(
-                &model.canvas_map,
-                &ycbcr,
-                50,
-            );
+            draw_ycbcr(&model.canvas_map, &ycbcr);
+            draw_dct_quantized(&model.canvas_map, &ycbcr, 50);
             model.state = State::ImageView(ImagePack {
                 raw_image: raw_image_rc,
                 image_window,
@@ -606,17 +609,14 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::QualityUpdated(quality) => {
             if let State::ImageView(pack) = &model.state {
                 model.quality = quality;
-                draw_dct_quantized(
-                    &model.canvas_map,
-                    &pack.ycbcr,
-                    quality,
-                );
+                draw_dct_quantized(&model.canvas_map, &pack.ycbcr, quality);
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
                 let canvas_rect = &model
-                    .canvas_map.get(&CanvasName::Original)
+                    .canvas_map
+                    .get(&CanvasName::Original)
                     .unwrap()
                     .get()
                     .unwrap()
@@ -646,15 +646,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 pack.image_window.start_y = image_y;
 
                 pack.ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
-                draw_ycbcr(
-                    &model.canvas_map,
-                    &pack.ycbcr,
-                );
-                draw_dct_quantized(
-                    &model.canvas_map,
-                    &pack.ycbcr,
-                    model.quality,
-                );
+                draw_ycbcr(&model.canvas_map, &pack.ycbcr);
+                draw_dct_quantized(&model.canvas_map, &pack.ycbcr, model.quality);
 
                 model
                     .original_canvas_scrollable_div_wrapper
@@ -666,7 +659,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::BlockChosen(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
                 let canvas_rect = &model
-                    .canvas_map.get(&CanvasName::Original)
+                    .canvas_map
+                    .get(&CanvasName::Original)
                     .unwrap()
                     .get()
                     .unwrap()
