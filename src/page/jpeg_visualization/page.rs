@@ -261,12 +261,12 @@ fn draw_dct_quantized(
     image: &image::YCbCrImage,
     quality: u8,
 ) {
-    let canvas_ys = canvas_map.get(&CanvasName::Ys).unwrap();
-    let ctx_ys = canvas_context_2d(&canvas_ys.get().unwrap());
-    let canvas_cbs = canvas_map.get(&CanvasName::Cbs).unwrap();
-    let ctx_cbs = canvas_context_2d(&canvas_cbs.get().unwrap());
-    let canvas_crs = canvas_map.get(&CanvasName::Crs).unwrap();
-    let ctx_crs = canvas_context_2d(&canvas_crs.get().unwrap());
+    let canvas_ys_quant = canvas_map.get(&CanvasName::YsQuant).unwrap();
+    let ctx_ys = canvas_context_2d(&canvas_ys_quant.get().unwrap());
+    let canvas_cbs_quant = canvas_map.get(&CanvasName::CbsQuant).unwrap();
+    let ctx_cbs = canvas_context_2d(&canvas_cbs_quant.get().unwrap());
+    let canvas_crs_quant = canvas_map.get(&CanvasName::CrsQuant).unwrap();
+    let ctx_crs = canvas_context_2d(&canvas_crs_quant.get().unwrap());
 
     let ys = image.to_ys_channel();
     let cbs = image.to_cbs_channel();
