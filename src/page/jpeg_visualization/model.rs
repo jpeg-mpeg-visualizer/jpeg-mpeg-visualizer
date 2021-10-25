@@ -4,6 +4,7 @@ use std::rc::Rc;
 use web_sys::HtmlCanvasElement;
 use web_sys::HtmlDivElement;
 use std::collections::HashMap;
+use strum_macros::EnumIter;
 
 pub struct ImagePack {
     pub raw_image: Rc<image::RawImage>,
@@ -38,6 +39,7 @@ pub enum Msg {
 //   Canvases
 // ------ ------
 
+#[derive(Debug, PartialEq, Eq, Hash, EnumIter)]
 pub enum CanvasName {
     Original,
     OriginalPreview,

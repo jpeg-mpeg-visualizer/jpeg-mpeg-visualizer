@@ -1,6 +1,7 @@
 use seed::prelude::*;
 use seed::*;
 use std::cmp;
+use strum::IntoEnumIterator;
 
 use super::model::*;
 use super::utils;
@@ -156,11 +157,11 @@ fn draw_ycbcr(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     image: &image::YCbCrImage,
 ) {
-    let canvas_ys = canvas_map.get(CanvasName.Ys).unwrap();
+    let canvas_ys = canvas_map.get(&CanvasName::Ys).unwrap();
     let ctx_ys = canvas_context_2d(&canvas_ys.get().unwrap());
-    let canvas_cbs = canvas_map.get(CanvasName.Cbs).unwrap();
+    let canvas_cbs = canvas_map.get(&CanvasName::Cbs).unwrap();
     let ctx_cbs = canvas_context_2d(&canvas_cbs.get().unwrap());
-    let canvas_crs = canvas_map.get(CanvasName.Crs).unwrap();
+    let canvas_crs = canvas_map.get(&CanvasName::Crs).unwrap();
     let ctx_crs = canvas_context_2d(&canvas_crs.get().unwrap());
 
     let ys = image.to_ys_channel();
@@ -260,11 +261,11 @@ fn draw_dct_quantized(
     image: &image::YCbCrImage,
     quality: u8,
 ) {
-    let canvas_ys = canvas_map.get(CanvasName.Ys).unwrap();
+    let canvas_ys = canvas_map.get(&CanvasName::Ys).unwrap();
     let ctx_ys = canvas_context_2d(&canvas_ys.get().unwrap());
-    let canvas_cbs = canvas_map.get(CanvasName.Cbs).unwrap();
+    let canvas_cbs = canvas_map.get(&CanvasName::Cbs).unwrap();
     let ctx_cbs = canvas_context_2d(&canvas_cbs.get().unwrap());
-    let canvas_crs = canvas_map.get(CanvasName.Crs).unwrap();
+    let canvas_crs = canvas_map.get(&CanvasName::Crs).unwrap();
     let ctx_crs = canvas_context_2d(&canvas_crs.get().unwrap());
 
     let ys = image.to_ys_channel();
@@ -373,11 +374,11 @@ fn draw_ycbcr_recovered(
     crs_quantized: &BlockMatrix,
     quality: u8,
 ) {
-    let canvas_ys_recovered = canvas_map.get(CanvasName.YsRecovered).unwrap();
+    let canvas_ys_recovered = canvas_map.get(&CanvasName::YsRecovered).unwrap();
     let ctx_ys = canvas_context_2d(&canvas_ys_recovered.get().unwrap());
-    let canvas_cbs_recovered = canvas_map.get(CanvasName.CbsRecovered);
+    let canvas_cbs_recovered = canvas_map.get(&CanvasName::CbsRecovered).unwrap();
     let ctx_cbs = canvas_context_2d(&canvas_cbs_recovered.get().unwrap());
-    let canvas_crs_recovered = canvas_map.get(CanvasName.CrsRecovered);
+    let canvas_crs_recovered = canvas_map.get(&CanvasName::CrsRecovered).unwrap();
     let ctx_crs = canvas_context_2d(&canvas_crs_recovered.get().unwrap());
 
     let scaled_luminance_quant_table =
@@ -479,7 +480,7 @@ fn draw_ycbcr_recovered(
         .unwrap();
     ctx_crs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64).unwrap();
 
-    draw_image_recovered(canvas_map.get(CanvasName.OriginalRecovered).unwrap(), ys, cbs, crs);
+    draw_image_recovered(canvas_map.get(&CanvasName::ImageRecovered).unwrap(), ys, cbs, crs);
 }
 
 fn draw_image_recovered(
@@ -540,13 +541,13 @@ fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[i16; 8]; 8], u: usi
     }
 }
 
-fn turn_antialiasing_off(canvas_map: &HashMap<String, ElRef<HtmlCanvasElement>>) {
+fn turn_antialiasing_off(canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>) {
     for(_canvas_name, canvas) in canvas_map {
         turn_antialising_off_for_specific_canvas(canvas)
     }
 
     fn turn_antialising_off_for_specific_canvas(canvas: &ElRef<HtmlCanvasElement>) {
-        let ctx = canvas_context_2d(canvas.get().unwrap());
+        let ctx = canvas_context_2d(&canvas.get().unwrap());
         ctx.set_image_smoothing_enabled(false);
     }
 }
@@ -578,8 +579,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::ImageLoaded(raw_image) => {
             turn_antialiasing_off(&model.canvas_map);
-            draw_original_image_preview(&model.canvas_map.get(CanvasName.OriginalPreview), &raw_image);
-            draw_original_image(&model.canvas_map.get(CanvasName.Original), &raw_image);
+            draw_original_image_preview(&model.canvas_map.get(&CanvasName::OriginalPreview).unwrap(), &raw_image);
+            draw_original_image(&model.canvas_map.get(&CanvasName::Original).unwrap(), &raw_image);
 
             let raw_image_rc = Rc::new(raw_image);
             let image_window =
@@ -615,7 +616,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::PreviewCanvasClicked(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
                 let canvas_rect = &model
-                    .original_canvas_preview
+                    .canvas_map.get(&CanvasName::Original)
+                    .unwrap()
                     .get()
                     .unwrap()
                     .get_bounding_client_rect();
@@ -664,7 +666,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::BlockChosen(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
                 let canvas_rect = &model
-                    .original_canvas
+                    .canvas_map.get(&CanvasName::Original)
+                    .unwrap()
                     .get()
                     .unwrap()
                     .get_bounding_client_rect();
@@ -675,7 +678,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 let start_y: u32 = ((y - canvas_y as i32) as u32 / (16 * ZOOM)) * 16;
 
                 draw_block_choice_indicator(
-                    &model.canvas_map.get(CanvasName.Original),
+                    &model.canvas_map.get(&CanvasName::Original).unwrap(),
                     &pack.raw_image,
                     start_x,
                     start_y,
