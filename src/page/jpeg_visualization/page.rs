@@ -604,7 +604,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             if let State::ImageView(ref mut pack) = model.state {
                 let canvas_rect = &model
                     .canvas_map
-                    .get(&CanvasName::Original)
+                    .get(&CanvasName::OriginalPreview)
                     .unwrap()
                     .get()
                     .unwrap()
