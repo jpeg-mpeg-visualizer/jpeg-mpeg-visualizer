@@ -1,10 +1,10 @@
 use crate::image;
 use seed::prelude::*;
+use std::collections::HashMap;
 use std::rc::Rc;
+use strum_macros::EnumIter;
 use web_sys::HtmlCanvasElement;
 use web_sys::HtmlDivElement;
-use std::collections::HashMap;
-use strum_macros::EnumIter;
 
 pub struct ImagePack {
     pub raw_image: Rc<image::RawImage>,

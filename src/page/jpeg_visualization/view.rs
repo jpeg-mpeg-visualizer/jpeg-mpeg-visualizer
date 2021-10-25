@@ -2,7 +2,7 @@ use seed::prelude::web_sys::{DragEvent, Event, MouseEvent};
 use seed::prelude::*;
 use seed::*;
 
-use super::model::{Model, Msg, State, CanvasName};
+use super::model::{CanvasName, Model, Msg, State};
 use super::page::wrap;
 use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
 
