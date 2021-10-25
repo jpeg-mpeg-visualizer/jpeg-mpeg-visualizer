@@ -31,19 +31,7 @@ pub fn init(url: Url) -> Option<Model> {
         base_url,
         state: State::FileChooser,
         canvas_map,
-        /*original_canvas_preview: ElRef::<HtmlCanvasElement>::default(),
-        original_canvas: ElRef::<HtmlCanvasElement>::default(),*/
         original_canvas_scrollable_div_wrapper: ElRef::<HtmlDivElement>::default(),
-        /*ys_canvas: ElRef::<HtmlCanvasElement>::default(),
-        cbs_canvas: ElRef::<HtmlCanvasElement>::default(),
-        crs_canvas: ElRef::<HtmlCanvasElement>::default(),
-        ys_quant_canvas: ElRef::<HtmlCanvasElement>::default(),
-        cbs_quant_canvas: ElRef::<HtmlCanvasElement>::default(),
-        crs_quant_canvas: ElRef::<HtmlCanvasElement>::default(),
-        ys_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),
-        cbs_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),
-        crs_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),
-        image_recovered_canvas: ElRef::<HtmlCanvasElement>::default(),*/
         quality: 50,
     })
 }
