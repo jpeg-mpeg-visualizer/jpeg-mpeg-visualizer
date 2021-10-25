@@ -2,7 +2,7 @@ use seed::prelude::web_sys::{DragEvent, Event, MouseEvent};
 use seed::prelude::*;
 use seed::*;
 
-use super::model::{Model, Msg, State};
+use super::model::{Model, Msg, State, CanvasName};
 use super::page::wrap;
 use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
 
@@ -38,7 +38,7 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                 }
             ],
             canvas![
-                el_ref(&model.canvas_map.get(CanvasName.OriginalPreview)),
+                el_ref(&model.canvas_map.get(&CanvasName::OriginalPreview).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
@@ -61,7 +61,7 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                 ],
                 canvas![
                     C!["original-canvas"],
-                    el_ref(&model.canvas_map.get(CanvasName.Original)),
+                    el_ref(&model.canvas_map.get(&CanvasName::Original).unwrap()),
                     ev(Ev::Click, |event| {
                         let mouse_event: MouseEvent = event.unchecked_into();
                         wrap(Msg::BlockChosen(mouse_event.x(), mouse_event.y()))
@@ -78,21 +78,21 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
         details![
             summary!["YCbCr"],
             canvas![
-                el_ref(&model.canvas_map.get(CanvasName.Ys)),
+                el_ref(&model.canvas_map.get(&CanvasName::Ys).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ],
             canvas![
-                el_ref(&model.canvas_map.get(CanvasName.Cbs)),
+                el_ref(&model.canvas_map.get(&CanvasName::Cbs).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ],
             canvas![
-                el_ref(&model.canvas_map.get(CanvasName.Crs)),
+                el_ref(&model.canvas_map.get(&CanvasName::Crs).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
@@ -108,21 +108,21 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
         details![
             summary!["DCT Quantized"],
             canvas![
-                el_ref(&model.canvas_map.get(CanvasName.YsQuant)),
+                el_ref(&model.canvas_map.get(&CanvasName::YsQuant).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ],
             canvas![
-                el_ref(&model.canvas_map.get(CanvasName.CbsQuant)),
+                el_ref(&model.canvas_map.get(&CanvasName::CbsQuant).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ],
             canvas![
-                el_ref(&model.canvas_map.get(CanvasName.CrsQuant)),
+                el_ref(&model.canvas_map.get(&CanvasName::CrsQuant).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
@@ -138,21 +138,21 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
         details![
             summary!["YCbCr recovered from quantized DCT"],
             canvas![
-                el_ref(&model.canvas_map.get(CanvasName.YsRecovered)),
+                el_ref(&model.canvas_map.get(&CanvasName::YsRecovered).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ],
             canvas![
-                el_ref(&model.canvas_map.get(CanvasName.CbsRecovered)),
+                el_ref(&model.canvas_map.get(&CanvasName::CbsRecovered).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
                 ]
             ],
             canvas![
-                el_ref(&model.canvas_map.get(CanvasName.CrsRecovered)),
+                el_ref(&model.canvas_map.get(&CanvasName::CrsRecovered).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
@@ -168,7 +168,7 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
         details![
             summary!["Recovered image"],
             canvas![
-                el_ref(&model.canvas_map.get(CavnasName.ImageRecovered)),
+                el_ref(&model.canvas_map.get(&CanvasName::ImageRecovered).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
