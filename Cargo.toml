@@ -15,6 +15,7 @@ seed = "0.8.0"
 gloo-file = "0.1.0"
 gloo-events = "0.1.1"
 bitvec = "0.22.3"
+strum = "0.22.0"
 
 [dependencies.web-sys]
 version = "0.3.50"

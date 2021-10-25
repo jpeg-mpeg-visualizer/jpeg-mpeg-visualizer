@@ -299,6 +299,7 @@ dependencies = [
  "gloo-file",
  "once_cell",
  "seed",
+ "strum",
  "wasm-bindgen",
  "web-sys",
 ]
@@ -624,6 +625,12 @@ name = "stdweb-internal-runtime"
 version = "0.1.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "213701ba3370744dcd1a12960caa4843b3d68b4d1c0a5d575e0d65b2ee9d16c0"
+
+[[package]]
+name = "strum"
+version = "0.22.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7ac893c7d471c8a21f31cfe213ec4f6d9afeed25537c772e08ef3f005f8729e"
 
 [[package]]
 name = "syn"
