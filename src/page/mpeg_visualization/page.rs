@@ -121,6 +121,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::VideoLoaded(video_stream) => {
             model.video_stream_length = video_stream.len();
+            let mut mpeg1 = super::mpeg1::MPEG1::from_bytes(video_stream);
+            mpeg1.decode();
         }
     }
 }
