@@ -1,5 +1,4 @@
 use crate::codec::g711::{SoundDecoder, SoundEncoder};
-use super::codec::SoundCodec;
 
 const QUANT_MASK: u8 = 0xf;
 const BIAS: u8 = 0x84;
@@ -15,7 +14,7 @@ pub struct ULawCodec {}
 impl SoundEncoder for ULawCodec {
     fn encode_frame(&self, input_pcm: i16) -> u8 {
         let mut temp_pcm = input_pcm >> 2;
-        let mut mask: i16;
+        let mask: i16;
         if temp_pcm < 0 {
             temp_pcm = - temp_pcm;
             mask = 0x7F;

@@ -6,9 +6,6 @@ use web_sys::{
     AudioBufferSourceNode, GainNode,
     HtmlButtonElement
 };
-use std::rc::Rc;
-
-use crate::codec::g711::*;
 
 #[derive(Clone)]
 pub enum PlayBackState {
@@ -62,6 +59,7 @@ impl PlayerState {
         }
     }
 
+    #[allow(dead_code)]
     pub fn playback_state(&self) -> PlayBackState {
         self.playback_state.clone()
     }
@@ -95,12 +93,6 @@ pub enum State {
     LoadingSpinnerView,
     PreAudioView,
     AudioView,
-}
-
-#[derive(Clone)]
-pub enum Codec {
-    ALaw,
-    ULaw
 }
 
 // ------ ------

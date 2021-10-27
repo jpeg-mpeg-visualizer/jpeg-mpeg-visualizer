@@ -1,4 +1,4 @@
-use seed::prelude::web_sys::{DragEvent, Event, MouseEvent};
+use seed::prelude::web_sys::MouseEvent;
 use seed::prelude::*;
 use seed::*;
 

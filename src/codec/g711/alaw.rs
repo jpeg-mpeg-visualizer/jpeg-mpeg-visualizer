@@ -1,5 +1,4 @@
 use crate::codec::g711::{SoundDecoder, SoundEncoder};
-use crate::section::g711_visualization::model::PlayerState;
 
 pub struct ALawCodec {}
 
@@ -13,7 +12,7 @@ const SEG_AEND: [i16; 8] = [0x1F, 0x3F, 0x7F, 0xFF, 0x1FF, 0x3FF, 0x7FF, 0xFFF];
 impl SoundEncoder for ALawCodec {
     fn encode_frame(&self, input_pcm: i16) -> u8 {
         let mut temp_pcm = input_pcm >> 3;
-        let mut mask: i16;
+        let mask: i16;
         if temp_pcm >= 0 {
             mask =0xD5;
         } else {

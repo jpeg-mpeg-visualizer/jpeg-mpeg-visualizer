@@ -1,5 +1,5 @@
 use seed::prelude::*;
-use seed::{div, C, canvas, audio, attrs, p, IF, style, button, unit};
+use seed::{div, C, canvas, IF, style, button, unit};
 use web_sys::MouseEvent;
 
 use crate::Msg as GMsg;
@@ -42,7 +42,7 @@ fn audio_player(model: &Model) -> Node<GMsg>{
                         IF!(!(model.player_state).playing() => "play")
                         IF!((model.player_state).playing() => "pause")
                     ],
-                    ev(Ev::Click, |event| {
+                    ev(Ev::Click, |_| {
                         wrap(Msg::TogglePlayer)
                     })
                 ]
@@ -69,7 +69,7 @@ fn audio_player(model: &Model) -> Node<GMsg>{
                     C!["compression-button"],
                     el_ref(&model.change_compression),
                     "Change to ALaw",
-                    ev(Ev::Click, |event| {
+                    ev(Ev::Click, |_| {
                         wrap(Msg::SwitchCompression)
                     })
                 ],
@@ -77,7 +77,7 @@ fn audio_player(model: &Model) -> Node<GMsg>{
                     C!["playback-button"],
                     el_ref(&model.change_playback),
                     "Switch playback to G711",
-                    ev(Ev::Click, |event| {
+                    ev(Ev::Click, |_| {
                         wrap(Msg::SwitchPlayback)
                     })
                 ]

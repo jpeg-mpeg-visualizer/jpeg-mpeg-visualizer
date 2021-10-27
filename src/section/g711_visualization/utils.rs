@@ -1,4 +1,4 @@
-use web_sys::{HtmlMediaElement, AudioContext, AudioBuffer, AudioContextOptions};
+use web_sys::{AudioContext, AudioBuffer, AudioContextOptions};
 use seed::JsFuture;
 use wasm_bindgen::JsCast;
 use seed::prelude::wasm_bindgen;
@@ -13,7 +13,7 @@ fn convert32f_to_16i(original: Vec<f32>) -> Vec<i16> {
     original
         .iter()
         .map(|sample| {
-            let mut value = (sample * i16::MAX as f32).floor();
+            let value = (sample * i16::MAX as f32).floor();
             value.clamp(i16::MIN as f32, i16::MAX as f32) as i16
         }).collect::<Vec<i16>>()
 }

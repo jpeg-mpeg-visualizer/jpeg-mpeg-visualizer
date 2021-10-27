@@ -1,4 +1,3 @@
-use web_sys::{DragEvent, Event, MouseEvent};
 use seed::prelude::*;
 use seed::{div, C, input, IF, label, attrs, strong};
 
@@ -16,7 +15,7 @@ macro_rules! stop_and_prevent {
      };
 }
 
-pub fn view_file_chooser(model: &Model, zone_active: bool) -> Node<GMsg> {
+pub fn view_file_chooser(_: &Model, zone_active: bool) -> Node<GMsg> {
     div![
         C!["choose_file_wrapper"],
         div![

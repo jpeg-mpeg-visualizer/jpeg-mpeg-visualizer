@@ -1,12 +1,9 @@
-use std::rc::Rc;
-use seed::futures::StreamExt;
 use seed::prelude::*;
-use seed::{canvas_context_2d, struct_urls};
+use seed::struct_urls;
 use seed::virtual_dom::ElRef;
 use web_sys::{
-    Window, window, HtmlCanvasElement, AudioContext,
-    AudioBufferSourceNode, HtmlDivElement, OfflineAudioContext,
-    HtmlButtonElement
+    window, HtmlCanvasElement, AudioContext,
+    HtmlDivElement, HtmlButtonElement
 };
 use plotters::prelude::*;
 use plotters_canvas::CanvasBackend;
@@ -17,7 +14,6 @@ use super::loading_spinner_template::view_loading_spinner;
 use super::audio_visualizer_template::view_audio_visualizer;
 use super::utils;
 use crate::Msg as GMsg;
-use crate::section::g711_visualization::model::Msg::AudioLoaded;
 use crate::section::g711_visualization::model::State::LoadingSpinnerView;
 use crate::codec::g711::{SoundDecoder, SoundEncoder, ulaw, alaw};
 
@@ -151,13 +147,13 @@ fn init_audio(model: &mut Model) {
         })
         .collect::<Vec<f32>>();
 
-    original_buffer.copy_to_channel(&pcm_original_32f, 0);
-    buffer_8khz_ulaw.copy_to_channel(&pcm_ulaw_32f, 0);
-    buffer_8khz_alaw.copy_to_channel(&pcm_alaw_32f, 0);
+    original_buffer.copy_to_channel(&pcm_original_32f, 0).unwrap();
+    buffer_8khz_ulaw.copy_to_channel(&pcm_ulaw_32f, 0).unwrap();
+    buffer_8khz_alaw.copy_to_channel(&pcm_alaw_32f, 0).unwrap();
 
     model.player_state = PlayerState::new_with_duration(original_buffer.duration());
 
-    gain_node.connect_with_audio_node(&context.destination());
+    gain_node.connect_with_audio_node(&context.destination()).unwrap();
 
     model.original_buffer = Some(original_buffer);
     model.decompressed_buffer_ulaw = Some(buffer_8khz_ulaw);
@@ -205,8 +201,8 @@ fn draw_frame(model: &Model) {
 
     let g711_area = CanvasBackend::with_canvas_object(g711_graph_canvas).unwrap().into_drawing_area();
     let pcm_area = CanvasBackend::with_canvas_object(pcm_graph_canvas).unwrap().into_drawing_area();
-    g711_area.fill(&RGBColor(150, 150, 150));
-    pcm_area.fill(&RGBColor(150, 150, 150));
+    g711_area.fill(&RGBColor(150, 150, 150)).unwrap();
+    pcm_area.fill(&RGBColor(150, 150, 150)).unwrap();
 
     let mut compressed_chart = ChartBuilder::on(&g711_area)
         .build_cartesian_2d(x_axis.clone(), y_axis_8).unwrap();
@@ -223,7 +219,7 @@ fn draw_frame(model: &Model) {
             .enumerate()
             .map(|(x, point)| (((x as f32 * scaling_factor) as f64 ), *point as f64)),
         compressed_style
-    ));
+    )).unwrap();
 
     compressed_chart.configure_series_labels().draw().unwrap();
 
@@ -238,7 +234,7 @@ fn draw_frame(model: &Model) {
             .enumerate()
             .map(|(x, point)| ((x as f64), *point as f64)),
         original_pcm_style
-    ));
+    )).unwrap();
 
     let decompressed_pcm_i16_8khz = match model.compression {
         Compression::ULaw => &model.decompressed_pcm_i16_8khz_ulaw,
@@ -251,7 +247,7 @@ fn draw_frame(model: &Model) {
             .enumerate()
             .map(|(x, point)| ((scaling_factor as f64 * x as f64), *point as f64)),
         recovered_pcm_style
-    ));
+    )).unwrap();
 
 
     chart.configure_series_labels().draw().unwrap();
@@ -277,7 +273,7 @@ fn draw_frame(model: &Model) {
 fn play_audio(model: &mut Model) {
     let context = model.audio_context.as_ref().unwrap();
     let source_node = context.create_buffer_source().unwrap();
-    source_node.connect_with_audio_node(model.gain_node.as_ref().unwrap());
+    source_node.connect_with_audio_node(model.gain_node.as_ref().unwrap()).unwrap();
     match model.playback_source {
         PlaybackSource::Original => {
             source_node.set_buffer(Some(model.original_buffer.as_ref().unwrap()));
@@ -300,13 +296,13 @@ fn play_audio(model: &mut Model) {
 
     model.player_state.set_start_time(start_time);
 
-    source_node.start_with_when_and_grain_offset(current_time, position);
+    source_node.start_with_when_and_grain_offset(current_time, position).unwrap();
     model.audio_source = Some(source_node);
     log(&format!("Started playing at {} offset {}. Context time: {}", start_time, position, current_time));
 }
 
 fn pause_audio(model: &mut Model) {
-    model.audio_source.as_ref().unwrap().stop();
+    model.audio_source.as_ref().unwrap().stop().unwrap();
 
     let current_time  = model.audio_context.as_ref().unwrap().current_time();
     let position = current_time - model.player_state.start_time();
@@ -379,7 +375,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.length_8khz = lenght_8khz;
             model.state = State::PreAudioView;
             init_audio(model);
-            orders.after_next_render(|data| {
+            orders.after_next_render(|_| {
                 Msg::AudioLoaded
             });
         }

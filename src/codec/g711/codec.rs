@@ -1,5 +1,3 @@
-use seed::futures::StreamExt;
-
 pub trait SoundDecoder where {
     fn decode_frame(&self, input_8bit: u8) -> i16;
 
