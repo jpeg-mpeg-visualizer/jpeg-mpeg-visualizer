@@ -8,6 +8,7 @@ use super::view::*;
 use crate::image::pixel::RGB;
 use crate::image::RawImageWindow;
 use crate::{
+    graphic_helpers::drag_n_drop::IntoDragEvent,
     block::{self, Block, BlockMatrix},
     image, quant, Msg as GMsg, BLOCK_SIZE, ZOOM,
 };
