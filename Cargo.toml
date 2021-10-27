@@ -14,6 +14,9 @@ console_error_panic_hook = "0.1.6"
 seed = "0.8.0"
 gloo-file = "0.1.0"
 gloo-events = "0.1.1"
+bitvec = "0.22.3"
+strum = "0.22.0"
+strum_macros = "0.22"
 
 #plots support
 plotters = "0.3.1"
