@@ -438,13 +438,9 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         }
         Msg::PreviewCanvasClicked(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
-                let preview_canvas_ref = &model
-                    .canvas_map
-                    .get(&CanvasName::OriginalPreview)
-                    .unwrap();
-                let preview_canvas = preview_canvas_ref
-                    .get()
-                    .unwrap();
+                let preview_canvas_ref =
+                    &model.canvas_map.get(&CanvasName::OriginalPreview).unwrap();
+                let preview_canvas = preview_canvas_ref.get().unwrap();
                 let canvas_rect = preview_canvas.get_bounding_client_rect();
 
                 let canvas_x = canvas_rect.left();
@@ -489,9 +485,19 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 let line_width: i32 = 4;
                 draw_original_image_preview(&preview_canvas_ref, &pack.raw_image);
                 let preview_ctx = canvas_context_2d(&preview_canvas);
-                let rect_a = (((preview_canvas.height() * BLOCK_SIZE) / pack.raw_image.height()) as i32 + line_width) as f64;
-                let rect_x = cmp::max(0, ((image_x * preview_canvas.height()) / pack.raw_image.height()) as i32 - line_width/2) as f64;
-                let rect_y = cmp::max(0, ((image_y * preview_canvas.width()) / pack.raw_image.width()) as i32 - line_width/2) as f64;
+                let rect_a = (((preview_canvas.height() * BLOCK_SIZE) / pack.raw_image.height())
+                    as i32
+                    + line_width) as f64;
+                let rect_x = cmp::max(
+                    0,
+                    ((image_x * preview_canvas.height()) / pack.raw_image.height()) as i32
+                        - line_width / 2,
+                ) as f64;
+                let rect_y = cmp::max(
+                    0,
+                    ((image_y * preview_canvas.width()) / pack.raw_image.width()) as i32
+                        - line_width / 2,
+                ) as f64;
 
                 preview_ctx.set_line_width(line_width as f64);
                 preview_ctx.stroke_rect(rect_x, rect_y, rect_a, rect_a);
