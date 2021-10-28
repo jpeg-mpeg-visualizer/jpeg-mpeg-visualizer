@@ -3,8 +3,7 @@ use seed::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use strum_macros::EnumIter;
-use web_sys::HtmlCanvasElement;
-use web_sys::HtmlDivElement;
+use web_sys::{HtmlCanvasElement, HtmlDivElement};
 
 pub struct ImagePack {
     pub raw_image: Rc<image::RawImage>,

@@ -14,10 +14,10 @@ use crate::{
 };
 use std::rc::Rc;
 
-use crate::page::jpeg_visualization::drawing_utils::{
+use super::drawing_utils::{
     draw_scaled_image_default, draw_scaled_image_with_image_data_with_w_h_and_scale,
 };
-use crate::page::jpeg_visualization::utils::get_image_diff;
+use super::utils::get_image_diff;
 use std::collections::HashMap;
 use web_sys::HtmlCanvasElement;
 use web_sys::HtmlDivElement;

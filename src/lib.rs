@@ -1,11 +1,14 @@
-mod block;
-mod dct;
-mod image;
-mod page;
-mod quant;
-
-use page::*;
 use seed::{prelude::*, *};
+
+use section::*;
+
+mod block;
+mod codec;
+mod dct;
+mod graphic_helpers;
+mod image;
+mod quant;
+mod section;
 
 const ZOOM: u32 = 8;
 const BLOCK_SIZE: u32 = 64;
@@ -38,12 +41,14 @@ struct Model {
 
 const JPEG_VISUALIZER: &str = "jpeg-visualizer";
 const MPEG_VISUALIZER: &str = "mpeg-visualizer";
+const G711_VISUALIZER: &str = "g711-visualizer";
 
 #[allow(clippy::large_enum_variant)]
 enum Page {
     Home,
     JPEGVisualizer(jpeg_visualization::model::Model),
     MPEGVisualizer(mpeg_visualization::model::Model),
+    G711Visualizer(g711_visualization::model::Model),
     NotFound,
 }
 
@@ -56,6 +61,9 @@ impl Page {
             }
             Some(MPEG_VISUALIZER) => {
                 mpeg_visualization::page::init(url).map_or(Self::NotFound, Self::MPEGVisualizer)
+            }
+            Some(G711_VISUALIZER) => {
+                g711_visualization::page::init(url).map_or(Self::NotFound, Self::G711Visualizer)
             }
             Some(_) => Self::NotFound,
         }
@@ -81,6 +89,11 @@ impl<'a> Urls<'a> {
         log(&path.to_string());
         path
     }
+    pub fn g711_visualizer(self) -> Url {
+        let path = self.base_url().add_hash_path_part(G711_VISUALIZER);
+        log(&path.to_string());
+        path
+    }
 }
 
 // ------ ------
@@ -91,6 +104,7 @@ pub enum Msg {
     UrlChanged(subs::UrlChanged),
     JPEGVisualizationMessage(jpeg_visualization::model::Msg),
     MPEGVisualizationMessage(mpeg_visualization::model::Msg),
+    G711VisualizationMessage(g711_visualization::model::Msg),
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
@@ -116,6 +130,15 @@ fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 )
             }
         }
+        Msg::G711VisualizationMessage(child_message) => {
+            if let Page::G711Visualizer(ref mut child_model) = model.page {
+                g711_visualization::page::update(
+                    child_message,
+                    child_model,
+                    &mut orders.proxy(Msg::G711VisualizationMessage),
+                )
+            }
+        }
     }
 }
 
@@ -137,9 +160,15 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
                         attrs! { At::Href => Urls::new(model.base_url.clone()).mpeg_visualizer() },
                         p!["MPEG"]
                     ],
+                    a![
+                        C!["select_menu_button"],
+                        attrs! { At::Href => Urls::new(model.base_url.clone()).g711_visualizer() },
+                        p!["G711"]
+                    ]
                 ],
                 Page::JPEGVisualizer(child_model) => jpeg_visualization::page::view(child_model),
                 Page::MPEGVisualizer(child_model) => mpeg_visualization::page::view(child_model),
+                Page::G711Visualizer(child_model) => g711_visualization::page::view(child_model),
                 Page::NotFound => div!["404"],
             }
         ],

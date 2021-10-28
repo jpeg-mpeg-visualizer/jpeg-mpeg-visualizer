@@ -1,21 +1,11 @@
-use seed::prelude::web_sys::{DragEvent, Event, MouseEvent};
+use seed::prelude::web_sys::MouseEvent;
 use seed::prelude::*;
 use seed::*;
 
 use super::model::{CanvasName, Model, Msg, State};
 use super::page::wrap;
+use crate::graphic_helpers::drag_n_drop::*;
 use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
-
-trait IntoDragEvent {
-    fn into_drag_event(self) -> DragEvent;
-}
-
-impl IntoDragEvent for Event {
-    fn into_drag_event(self) -> DragEvent {
-        self.dyn_into::<web_sys::DragEvent>()
-            .expect("cannot cast given event into DragEvent")
-    }
-}
 
 macro_rules! stop_and_prevent {
     { $event:expr } => {
