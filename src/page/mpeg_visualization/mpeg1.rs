@@ -28,7 +28,7 @@ pub struct MPEG1 {
     non_intra_quant_matrix: [u8; 64],
     
     slice_beginning: bool,
-    macroblock_address: usize,
+    macroblock_address: i32,
     
     dc_predictor_y: u8,
     dc_predictor_cr: u8,
@@ -225,8 +225,8 @@ impl MPEG1 {
         // Skip over slice start code
         self.pointer += 32;
 
-        self.macroblock_address = ((slice - 1) * self.mb_width - 1) as usize;
-        
+        self.macroblock_address = ((slice - 1) * self.mb_width) as i32 - 1;
+
         self.motion_fw_h = 0;
         self.motion_fw_v = 0;
         self.motion_fw_h_prev = 0;
@@ -273,7 +273,7 @@ impl MPEG1 {
             // The first macroblock in the slice is relative to the previous row, we don't have to
             // handle any previous macroblocks
             self.slice_beginning = false;
-            self.macroblock_address += increment as usize;
+            self.macroblock_address += increment;
         } else {
             if increment > 1 {
                 // Skipped macroblocks reset DC predictors
@@ -292,8 +292,8 @@ impl MPEG1 {
             
             while increment > 1 {
                 self.macroblock_address += 1;
-                self.mb_row = self.macroblock_address / self.mb_width as usize;
-                self.mb_col = self.macroblock_address % self.mb_width as usize;
+                self.mb_row = self.macroblock_address as usize / self.mb_width as usize;
+                self.mb_col = self.macroblock_address as usize % self.mb_width as usize;
                 self.copy_macroblock(self.motion_fw_h, self.motion_fw_v);
                 increment -= 1;
             }
@@ -301,8 +301,8 @@ impl MPEG1 {
             self.macroblock_address += 1;
         }
         
-        self.mb_row = self.macroblock_address / self.mb_width as usize;
-        self.mb_col = self.macroblock_address % self.mb_width as usize;
+        self.mb_row = self.macroblock_address as usize / self.mb_width as usize;
+        self.mb_col = self.macroblock_address as usize % self.mb_width as usize;
         let mb_table: &[i32] = if self.picture_type == constants::PICTURE_TYPE_INTRA { &constants::MACROBLOCK_TYPE_INTRA } else { &constants::MACROBLOCK_TYPE_PREDICTIVE };
         
         let macroblock_type = self.read_huffman(mb_table);
