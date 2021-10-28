@@ -242,10 +242,10 @@ fn draw_ycbcr(
     ctx_crs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64).unwrap();
 }
 
-#[allow(clippy::too_many_arguments)]
 fn draw_dct_quantized(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     image: &image::YCbCrImage,
+    image_window: &RawImageWindow,
     quality: u8,
 ) {
     let canvas_ys_quant = canvas_map.get(&CanvasName::YsQuant).unwrap();
@@ -315,6 +315,7 @@ fn draw_dct_quantized(
         &ys_quantized,
         &cbs_quantized,
         &crs_quantized,
+        &image_window,
         quality,
     );
 }
@@ -353,12 +354,12 @@ fn draw_spatial_channel(
         .unwrap();
 }
 
-#[allow(clippy::too_many_arguments)]
 fn draw_ycbcr_recovered(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     ys_quantized: &BlockMatrix,
     cbs_quantized: &BlockMatrix,
     crs_quantized: &BlockMatrix,
+    image_window: &RawImageWindow,
     quality: u8,
 ) {
     let canvas_ys_recovered = canvas_map.get(&CanvasName::YsRecovered).unwrap();
@@ -468,19 +469,48 @@ fn draw_ycbcr_recovered(
     ctx_crs.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64).unwrap();
 
     draw_image_recovered(
-        canvas_map.get(&CanvasName::ImageRecovered).unwrap(),
+        canvas_map,
         ys,
         cbs,
         crs,
+        &image_window,
     );
 }
 
 fn draw_image_recovered(
-    image_recovered_canvas: &ElRef<HtmlCanvasElement>,
+    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     ys: Vec<u8>,
     cbs: Vec<u8>,
     crs: Vec<u8>,
+    image_window: &RawImageWindow
 ) {
+    let image_preview_for_comparison_canvas = canvas_map.get(&CanvasName::ImagePreviewForComparison).unwrap();
+    let ctx = canvas_context_2d(&image_preview_for_comparison_canvas.get().unwrap());
+    let image_data = &image_window.to_rgb_image().to_image_data();
+    let image =
+        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image_data), BLOCK_SIZE)
+            .unwrap();
+    log(&image_data);
+    // Create temporary canvas1 so that we can draw scaled image to proper canvas
+    let tmp_canvas = web_sys::window()
+        .unwrap()
+        .document()
+        .unwrap()
+        .create_element("canvas")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .unwrap();
+    tmp_canvas.set_height(BLOCK_SIZE);
+    tmp_canvas.set_width(BLOCK_SIZE);
+    let tmp_ctx = canvas_context_2d(&tmp_canvas);
+    tmp_ctx.put_image_data(&image, 0.0, 0.0).unwrap();
+    tmp_ctx.fill_rect(10.0, 10.0, 40.0, 60.0);
+    ctx.scale(ZOOM as f64, ZOOM as f64).unwrap();
+    ctx.draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
+        .unwrap();
+    ctx.scale(1.0 / ZOOM as f64, 1.0 / ZOOM as f64).unwrap();
+
+    let image_recovered_canvas = canvas_map.get(&CanvasName::ImageRecovered).unwrap();
     let ctx = canvas_context_2d(&image_recovered_canvas.get().unwrap());
 
     // Create temporary canvas1 so that we can draw scaled image to proper canvas
@@ -585,7 +615,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
             draw_ycbcr(&model.canvas_map, &ycbcr);
-            draw_dct_quantized(&model.canvas_map, &ycbcr, 50);
+            draw_dct_quantized(&model.canvas_map, &ycbcr, &image_window, 50);
             model.state = State::ImageView(ImagePack {
                 raw_image: raw_image_rc,
                 image_window,
@@ -597,7 +627,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::QualityUpdated(quality) => {
             if let State::ImageView(pack) = &model.state {
                 model.quality = quality;
-                draw_dct_quantized(&model.canvas_map, &pack.ycbcr, quality);
+                draw_dct_quantized(&model.canvas_map, &pack.ycbcr, &pack.image_window, quality);
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
@@ -635,7 +665,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
                 pack.ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
                 draw_ycbcr(&model.canvas_map, &pack.ycbcr);
-                draw_dct_quantized(&model.canvas_map, &pack.ycbcr, model.quality);
+                draw_dct_quantized(&model.canvas_map, &pack.ycbcr, &pack.image_window, model.quality);
 
                 model
                     .original_canvas_scrollable_div_wrapper

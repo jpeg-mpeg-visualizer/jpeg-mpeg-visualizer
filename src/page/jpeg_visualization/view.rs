@@ -166,9 +166,23 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
     div![
         C!["image_view"],
         details![
-            summary!["Recovered image"],
+            summary!["Recovered image and comparison"],
             canvas![
                 el_ref(&model.canvas_map.get(&CanvasName::ImageRecovered).unwrap()),
+                attrs![
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
+                ]
+            ],
+            canvas![
+                el_ref(&model.canvas_map.get(&CanvasName::ImagePreviewForComparison).unwrap()),
+                attrs![
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
+                ]
+            ],
+            canvas![
+                el_ref(&model.canvas_map.get(&CanvasName::Difference).unwrap()),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
