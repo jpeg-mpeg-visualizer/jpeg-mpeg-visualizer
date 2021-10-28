@@ -102,13 +102,13 @@ fn init_audio(model: &mut Model) {
     let buffer_8khz_ulaw = context.create_buffer(
         1,
         model.length_8khz,
-        8000 as f32
+        8000_f32
     ).unwrap();
 
     let buffer_8khz_alaw = context.create_buffer(
         1,
         model.length_8khz,
-        8000 as f32
+        8000_f32
     ).unwrap();
 
     let ulaw = ulaw::ULawCodec{};
@@ -188,8 +188,8 @@ fn draw_frame(model: &Model) {
     let sample_offset = (model.bitrate * model.player_state.position() as f32) as usize;
     let mut sample_end_offset = sample_offset + points_count;
 
-    let scaling_factor = model.bitrate / 8000 as f32;
-    let sample_8khz_offset = (8000 as f32 * model.player_state.position() as f32) as usize;
+    let scaling_factor = model.bitrate / 8000_f32;
+    let sample_8khz_offset = (8000_f32 * model.player_state.position() as f32) as usize;
     let mut sample_8khz_end_offset = sample_8khz_offset + (points_count as f32 * scaling_factor) as usize;
 
     sample_end_offset = sample_end_offset.min(model.pcm_i16.len());
@@ -224,7 +224,7 @@ fn draw_frame(model: &Model) {
     compressed_chart.configure_series_labels().draw().unwrap();
 
     let mut chart = ChartBuilder::on(&pcm_area)
-        .build_cartesian_2d(x_axis.clone(), y_axis).unwrap();
+        .build_cartesian_2d(x_axis, y_axis).unwrap();
     let original_pcm_style = Palette99::pick(2).mix(0.9).stroke_width(3);
     let recovered_pcm_style = Palette99::pick(0).mix(0.9).stroke_width(3);
 

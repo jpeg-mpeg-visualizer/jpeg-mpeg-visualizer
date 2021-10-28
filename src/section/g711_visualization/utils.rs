@@ -36,7 +36,7 @@ pub(super) async fn load_audio(file_blob: gloo_file::Blob) -> (Vec<i16>, f32, u3
     let sample16i_original = convert32f_to_16i(buffer_original.get_channel_data(0).unwrap());
 
     let mut options_8khz = AudioContextOptions::new();
-    options_8khz.sample_rate(8000 as f32);
+    options_8khz.sample_rate(8000_f32);
     let context_8khz = AudioContext::new_with_context_options(&options_8khz).unwrap();
     let buffer_8khz = JsFuture::from(
         context_8khz.decode_audio_data(&temp_array_buffer).unwrap()
