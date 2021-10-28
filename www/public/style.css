@@ -232,7 +232,6 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .scrollable-canvas-wrapper {
     overflow: hidden;
     display: inline-block;
-    margin: 0 10px 10px 10px;
 }
 
 .labeled_canvas_wrapper {

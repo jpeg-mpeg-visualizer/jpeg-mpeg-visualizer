@@ -54,7 +54,7 @@ pub enum CanvasName {
     CrsRecovered,
     ImageRecovered,
     ImagePreviewForComparison,
-    Difference
+    Difference,
 }
 
 // ------ ------

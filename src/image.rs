@@ -165,7 +165,7 @@ impl std::ops::Index<usize> for RawImageWindow {
 pub struct RGBImage(pub Vec<pixel::RGB>);
 
 impl RGBImage {
-    pub fn to_image_data(&self) -> Vec<u8> {
+    pub fn to_image(&self) -> Vec<u8> {
         self.0
             .iter()
             .map(|rgb| rgb.to_flat_data())

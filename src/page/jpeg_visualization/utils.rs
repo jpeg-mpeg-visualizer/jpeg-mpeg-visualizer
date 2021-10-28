@@ -2,6 +2,7 @@ use seed::JsFuture;
 use wasm_bindgen::JsCast;
 
 use crate::image;
+use std::cmp;
 
 pub(super) async fn load_image(file_blob: gloo_file::Blob) -> image::RawImage {
     let url_data = gloo_file::futures::read_as_data_url(&file_blob)
@@ -36,4 +37,25 @@ pub(super) async fn load_image(file_blob: gloo_file::Blob) -> image::RawImage {
         .unwrap();
     let data: Vec<u8> = image_data.data().to_vec();
     image::RawImage::new(data, width, height)
+}
+
+pub fn get_image_diff(img_a: &Vec<u8>, img_b: &Vec<u8>) -> Vec<u8> {
+    assert_eq!(img_a.len(), img_b.len());
+    let mut res: Vec<u8> = Vec::new();
+    for i in (0..img_a.len() as usize).step_by(4) {
+        let r_a = img_a[i] as i16;
+        let r_b = img_b[i] as i16;
+        let g_a = img_a[i + 1] as i16;
+        let g_b = img_b[i + 1] as i16;
+        let b_a = img_a[i + 2] as i16;
+        let b_b = img_b[i + 2] as i16;
+        let diff: i16 = (r_a - r_b).abs() + (g_a - g_b).abs() + (b_a - b_b).abs();
+        // theoretically diff can reach value of 255*3 but even 255 would be huge diff so I'll go with diff * 3 to be able to see those smaller diffs
+        let val: u8 = 255 - cmp::min(diff * 3, 255) as u8;
+        res.push(val);
+        res.push(val);
+        res.push(val);
+        res.push(255);
+    }
+    res
 }

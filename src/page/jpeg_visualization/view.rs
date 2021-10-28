@@ -170,10 +170,7 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
             summary!["Recovered image and comparison"],
             div![
                 C!["labeled_canvas_wrapper"],
-                label![
-                    C!["canvas_label"],
-                    "OUTPUT"
-                ],
+                label![C!["canvas_label"], "OUTPUT"],
                 canvas![
                     el_ref(&model.canvas_map.get(&CanvasName::ImageRecovered).unwrap()),
                     attrs![
@@ -187,12 +184,14 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
             ],
             div![
                 C!["labeled_canvas_wrapper"],
-                label![
-                    C!["canvas_label"],
-                    "INPUT"
-                ],
+                label![C!["canvas_label"], "INPUT"],
                 canvas![
-                    el_ref(&model.canvas_map.get(&CanvasName::ImagePreviewForComparison).unwrap()),
+                    el_ref(
+                        &model
+                            .canvas_map
+                            .get(&CanvasName::ImagePreviewForComparison)
+                            .unwrap()
+                    ),
                     attrs![
                         At::Width => px(BLOCK_SIZE * ZOOM),
                         At::Height => px(BLOCK_SIZE * ZOOM),
@@ -204,10 +203,7 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
             ],
             div![
                 C!["labeled_canvas_wrapper"],
-                label![
-                    C!["canvas_label"],
-                    "DIFFERENCE"
-                ],
+                label![C!["canvas_label"], "DIFFERENCE"],
                 canvas![
                     el_ref(&model.canvas_map.get(&CanvasName::Difference).unwrap()),
                     attrs![
