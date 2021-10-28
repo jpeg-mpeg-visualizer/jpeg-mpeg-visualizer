@@ -163,29 +163,60 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
 }
 
 fn view_image_recovered(model: &Model) -> Node<GMsg> {
+    let padding = 10;
     div![
         C!["image_view"],
         details![
             summary!["Recovered image and comparison"],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::ImageRecovered).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
+            div![
+                C!["labeled_canvas_wrapper"],
+                label![
+                    C!["canvas_label"],
+                    "OUTPUT"
+                ],
+                canvas![
+                    el_ref(&model.canvas_map.get(&CanvasName::ImageRecovered).unwrap()),
+                    attrs![
+                        At::Width => px(BLOCK_SIZE * ZOOM),
+                        At::Height => px(BLOCK_SIZE * ZOOM),
+                    ]
+                ],
+                style![
+                    St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
                 ]
             ],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::ImagePreviewForComparison).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
+            div![
+                C!["labeled_canvas_wrapper"],
+                label![
+                    C!["canvas_label"],
+                    "INPUT"
+                ],
+                canvas![
+                    el_ref(&model.canvas_map.get(&CanvasName::ImagePreviewForComparison).unwrap()),
+                    attrs![
+                        At::Width => px(BLOCK_SIZE * ZOOM),
+                        At::Height => px(BLOCK_SIZE * ZOOM),
+                    ]
+                ],
+                style![
+                    St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
                 ]
             ],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::Difference).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
+            div![
+                C!["labeled_canvas_wrapper"],
+                label![
+                    C!["canvas_label"],
+                    "DIFFERENCE"
+                ],
+                canvas![
+                    el_ref(&model.canvas_map.get(&CanvasName::Difference).unwrap()),
+                    attrs![
+                        At::Width => px(BLOCK_SIZE * ZOOM),
+                        At::Height => px(BLOCK_SIZE * ZOOM),
+                    ]
+                ],
+                style![
+                    St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
                 ]
             ],
         ]

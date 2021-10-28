@@ -10,7 +10,7 @@ pub mod pixel {
 
     impl RGB {
         pub fn to_flat_data(&self) -> [u8; 4] {
-            [self.r, self.g, self.b, 1]
+            [self.r, self.g, self.b, 255]
         }
 
         pub fn to_ycbcr(&self) -> YCbCr {

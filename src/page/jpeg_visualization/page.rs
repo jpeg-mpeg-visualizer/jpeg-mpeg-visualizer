@@ -490,7 +490,6 @@ fn draw_image_recovered(
     let image =
         web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image_data), BLOCK_SIZE)
             .unwrap();
-    log(&image_data);
     // Create temporary canvas1 so that we can draw scaled image to proper canvas
     let tmp_canvas = web_sys::window()
         .unwrap()
@@ -504,7 +503,6 @@ fn draw_image_recovered(
     tmp_canvas.set_width(BLOCK_SIZE);
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
     tmp_ctx.put_image_data(&image, 0.0, 0.0).unwrap();
-    tmp_ctx.fill_rect(10.0, 10.0, 40.0, 60.0);
     ctx.scale(ZOOM as f64, ZOOM as f64).unwrap();
     ctx.draw_image_with_html_canvas_element(&tmp_canvas, 0.0, 0.0)
         .unwrap();

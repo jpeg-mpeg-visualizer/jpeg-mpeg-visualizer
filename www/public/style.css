@@ -232,4 +232,19 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .scrollable-canvas-wrapper {
     overflow: hidden;
     display: inline-block;
+    margin: 0 10px 10px 10px;
+}
+
+.labeled_canvas_wrapper {
+    display: inline-block;
+    text-align: center;
+    padding: 5px 0 0 0;
+}
+.labeled_canvas_wrapper canvas {
+    margin: 5px;
+}
+.canvas_label {
+    font-size: 1.5em;
+    color:white;
+    margin: 5px 0;
 }
