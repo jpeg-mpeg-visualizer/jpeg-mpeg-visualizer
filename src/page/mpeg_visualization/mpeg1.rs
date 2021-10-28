@@ -118,7 +118,7 @@ impl MPEG1 {
     fn init_buffers(&mut self, width: u16, height: u16) {
         self.mb_width = (width + 15) / 16;
         let mb_height = (height + 15) / 16;
-        let mb_size = self.mb_width * mb_height;
+        // let mb_size = self.mb_width * mb_height;
 
         self.coded_width = self.mb_width / 16;
         let coded_height = mb_height / 16;
@@ -149,7 +149,6 @@ impl MPEG1 {
         // Constrained parameters flag - 1 bit
         self.pointer += 12 + 12 + 4 + 4 + 18 + 1 + 10 + 1;
         
-        // TODO init buffers or smth
         if (width, height) != (self.width, self.height) {
             self.width = width;
             self.height = height;
@@ -178,10 +177,8 @@ impl MPEG1 {
         }
         
         self.has_sequence_header = true;
-        
-        log(width);
-        log(height);
-        log(self.pointer);
+
+        log(format!("width: {}, height: {}", width, height));
     }
     
     fn decode_picture(&mut self) {
@@ -191,13 +188,12 @@ impl MPEG1 {
         // Skip over temporal reference
         self.pointer += 10;
         
-        log(self.buffer[self.pointer..self.pointer+3].to_string());
         self.picture_type = self.buffer[self.pointer..self.pointer+3].load::<u8>();
         
         // Skip over VBV buffer delay
         self.pointer += 3 + 16;
         
-        // Assert that the picture is 
+        // Assert that the picture type is not B or D
         assert!(self.picture_type == constants::PICTURE_TYPE_INTRA || self.picture_type == constants::PICTURE_TYPE_PREDICTIVE);
 
         if self.picture_type == constants::PICTURE_TYPE_PREDICTIVE {
@@ -205,7 +201,7 @@ impl MPEG1 {
             let forward_f_code = self.buffer[self.pointer+1..self.pointer+1+3].load::<u8>();
             self.pointer += 4;
             
-            // self.forward_r_size = forward_f_code - 1;
+            self.forward_r_size = forward_f_code as u32 - 1;
             self.forward_f = 1 << self.forward_r_size;
         }
         
@@ -231,8 +227,13 @@ impl MPEG1 {
 
         self.macroblock_address = ((slice - 1) * self.mb_width - 1) as usize;
         
-        // TODO Reset motion vectors and DC predictors
-        // 
+        self.motion_fw_h = 0;
+        self.motion_fw_v = 0;
+        self.motion_fw_h_prev = 0;
+        self.motion_fw_v_prev = 0;
+        self.dc_predictor_y  = 128;
+        self.dc_predictor_cr = 128;
+        self.dc_predictor_cb = 128;
 
         self.quantizer_scale = self.buffer[self.pointer..self.pointer+5].load::<u8>();
         self.pointer += 1;
@@ -302,14 +303,14 @@ impl MPEG1 {
         
         self.mb_row = self.macroblock_address / self.mb_width as usize;
         self.mb_col = self.macroblock_address % self.mb_width as usize;
-        let mb_table: &[i16] = if self.picture_type == constants::PICTURE_TYPE_INTRA { &constants::MACROBLOCK_TYPE_INTRA } else { &constants::MACROBLOCK_TYPE_PREDICTIVE };
+        let mb_table: &[i32] = if self.picture_type == constants::PICTURE_TYPE_INTRA { &constants::MACROBLOCK_TYPE_INTRA } else { &constants::MACROBLOCK_TYPE_PREDICTIVE };
         
         let macroblock_type = self.read_huffman(mb_table);
         let macroblock_intra = macroblock_type & 0b00001 != 0;
         let macroblock_mot_fw = macroblock_type & 0b01000 != 0;
 
         if macroblock_type & 0b10000 != 0 {
-            let quantizer_scale = self.buffer[self.pointer..self.pointer+5].load::<u8>();
+            self.quantizer_scale = self.buffer[self.pointer..self.pointer+5].load::<u8>();
             self.pointer += 5;
         }
         
@@ -341,7 +342,7 @@ impl MPEG1 {
         for block in 0..6 {
             let mask = 0x20 >> block;
             if cbp & mask != 0 {
-                self.decode_block(block); 
+                self.decode_block(block, macroblock_intra); 
             }
         }
     }
@@ -406,11 +407,8 @@ impl MPEG1 {
         }
     }
 
-    // TODO whole function
-    fn decode_block(&mut self, block: u16) {
-        // TODO should it be inside context or passed as arg
-        let macroblock_intra = true;
-        let mut n;
+    fn decode_block(&mut self, block: u16, macroblock_intra: bool) {
+        let mut n = 77;
         let quant_matrix;
         
         if macroblock_intra {
@@ -442,10 +440,10 @@ impl MPEG1 {
             }
             
             self.block_data[0] <<= 8;
-            quant_matrix = &self.intra_quant_matrix;
+            quant_matrix = self.intra_quant_matrix;
             n = 1;
         } else {
-            quant_matrix = &self.non_intra_quant_matrix;
+            quant_matrix = self.non_intra_quant_matrix;
         }
 
         let mut level = 0;
@@ -498,7 +496,46 @@ impl MPEG1 {
             self.block_data[de_zig_zagged] = level * constants::PREMULTIPLIER_MATRIX[de_zig_zagged] as i32;
         }
         
+        let dest_array;
+        let mut dest_index;
+        let scan;
 
+        if block < 4 {
+            dest_array = &mut self.current_y;
+            scan = self.coded_width as usize - 8;
+            dest_index = (self.mb_row * self.coded_width as usize + self.mb_col) * 16;
+            if block & 1 != 0 {
+                dest_index += 8;
+            }
+            if block & 2 != 0 {
+                dest_index += self.coded_width as usize * 8;
+            }
+        } else {
+            dest_array = if block == 4 { &mut self.current_cb } else { &mut self.current_cr };
+            scan = self.coded_width as usize / 2 - 8;
+            dest_index = ((self.mb_row * self.coded_width as usize) * 4) + self.mb_col * 8;
+        }
+
+        if macroblock_intra {
+            // Overwrite
+            if n == 1 {
+                copy_value_to_destination(((self.block_data[0] + 128) >> 8) as u8, dest_array, dest_index, scan);
+                self.block_data[0] = 0;
+            } else {
+                IDCT(&mut self.block_data);
+                copy_block_to_destination(&self.block_data, dest_array, dest_index, scan);
+                self.block_data = [0; 64];
+            }
+        } else {
+            if n == 1 {
+                add_value_to_destination(((self.block_data[0] + 128) >> 8) as u8, dest_array, dest_index, scan);
+                self.block_data[0] = 0;
+            } else {
+                IDCT(&mut self.block_data);
+                add_block_to_destination(&self.block_data, dest_array, dest_index, scan);
+                self.block_data = [0; 64];
+            }
+        }
     }
 
     fn copy_macroblock(&mut self, motion_h: i32, motion_v: i32) {
@@ -631,15 +668,136 @@ impl MPEG1 {
         }
     }
     
-    fn read_huffman(&mut self, code_table: &[i16]) -> u16 {
-        let mut state: i16 = 0;
+    fn read_huffman(&mut self, code_table: &[i32]) -> i32 {
+        let mut state: i32 = 0;
         loop {
             let bit = self.buffer[self.pointer] as usize;
             self.pointer += 1;
             state = code_table[state as usize + bit];
             if state >= 0 && code_table[state as usize] != 0 { break }
         }
-        code_table[state as usize + 2] as u16
+        code_table[state as usize + 2]
+    }
+}
+
+fn copy_block_to_destination(block: &[i32; 64], dest: &mut [u8], mut index: usize, scan: usize) {
+    for n in (0..64).step_by(8) {
+		dest[index+0] = block[n+0] as u8;
+		dest[index+1] = block[n+1] as u8;
+		dest[index+2] = block[n+2] as u8;
+		dest[index+3] = block[n+3] as u8;
+		dest[index+4] = block[n+4] as u8;
+		dest[index+5] = block[n+5] as u8;
+		dest[index+6] = block[n+6] as u8;
+		dest[index+7] = block[n+7] as u8;
+        index += scan + 8; 
+    }
+}
+
+fn add_block_to_destination(block: &[i32; 64], dest: &mut [u8], mut index: usize, scan: usize) {
+    for n in (0..64).step_by(8) {
+		dest[index+0] += block[n+0] as u8;
+		dest[index+1] += block[n+1] as u8;
+		dest[index+2] += block[n+2] as u8;
+		dest[index+3] += block[n+3] as u8;
+		dest[index+4] += block[n+4] as u8;
+		dest[index+5] += block[n+5] as u8;
+		dest[index+6] += block[n+6] as u8;
+		dest[index+7] += block[n+7] as u8;
+        index += scan + 8; 
+    }
+}
+
+fn copy_value_to_destination(value: u8, dest: &mut [u8], mut index: usize, scan: usize) {
+    for _ in (0..64).step_by(8) {
+		dest[index+0] = value;
+		dest[index+1] = value;
+		dest[index+2] = value;
+		dest[index+3] = value;
+		dest[index+4] = value;
+		dest[index+5] = value;
+		dest[index+6] = value;
+		dest[index+7] = value;
+        index += scan + 8; 
+    }
+}
+
+fn add_value_to_destination(value: u8, dest: &mut [u8], mut index: usize, scan: usize) {
+    for _ in (0..64).step_by(8) {
+		dest[index+0] += value;
+		dest[index+1] += value;
+		dest[index+2] += value;
+		dest[index+3] += value;
+		dest[index+4] += value;
+		dest[index+5] += value;
+		dest[index+6] += value;
+		dest[index+7] += value;
+        index += scan + 8; 
+    }
+}
+
+fn IDCT(block: &mut [i32; 64]) {
+    let (mut b1, mut b3, mut b4, mut b6, mut b7, mut tmp1, mut tmp2, mut m0,
+    mut x0, mut x1, mut x2, mut x3, mut x4, mut y3, mut y4, mut y5, mut y6, mut y7);
+
+    // Transform columns
+    for i in 0..8 {
+        b1 = block[4*8+i];
+        b3 = block[2*8+i] + block[6*8+i];
+        b4 = block[5*8+i] - block[3*8+i];
+        tmp1 = block[1*8+i] + block[7*8+i];
+        tmp2 = block[3*8+i] + block[5*8+i];
+        b6 = block[1*8+i] - block[7*8+i];
+        b7 = tmp1 + tmp2;
+        m0 = block[0*8+i];
+        x4 = ((b6*473 - b4*196 + 128) >> 8) - b7;
+        x0 = x4 - (((tmp1 - tmp2)*362 + 128) >> 8);
+        x1 = m0 - b1;
+        x2 = (((block[2*8+i] - block[6*8+i])*362 + 128) >> 8) - b3;
+        x3 = m0 + b1;
+        y3 = x1 + x2;
+        y4 = x3 + b3;
+        y5 = x1 - x2;
+        y6 = x3 - b3;
+        y7 = -x0 - ((b4*473 + b6*196 + 128) >> 8);
+        block[0*8+i] = b7 + y4;
+        block[1*8+i] = x4 + y3;
+        block[2*8+i] = y5 - x0;
+        block[3*8+i] = y6 - y7;
+        block[4*8+i] = y6 + y7;
+        block[5*8+i] = x0 + y5;
+        block[6*8+i] = y3 - x4;
+        block[7*8+i] = y4 - b7;
+    }
+
+    // Transform rows
+    for i in (0..64).step_by(8) {
+        b1 = block[4+i];
+        b3 = block[2+i] + block[6+i];
+        b4 = block[5+i] - block[3+i];
+        tmp1 = block[1+i] + block[7+i];
+        tmp2 = block[3+i] + block[5+i];
+        b6 = block[1+i] - block[7+i];
+        b7 = tmp1 + tmp2;
+        m0 = block[0+i];
+        x4 = ((b6*473 - b4*196 + 128) >> 8) - b7;
+        x0 = x4 - (((tmp1 - tmp2)*362 + 128) >> 8);
+        x1 = m0 - b1;
+        x2 = (((block[2+i] - block[6+i])*362 + 128) >> 8) - b3;
+        x3 = m0 + b1;
+        y3 = x1 + x2;
+        y4 = x3 + b3;
+        y5 = x1 - x2;
+        y6 = x3 - b3;
+        y7 = -x0 - ((b4*473 + b6*196 + 128) >> 8);
+        block[0+i] = (b7 + y4 + 128) >> 8;
+        block[1+i] = (x4 + y3 + 128) >> 8;
+        block[2+i] = (y5 - x0 + 128) >> 8;
+        block[3+i] = (y6 - y7 + 128) >> 8;
+        block[4+i] = (y6 + y7 + 128) >> 8;
+        block[5+i] = (x0 + y5 + 128) >> 8;
+        block[6+i] = (y3 - x4 + 128) >> 8;
+        block[7+i] = (y4 - b7 + 128) >> 8;
     }
 }
 
@@ -688,7 +846,7 @@ mod constants {
         16, 16, 16, 16, 16, 16, 16, 16
     ];
     
-    pub const MACROBLOCK_ADDRESS_INCREMENT: [i16; 75*3] = [
+    pub const MACROBLOCK_ADDRESS_INCREMENT: [i32; 75*3] = [
         1*3,  2*3,  0, //   0
         3*3,  4*3,  0, //   1  0
           0,    0,  1, //   2  1.
@@ -766,14 +924,14 @@ mod constants {
           0,    0, 22  //  74  0000 0100 011.
    ];
     
-    pub const MACROBLOCK_TYPE_INTRA: [i16; 3*4] = [
+    pub const MACROBLOCK_TYPE_INTRA: [i32; 3*4] = [
         1*3,  2*3,     0, //   0
          -1,  3*3,     0, //   1  0
           0,    0,  0x01, //   2  1.
           0,    0,  0x11  //   3  01.
     ];
 
-    pub const MACROBLOCK_TYPE_PREDICTIVE: [i16; 3*14]  = [
+    pub const MACROBLOCK_TYPE_PREDICTIVE: [i32; 3*14]  = [
         1*3,  2*3,     0, //  0
         3*3,  4*3,     0, //  1  0
           0,    0,  0x0a, //  2  1.
@@ -790,7 +948,7 @@ mod constants {
           0,    0,  0x11  // 13  000001.
     ];
         
-    pub const CODE_BLOCK_PATTERN: [i16; 3*126] = [
+    pub const CODE_BLOCK_PATTERN: [i32; 3*126] = [
         2*3,   1*3,   0,  //   0
         3*3,   6*3,   0,  //   1  1
         4*3,   5*3,   0,  //   2  0
@@ -919,7 +1077,7 @@ mod constants {
           0,     0,  31   // 125  0000 0011 1.
     ];
     
-    pub const DCT_DC_SIZE_LUMINANCE: [i16; 3*18] = [
+    pub const DCT_DC_SIZE_LUMINANCE: [i32; 3*18] = [
         2*3,   1*3, 0,  //   0
         6*3,   5*3, 0,  //   1  1
         3*3,   4*3, 0,  //   2  0
@@ -940,7 +1098,7 @@ mod constants {
           0,     0, 8   //  17  1111 110.
     ];
     
-    pub const DCT_DC_SIZE_CHROMINANCE: [i16; 3*18] = [
+    pub const DCT_DC_SIZE_CHROMINANCE: [i32; 3*18] = [
         2*3,   1*3, 0,  //   0
         4*3,   3*3, 0,  //   1  1
         6*3,   5*3, 0,  //   2  0
@@ -960,7 +1118,7 @@ mod constants {
           0,     0, 7,  //  16  1111 110.
           0,     0, 8   //  17  1111 1110.
     ];
-    pub const MOTION: [i16; 3*67] = [
+    pub const MOTION: [i32; 3*67] = [
         1*3,   2*3,   0,  //   0
         4*3,   3*3,   0,  //   1  0
           0,     0,   0,  //   2  1.
@@ -1030,7 +1188,7 @@ mod constants {
           0,     0, -13   //  66  0000 0011 111.
     ];              
     
-    pub const DCT_COEFF: [i16; 3*224] = [
+    pub const DCT_COEFF: [i32; 3*224] = [
         1*3,   2*3,      0,  //   0
         4*3,   3*3,      0,  //   1  0
           0,     0, 0x0001,  //   2  1.
