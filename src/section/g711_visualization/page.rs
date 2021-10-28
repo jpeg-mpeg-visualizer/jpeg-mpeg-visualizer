@@ -202,14 +202,17 @@ fn draw_frame(model: &Model) {
     g711_area.fill(&RGBColor(150, 150, 150)).unwrap();
     pcm_area.fill(&RGBColor(150, 150, 150)).unwrap();
 
+    let (compressed_u8_8khz, compression_name) = match model.compression {
+        Compression::ULaw => (&model.compressed_u8_8khz_ulaw, "ULaw"),
+        Compression::ALaw => (&model.compressed_u8_8khz_alaw, "ALaw"),
+    };
+
     let mut compressed_chart = ChartBuilder::on(&g711_area)
+        .caption(format!("G711-{}", compression_name), ("sans-serif", 30))
+        .set_label_area_size(LabelAreaPosition::Left, (8).percent())
+        .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .build_cartesian_2d(x_axis.clone(), y_axis_8)
         .unwrap();
-
-    let compressed_u8_8khz = match model.compression {
-        Compression::ULaw => &model.compressed_u8_8khz_ulaw,
-        Compression::ALaw => &model.compressed_u8_8khz_alaw,
-    };
 
     let compressed_style = Palette99::pick(2).mix(0.9).stroke_width(8);
     compressed_chart
@@ -225,6 +228,9 @@ fn draw_frame(model: &Model) {
     compressed_chart.configure_series_labels().draw().unwrap();
 
     let mut chart = ChartBuilder::on(&pcm_area)
+        .caption("Original vs Recovered", ("sans-serif", 30))
+        .set_label_area_size(LabelAreaPosition::Left, (8).percent())
+        .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .build_cartesian_2d(x_axis, y_axis)
         .unwrap();
     let original_pcm_style = Palette99::pick(2).mix(0.9).stroke_width(3);
@@ -238,7 +244,11 @@ fn draw_frame(model: &Model) {
                 .map(|(x, point)| ((x as f64), *point as f64)),
             original_pcm_style,
         ))
-        .unwrap();
+        .unwrap()
+        .label("Original")
+        .legend(move |(x, y)| {
+            Rectangle::new([(x - 5, y - 5), (x + 5, y + 5)], &Palette99::pick(2))
+        });
 
     let decompressed_pcm_i16_8khz = match model.compression {
         Compression::ULaw => &model.decompressed_pcm_i16_8khz_ulaw,
@@ -253,7 +263,11 @@ fn draw_frame(model: &Model) {
                 .map(|(x, point)| ((scaling_factor as f64 * x as f64), *point as f64)),
             recovered_pcm_style,
         ))
-        .unwrap();
+        .unwrap()
+        .label(compression_name)
+        .legend(move |(x, y)| {
+            Rectangle::new([(x - 5, y - 5), (x + 5, y + 5)], &Palette99::pick(0))
+        });
 
     chart.configure_series_labels().draw().unwrap();
 }
