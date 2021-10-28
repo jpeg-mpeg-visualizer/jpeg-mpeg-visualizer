@@ -1,5 +1,5 @@
-use web_sys::{Event, DragEvent};
 use wasm_bindgen::JsCast;
+use web_sys::{DragEvent, Event};
 
 pub trait IntoDragEvent {
     fn into_drag_event(self) -> DragEvent;

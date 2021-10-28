@@ -14,12 +14,13 @@ impl SoundEncoder for ALawCodec {
         let mut temp_pcm = input_pcm >> 3;
         let mask: i16;
         if temp_pcm >= 0 {
-            mask =0xD5;
+            mask = 0xD5;
         } else {
             mask = 0x55;
-            temp_pcm = -temp_pcm -1;
+            temp_pcm = -temp_pcm - 1;
         }
-        let seg = SEG_AEND.iter()
+        let seg = SEG_AEND
+            .iter()
             .position(|&value| temp_pcm <= value)
             .unwrap_or(SEG_AEND.len()) as i16;
 

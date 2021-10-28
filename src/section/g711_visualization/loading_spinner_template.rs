@@ -4,6 +4,7 @@ use seed::{div, C};
 use super::model::Model;
 use crate::Msg as GMsg;
 
+#[rustfmt::skip]
 pub fn view_loading_spinner(_: &Model) -> Node<GMsg> {
     div![
         C!["spinner-page"],

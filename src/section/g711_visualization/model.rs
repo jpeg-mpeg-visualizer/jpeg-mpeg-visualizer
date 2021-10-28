@@ -1,16 +1,14 @@
-use seed::prelude::*;
 use seed::prelude::RenderInfo;
+use seed::prelude::*;
 use web_sys::{
-    HtmlCanvasElement, AudioBuffer,
-    HtmlDivElement, AudioContext,
-    AudioBufferSourceNode, GainNode,
-    HtmlButtonElement
+    AudioBuffer, AudioBufferSourceNode, AudioContext, GainNode, HtmlButtonElement,
+    HtmlCanvasElement, HtmlDivElement,
 };
 
 #[derive(Clone)]
 pub enum PlayBackState {
     Playing,
-    Paused
+    Paused,
 }
 
 #[derive(Clone)]
@@ -23,12 +21,12 @@ pub struct PlayerState {
 
 pub enum PlaybackSource {
     Original,
-    Processed
+    Processed,
 }
 
 pub enum Compression {
     ULaw,
-    ALaw
+    ALaw,
 }
 
 impl Default for PlayerState {
@@ -37,7 +35,7 @@ impl Default for PlayerState {
             position: 0.0,
             start_time: 0.0,
             duration: 0.0,
-            playback_state: PlayBackState::Paused
+            playback_state: PlayBackState::Paused,
         }
     }
 }
@@ -48,7 +46,7 @@ impl PlayerState {
             position: 0.0,
             start_time: 0.0,
             duration,
-            playback_state: PlayBackState::Paused
+            playback_state: PlayBackState::Paused,
         }
     }
 
@@ -89,7 +87,7 @@ impl PlayerState {
 }
 
 pub enum State {
-    FileChooser {zone_active: bool},
+    FileChooser { zone_active: bool },
     LoadingSpinnerView,
     PreAudioView,
     AudioView,
@@ -113,7 +111,7 @@ pub enum Msg {
     SwitchPlayback,
     SwitchCompression,
     FrameUpdate(RenderInfo),
-    Seek(i32)
+    Seek(i32),
 }
 
 // ------ ------
@@ -157,5 +155,5 @@ pub struct Model {
 
     pub audio_context: Option<AudioContext>,
     pub gain_node: Option<GainNode>,
-    pub audio_source: Option<AudioBufferSourceNode>
+    pub audio_source: Option<AudioBufferSourceNode>,
 }

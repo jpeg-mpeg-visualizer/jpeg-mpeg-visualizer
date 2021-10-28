@@ -16,7 +16,7 @@ impl SoundEncoder for ULawCodec {
         let mut temp_pcm = input_pcm >> 2;
         let mask: i16;
         if temp_pcm < 0 {
-            temp_pcm = - temp_pcm;
+            temp_pcm = -temp_pcm;
             mask = 0x7F;
         } else {
             mask = 0xFF
@@ -25,8 +25,9 @@ impl SoundEncoder for ULawCodec {
         temp_pcm = std::cmp::min(temp_pcm, CLIP);
         temp_pcm += (BIAS >> 2) as i16;
 
-        let seg = SEG_UEND.iter()
-            .position(|&value|  temp_pcm <= value)
+        let seg = SEG_UEND
+            .iter()
+            .position(|&value| temp_pcm <= value)
             .unwrap_or(SEG_UEND.len()) as i16;
 
         let result = if seg >= 8 {
@@ -42,7 +43,8 @@ impl SoundDecoder for ULawCodec {
     fn decode_frame(&self, input_8bit: u8) -> i16 {
         let not_complemented = !input_8bit;
 
-        let mut decoded: i16 = (((not_complemented as i16 & QUANT_MASK as i16) << 3) + BIAS as i16) as i16;
+        let mut decoded: i16 =
+            (((not_complemented as i16 & QUANT_MASK as i16) << 3) + BIAS as i16) as i16;
         decoded <<= (not_complemented as i16 & SEG_MASK as i16) >> SEG_SHIFT;
 
         if (not_complemented & SIGN_BIT) == SIGN_BIT {
@@ -55,18 +57,14 @@ impl SoundDecoder for ULawCodec {
 
 #[cfg(test)]
 mod test {
-    use crate::codec::g711::{SoundDecoder, SoundEncoder};
     use super::ULawCodec;
+    use crate::codec::g711::{SoundDecoder, SoundEncoder};
 
     #[test]
     pub fn test_decode_frame() {
-        let frames_u8: Vec<u8> = vec![
-            0xFF, 0x7F, 0x47, 0xD7
-        ];
+        let frames_u8: Vec<u8> = vec![0xFF, 0x7F, 0x47, 0xD7];
 
-        let frames_pcm: Vec<i16> = vec![
-            0, 0, -1436, 652
-        ];
+        let frames_pcm: Vec<i16> = vec![0, 0, -1436, 652];
 
         let decoder = ULawCodec {};
         assert_eq!(decoder.decode_frames(&frames_u8), frames_pcm);
@@ -74,13 +72,9 @@ mod test {
 
     #[test]
     pub fn test_encode_frame() {
-        let frames_pcm: Vec<i16> = vec![
-             0, -1, 21, 8111
-        ];
+        let frames_pcm: Vec<i16> = vec![0, -1, 21, 8111];
 
-        let frames_u8: Vec<u8> = vec![
-            0xFF, 0x7E, 0xFC, 0x9F
-        ];
+        let frames_u8: Vec<u8> = vec![0xFF, 0x7E, 0xFC, 0x9F];
 
         let decoder = ULawCodec {};
         assert_eq!(decoder.encode_frames(&frames_pcm), frames_u8);

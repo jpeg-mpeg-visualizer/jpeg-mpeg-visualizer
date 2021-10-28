@@ -2,9 +2,9 @@ use seed::prelude::web_sys::MouseEvent;
 use seed::prelude::*;
 use seed::*;
 
-use crate::graphic_helpers::drag_n_drop::*;
 use super::model::{CanvasName, Model, Msg, State};
 use super::page::wrap;
+use crate::graphic_helpers::drag_n_drop::*;
 use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
 
 macro_rules! stop_and_prevent {

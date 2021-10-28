@@ -1,10 +1,10 @@
 use seed::prelude::*;
-use seed::{div, C, input, IF, label, attrs, strong};
+use seed::{attrs, div, input, label, strong, C, IF};
 
 use super::model::{Model, Msg};
-use crate::Msg as GMsg;
-use crate::graphic_helpers::drag_n_drop::*;
 use super::page::wrap;
+use crate::graphic_helpers::drag_n_drop::*;
+use crate::Msg as GMsg;
 
 macro_rules! stop_and_prevent {
     { $event:expr } => {
@@ -15,6 +15,7 @@ macro_rules! stop_and_prevent {
      };
 }
 
+#[rustfmt::skip]
 pub fn view_file_chooser(_: &Model, zone_active: bool) -> Node<GMsg> {
     div![
         C!["choose_file_wrapper"],

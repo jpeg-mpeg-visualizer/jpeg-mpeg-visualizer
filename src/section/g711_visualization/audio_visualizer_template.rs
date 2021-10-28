@@ -1,10 +1,10 @@
 use seed::prelude::*;
-use seed::{div, C, canvas, IF, style, button, unit};
+use seed::{button, canvas, div, style, unit, C, IF};
 use web_sys::MouseEvent;
 
-use crate::Msg as GMsg;
-use super::page::wrap;
 use super::model::{Model, Msg};
+use super::page::wrap;
+use crate::Msg as GMsg;
 
 fn audio_time_to_str(time: &f64) -> String {
     let all_seconds = time.ceil() as i32;
@@ -14,6 +14,7 @@ fn audio_time_to_str(time: &f64) -> String {
     format!("{}:{:02}", minutes, seconds)
 }
 
+#[rustfmt::skip]
 fn audio_player(model: &Model) -> Node<GMsg>{
     div![
         C!["audio-player"],
@@ -86,6 +87,7 @@ fn audio_player(model: &Model) -> Node<GMsg>{
     ]
 }
 
+#[rustfmt::skip]
 pub fn view_audio_visualizer(model: &Model) -> Node<GMsg> {
     div![
         C!["audio-visualizer-wrapper"],

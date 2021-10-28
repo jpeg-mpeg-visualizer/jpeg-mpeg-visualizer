@@ -1,14 +1,14 @@
-use seed::{*, prelude::*};
+use seed::{prelude::*, *};
 
 use section::*;
 
-mod codec;
 mod block;
+mod codec;
 mod dct;
-mod image;
-mod section;
-mod quant;
 mod graphic_helpers;
+mod image;
+mod quant;
+mod section;
 
 const ZOOM: u32 = 8;
 const BLOCK_SIZE: u32 = 64;
@@ -58,10 +58,10 @@ impl Page {
             None => Self::Home,
             Some(JPEG_VISUALIZER) => {
                 jpeg_visualization::page::init(url).map_or(Self::NotFound, Self::JPEGVisualizer)
-            },
+            }
             Some(MPEG_VISUALIZER) => {
                 mpeg_visualization::page::init(url).map_or(Self::NotFound, Self::MPEGVisualizer)
-            },
+            }
             Some(G711_VISUALIZER) => {
                 g711_visualization::page::init(url).map_or(Self::NotFound, Self::G711Visualizer)
             }
@@ -104,7 +104,7 @@ pub enum Msg {
     UrlChanged(subs::UrlChanged),
     JPEGVisualizationMessage(jpeg_visualization::model::Msg),
     MPEGVisualizationMessage(mpeg_visualization::model::Msg),
-    G711VisualizationMessage(g711_visualization::model::Msg)
+    G711VisualizationMessage(g711_visualization::model::Msg),
 }
 
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
@@ -168,8 +168,8 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
                 ],
                 Page::JPEGVisualizer(child_model) => jpeg_visualization::page::view(child_model),
                 Page::MPEGVisualizer(child_model) => mpeg_visualization::page::view(child_model),
-                Page::G711Visualizer(child_model) => g711_visualization::page::view(child_model),                
-		Page::NotFound => div!["404"],
+                Page::G711Visualizer(child_model) => g711_visualization::page::view(child_model),
+                Page::NotFound => div!["404"],
             }
         ],
     ]
