@@ -1,5 +1,5 @@
 use bitvec::prelude::*;
-use seed::*;
+// use seed::*;
 
 use self::constants::{DCT_DC_SIZE_CHROMINANCE, DCT_DC_SIZE_LUMINANCE};
 
@@ -13,7 +13,7 @@ pub struct MPEG1 {
     mb_width: u16,
     mb_row: usize,
     mb_col: usize,
-    coded_width: u16,
+    coded_width: u32,
 
     picture_type: u8,
     
@@ -120,8 +120,8 @@ impl MPEG1 {
         let mb_height = (height + 15) / 16;
         // let mb_size = self.mb_width * mb_height;
 
-        self.coded_width = self.mb_width / 16;
-        let coded_height = mb_height / 16;
+        self.coded_width = self.mb_width as u32 * 16;
+        let coded_height = mb_height as u32 * 16;
         let coded_size = self.coded_width * coded_height;
 
         self.current_y = vec![0; coded_size as usize];
@@ -178,7 +178,7 @@ impl MPEG1 {
         
         self.has_sequence_header = true;
 
-        log(format!("width: {}, height: {}", width, height));
+        // log(format!("width: {}, height: {}", width, height));
     }
     
     fn decode_picture(&mut self) {
@@ -255,7 +255,6 @@ impl MPEG1 {
     fn decode_macroblock(&mut self) {
         let mut increment = 0;
         let mut t = self.read_huffman(&constants::MACROBLOCK_ADDRESS_INCREMENT);
-        log!(t);
 
         // Skip macroblock_stuffing
         while t == 34 {
@@ -335,13 +334,13 @@ impl MPEG1 {
         let cbp = if (macroblock_type & 0b00010) != 0 {
             self.read_huffman(&constants::CODE_BLOCK_PATTERN)
         } else if macroblock_intra {
-            0x3f
+            0b111111
         } else {
             0
         };
-        
+
         for block in 0..6 {
-            let mask = 0x20 >> block;
+            let mask = 0b100000 >> block;
             if cbp & mask != 0 {
                 self.decode_block(block, macroblock_intra); 
             }
@@ -349,7 +348,6 @@ impl MPEG1 {
     }
 
     fn decode_motion_vectors(&mut self, macroblock_mot_fw: bool) {
-
         if macroblock_mot_fw {
             let mut d;
 
@@ -409,7 +407,7 @@ impl MPEG1 {
     }
 
     fn decode_block(&mut self, block: u16, macroblock_intra: bool) {
-        let mut n = 77;
+        let mut n = 0;
         let quant_matrix;
         
         if macroblock_intra {
@@ -421,7 +419,7 @@ impl MPEG1 {
             };
 
             if dct_size > 0 {
-                let differential = self.buffer[self.pointer..self.pointer+dct_size as usize].load::<u8>();
+                let differential = self.buffer[self.pointer..self.pointer+dct_size as usize].load_be::<u8>();
                 self.pointer += dct_size as usize;
                 if differential & (1 << (dct_size - 1)) != 0 {
                     self.block_data[0] = (predictor + differential) as i32;
@@ -1428,4 +1426,19 @@ mod constants {
          9, 12, 12, 10,  9,  7,  5,  2
     ];
 
+}
+
+#[cfg(test)]
+mod test {
+    use crate::page::mpeg_visualization::{mpeg1::MPEG1, ts::TSDemuxer};
+
+    #[test]
+    fn test() {
+        let raw_bytes_ts = include_bytes!("../../../../video.ts");
+        let mut ts_demuxer = TSDemuxer::from_raw_bytes(raw_bytes_ts.to_vec());
+        let demuxed_bytes = ts_demuxer.parse_packets();
+
+        let mut mpeg1 = MPEG1::from_bytes(demuxed_bytes);
+        mpeg1.decode();
+    }
 }
