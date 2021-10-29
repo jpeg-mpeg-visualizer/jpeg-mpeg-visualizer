@@ -236,7 +236,7 @@ impl MPEG1 {
         self.dc_predictor_cb = 128;
 
         self.quantizer_scale = self.buffer[self.pointer..self.pointer+5].load::<u8>();
-        self.pointer += 1;
+        self.pointer += 5;
 
 
         // Skip over extra information
@@ -255,6 +255,7 @@ impl MPEG1 {
     fn decode_macroblock(&mut self) {
         let mut increment = 0;
         let mut t = self.read_huffman(&constants::MACROBLOCK_ADDRESS_INCREMENT);
+        log!(t);
 
         // Skip macroblock_stuffing
         while t == 34 {
@@ -674,7 +675,7 @@ impl MPEG1 {
             let bit = self.buffer[self.pointer] as usize;
             self.pointer += 1;
             state = code_table[state as usize + bit];
-            if state >= 0 && code_table[state as usize] != 0 { break }
+            if state < 0 || code_table[state as usize] == 0 { break }
         }
         code_table[state as usize + 2]
     }
