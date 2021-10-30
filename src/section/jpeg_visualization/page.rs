@@ -111,8 +111,8 @@ fn draw_block_choice_indicators(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
     image_window: &RawImageWindow,
-    start_x: u32,
-    start_y: u32,
+    start_x: f64,
+    start_y: f64,
 ) {
     // Reset previous block choice indicators
     draw_input_previews(&preview_canvas_map, &image_window);
@@ -124,11 +124,13 @@ fn draw_block_choice_indicators(
         draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
     }
 
-    fn draw_block_choice_indicator_for_canvas(canvas: &ElRef<HtmlCanvasElement>, start_x: u32, start_y: u32) {
+    fn draw_block_choice_indicator_for_canvas(canvas: &ElRef<HtmlCanvasElement>, start_x: f64, start_y: f64) {
         let ctx = canvas_context_2d(&canvas.get().unwrap());
         // Draw rect
         ctx.begin_path();
-        ctx.stroke_rect(start_x as f64, start_y as f64, 8.0 * ZOOM as f64, 16.0);
+        let line_width: f64 = 2.0;
+        ctx.set_line_width(line_width);
+        ctx.stroke_rect(start_x - line_width/2.0, start_y - line_width/2.0, 8.0 * ZOOM as f64 + line_width/2.0, 8.0 * ZOOM as f64 + line_width/2.0);
     }
 }
 
@@ -362,7 +364,6 @@ fn draw_image_recovered(
     let input_image = &image_window.to_rgb_image().to_image();
     let image_diff_canvas = canvas_map.get(&CanvasName::Difference).unwrap();
     let image_diff = get_image_diff(&output_image, &input_image);
-    log(&image_diff);
     draw_scaled_image_default(&image_diff_canvas, &image_diff);
 }
 
@@ -516,16 +517,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         }
         Msg::BlockChosen(x, y, rect_x, rect_y) => {
             if let State::ImageView(ref mut pack) = model.state {
-                let canvas_rect = model.preview_canvas_map.get(&PreviewCanvasName::Original)
-                    .unwrap()
-                    .get()
-                    .unwrap()
-                    .get_bounding_client_rect();
-                let canvas_x = canvas_rect.left();
-                let canvas_y = canvas_rect.top();
-
-                let start_x: u32 = ((x - canvas_x as i32) as u32 / (16 * ZOOM)) * 16;
-                let start_y: u32 = ((y - canvas_y as i32) as u32 / (16 * ZOOM)) * 16;
+                let start_x: f64 = cmp::min(((x - rect_x) - (x - rect_x)%(8 * ZOOM as i32)), ((BLOCK_SIZE - 8) * ZOOM) as i32) as f64;
+                let start_y: f64 = cmp::min(((y - rect_y) - (y - rect_y)%(8 * ZOOM as i32)), ((BLOCK_SIZE - 8) * ZOOM) as i32) as f64;
 
                 draw_block_choice_indicators(
                     &model.canvas_map,

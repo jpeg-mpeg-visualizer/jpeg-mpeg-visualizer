@@ -31,7 +31,7 @@ pub enum Msg {
     ImageLoaded(image::RawImage),
     QualityUpdated(u8),
     PreviewCanvasClicked(i32, i32),
-    BlockChosen(i32, i32, f64, f64),
+    BlockChosen(i32, i32, i32, i32),
 }
 
 // ------ ------

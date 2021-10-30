@@ -97,6 +97,7 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
 
 fn canvas_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>) -> Node<GMsg> {
     let padding = 10;
+    let cloned_canvas = canvas.clone();
     div![
         C!["labeled_canvas_wrapper"],
         label![C!["canvas_label"], &label],
@@ -106,13 +107,13 @@ fn canvas_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>) -> Node<GM
                 At::Width => px(BLOCK_SIZE * ZOOM),
                 At::Height => px(BLOCK_SIZE * ZOOM),
             ],
-            ev(Ev::Click, |event| {
+            ev(Ev::Click, move|event| {
                 let mouse_event: MouseEvent = event.unchecked_into();
-                let canvas_rect = canvas
+                let canvas_rect = cloned_canvas
                     .get()
                     .unwrap()
                     .get_bounding_client_rect();
-                wrap(Msg::BlockChosen(mouse_event.x(), mouse_event.y(), canvas_rect.left(), canvas_rect.top()))
+                wrap(Msg::BlockChosen(mouse_event.x(), mouse_event.y(), canvas_rect.left() as i32, canvas_rect.top() as i32))
             })
         ],
         style![
