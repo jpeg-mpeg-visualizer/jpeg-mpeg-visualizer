@@ -50,7 +50,7 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
         details![
             summary!["YCbCr"],
             canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::YCbCr).unwrap()),
-            canvas_labeled_div("YS", &model.canvas_map.get(&CanvasName::Ys).unwrap()),
+            canvas_labeled_div("Y", &model.canvas_map.get(&CanvasName::Ys).unwrap()),
             canvas_labeled_div("CB", &model.canvas_map.get(&CanvasName::Cbs).unwrap()),
             canvas_labeled_div("CR", &model.canvas_map.get(&CanvasName::Crs).unwrap()),
         ]
@@ -63,7 +63,7 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
         details![
             summary!["DCT Quantized"],
             canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::YCbCrQuant).unwrap()),
-            canvas_labeled_div("YS QUANTIZED", &model.canvas_map.get(&CanvasName::YsQuant).unwrap()),
+            canvas_labeled_div("Y QUANTIZED", &model.canvas_map.get(&CanvasName::YsQuant).unwrap()),
             canvas_labeled_div("CB QUANTIZED", &model.canvas_map.get(&CanvasName::CbsQuant).unwrap()),
             canvas_labeled_div("CR QUANTIZED", &model.canvas_map.get(&CanvasName::CrsQuant).unwrap()),
         ]
@@ -76,7 +76,7 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
         details![
             summary!["YCbCr recovered from quantized DCT"],
             canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::YCbCrRecovered).unwrap()),
-            canvas_labeled_div("YS RECOVERED", &model.canvas_map.get(&CanvasName::YsRecovered).unwrap()),
+            canvas_labeled_div("Y RECOVERED", &model.canvas_map.get(&CanvasName::YsRecovered).unwrap()),
             canvas_labeled_div("CB RECOVERED", &model.canvas_map.get(&CanvasName::CbsRecovered).unwrap()),
             canvas_labeled_div("CR RECOVERED", &model.canvas_map.get(&CanvasName::CrsRecovered).unwrap()),
         ]
