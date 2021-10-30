@@ -50,7 +50,7 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
         details![
             summary!["YCbCr"],
             canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::YCbCr).unwrap()),
-            canvas_labeled_div("Y", &model.canvas_map.get(&CanvasName::Ys).unwrap()),
+            canvas_labeled_div(" Y ", &model.canvas_map.get(&CanvasName::Ys).unwrap()),
             canvas_labeled_div("CB", &model.canvas_map.get(&CanvasName::Cbs).unwrap()),
             canvas_labeled_div("CR", &model.canvas_map.get(&CanvasName::Crs).unwrap()),
         ]

@@ -111,15 +111,11 @@ fn draw_block_choice_indicators(
 
 fn draw_ycbcr(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
-    image: &image::YCbCrImage,
+    pack: &mut ImagePack,
 ) {
-    let canvas_ys = canvas_map.get(&CanvasName::Ys).unwrap();
-    let canvas_cbs = canvas_map.get(&CanvasName::Cbs).unwrap();
-    let canvas_crs = canvas_map.get(&CanvasName::Crs).unwrap();
-
-    let ys = image.to_ys_channel();
-    let cbs = image.to_cbs_channel();
-    let crs = image.to_crs_channel();
+    let ys = pack.ycbcr.to_ys_channel();
+    let cbs = pack.ycbcr.to_cbs_channel();
+    let crs = pack.ycbcr.to_crs_channel();
 
     let ys_image = ys
         .iter()
@@ -160,9 +156,24 @@ fn draw_ycbcr(
         })
         .collect::<Vec<u8>>();
 
-    draw_scaled_image_default(&canvas_ys, &ys_image);
-    draw_scaled_image_default(&canvas_cbs, &cbs_image);
-    draw_scaled_image_default(&canvas_crs, &crs_image);
+    draw_and_fill_content_map(
+        &canvas_map,
+        CanvasName::Ys,
+        pack,
+        ys_image
+    );
+    draw_and_fill_content_map(
+        &canvas_map,
+        CanvasName::Cbs,
+        pack,
+        cbs_image
+    );
+    draw_and_fill_content_map(
+        &canvas_map,
+        CanvasName::Crs,
+        pack,
+        crs_image
+    );
 }
 
 fn draw_dct_quantized(
@@ -239,9 +250,12 @@ fn draw_spatial_channel(
             write_to_image_data(&mut image_data, &spatial.0, u, v);
         }
     }
-    let canvas = canvas_map.get(&canvas_name).unwrap();
-    draw_scaled_image_default(&canvas, &image_data);
-    pack.canvases_content.insert(canvas_name, image_data);
+    draw_and_fill_content_map(
+        &canvas_map,
+        canvas_name,
+        pack,
+        image_data
+    );
 }
 
 fn draw_ycbcr_recovered(
@@ -252,10 +266,6 @@ fn draw_ycbcr_recovered(
     pack: &mut ImagePack,
     quality: u8,
 ) {
-    let canvas_ys_recovered = canvas_map.get(&CanvasName::YsRecovered).unwrap();
-    let canvas_cbs_recovered = canvas_map.get(&CanvasName::CbsRecovered).unwrap();
-    let canvas_crs_recovered = canvas_map.get(&CanvasName::CrsRecovered).unwrap();
-
     let scaled_luminance_quant_table =
         quant::scale_quantization_table(&quant::LUMINANCE_QUANTIZATION_TABLE, quality);
     let scaled_chrominance_quant_table =
@@ -308,9 +318,24 @@ fn draw_ycbcr_recovered(
         })
         .collect::<Vec<u8>>();
 
-    draw_scaled_image_default(&canvas_ys_recovered, &ys_image);
-    draw_scaled_image_default(&canvas_cbs_recovered, &cbs_image);
-    draw_scaled_image_default(&canvas_crs_recovered, &crs_image);
+    draw_and_fill_content_map(
+        &canvas_map,
+        CanvasName::YsRecovered,
+        pack,
+        ys_image
+    );
+    draw_and_fill_content_map(
+        &canvas_map,
+        CanvasName::CbsRecovered,
+        pack,
+        cbs_image
+    );
+    draw_and_fill_content_map(
+        &canvas_map,
+        CanvasName::CrsRecovered,
+        pack,
+        crs_image
+    );
 
     draw_image_recovered(canvas_map, ys, cbs, crs, pack);
 }
@@ -322,7 +347,6 @@ fn draw_image_recovered(
     crs: Vec<u8>,
     pack: &mut ImagePack
 ) {
-    let image_recovered_canvas = canvas_map.get(&CanvasName::ImageRecovered).unwrap();
     let output_image = ys
         .iter()
         .zip(cbs.iter())
@@ -337,13 +361,33 @@ fn draw_image_recovered(
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
-    draw_scaled_image_default(&image_recovered_canvas, &output_image);
+    let input_image = &pack.image_window.to_rgb_image().to_image();
+    let image_diff = get_image_diff(&output_image, &input_image);
+    draw_and_fill_content_map(
+        &canvas_map,
+        CanvasName::ImageRecovered,
+        pack,
+        output_image
+    );
 
     // TODO: Consider optimizing input_image calculation -> instead of to_rgb and then to image, make one method that would do both but in less steps!
-    let input_image = &pack.image_window.to_rgb_image().to_image();
-    let image_diff_canvas = canvas_map.get(&CanvasName::Difference).unwrap();
-    let image_diff = get_image_diff(&output_image, &input_image);
-    draw_scaled_image_default(&image_diff_canvas, &image_diff);
+    draw_and_fill_content_map(
+        &canvas_map,
+        CanvasName::Difference,
+        pack,
+        image_diff
+    );
+}
+
+fn draw_and_fill_content_map(
+    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    canvas_name: CanvasName,
+    pack: &mut ImagePack,
+    image_data: Vec<u8>
+) {
+    let canvas = canvas_map.get(&canvas_name).unwrap();
+    draw_scaled_image_default(&canvas, &image_data);
+    pack.canvases_content.insert(canvas_name, image_data);
 }
 
 fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[i16; 8]; 8], u: usize, v: usize) {
@@ -432,7 +476,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
             draw_input_previews(&model.preview_canvas_map, &image_window);
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
-            draw_ycbcr(&model.canvas_map, &ycbcr);
             let canvases_content: HashMap<CanvasName, Vec<u8>> = HashMap::<CanvasName, Vec<u8>>::new();
             let mut pack: ImagePack = ImagePack {
                 raw_image: raw_image_rc,
@@ -442,6 +485,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 ycbcr,
                 canvases_content
             };
+            draw_ycbcr(&model.canvas_map, &mut pack);
             draw_dct_quantized(&model.canvas_map, &mut pack, 50);
             model.state = State::ImageView(pack);
         }
@@ -482,7 +526,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 pack.ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
 
                 draw_input_previews(&model.preview_canvas_map, &pack.image_window);
-                draw_ycbcr(&model.canvas_map, &pack.ycbcr);
+                draw_ycbcr(&model.canvas_map, pack);
                 draw_dct_quantized(
                     &model.canvas_map,
                     pack,
