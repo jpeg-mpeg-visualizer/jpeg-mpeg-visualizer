@@ -2,7 +2,7 @@ use seed::prelude::web_sys::MouseEvent;
 use seed::prelude::*;
 use seed::*;
 
-use super::model::{CanvasName, PreviewCanvasName, Model, Msg, State};
+use super::model::{CanvasName, Model, Msg, PreviewCanvasName, State};
 use super::page::wrap;
 use crate::graphic_helpers::drag_n_drop::*;
 use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
@@ -39,7 +39,13 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                     wrap(Msg::PreviewCanvasClicked(mouse_event.x(), mouse_event.y()))
                 })
             ],
-            canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::Original).unwrap()),
+            canvas_labeled_div(
+                "INPUT",
+                &model
+                    .preview_canvas_map
+                    .get(&PreviewCanvasName::Original)
+                    .unwrap()
+            ),
         ]
     ]
 }
@@ -49,7 +55,13 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["YCbCr"],
-            canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::YCbCr).unwrap()),
+            canvas_labeled_div(
+                "INPUT",
+                &model
+                    .preview_canvas_map
+                    .get(&PreviewCanvasName::YCbCr)
+                    .unwrap()
+            ),
             canvas_labeled_div(" Y ", &model.canvas_map.get(&CanvasName::Ys).unwrap()),
             canvas_labeled_div("CB", &model.canvas_map.get(&CanvasName::Cbs).unwrap()),
             canvas_labeled_div("CR", &model.canvas_map.get(&CanvasName::Crs).unwrap()),
@@ -62,10 +74,25 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["DCT Quantized"],
-            canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::YCbCrQuant).unwrap()),
-            canvas_labeled_div("Y QUANTIZED", &model.canvas_map.get(&CanvasName::YsQuant).unwrap()),
-            canvas_labeled_div("CB QUANTIZED", &model.canvas_map.get(&CanvasName::CbsQuant).unwrap()),
-            canvas_labeled_div("CR QUANTIZED", &model.canvas_map.get(&CanvasName::CrsQuant).unwrap()),
+            canvas_labeled_div(
+                "INPUT",
+                &model
+                    .preview_canvas_map
+                    .get(&PreviewCanvasName::YCbCrQuant)
+                    .unwrap()
+            ),
+            canvas_labeled_div(
+                "Y QUANTIZED",
+                &model.canvas_map.get(&CanvasName::YsQuant).unwrap()
+            ),
+            canvas_labeled_div(
+                "CB QUANTIZED",
+                &model.canvas_map.get(&CanvasName::CbsQuant).unwrap()
+            ),
+            canvas_labeled_div(
+                "CR QUANTIZED",
+                &model.canvas_map.get(&CanvasName::CrsQuant).unwrap()
+            ),
         ]
     ]
 }
@@ -75,10 +102,25 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["YCbCr recovered from quantized DCT"],
-            canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::YCbCrRecovered).unwrap()),
-            canvas_labeled_div("Y RECOVERED", &model.canvas_map.get(&CanvasName::YsRecovered).unwrap()),
-            canvas_labeled_div("CB RECOVERED", &model.canvas_map.get(&CanvasName::CbsRecovered).unwrap()),
-            canvas_labeled_div("CR RECOVERED", &model.canvas_map.get(&CanvasName::CrsRecovered).unwrap()),
+            canvas_labeled_div(
+                "INPUT",
+                &model
+                    .preview_canvas_map
+                    .get(&PreviewCanvasName::YCbCrRecovered)
+                    .unwrap()
+            ),
+            canvas_labeled_div(
+                "Y RECOVERED",
+                &model.canvas_map.get(&CanvasName::YsRecovered).unwrap()
+            ),
+            canvas_labeled_div(
+                "CB RECOVERED",
+                &model.canvas_map.get(&CanvasName::CbsRecovered).unwrap()
+            ),
+            canvas_labeled_div(
+                "CR RECOVERED",
+                &model.canvas_map.get(&CanvasName::CrsRecovered).unwrap()
+            ),
         ]
     ]
 }
@@ -88,9 +130,21 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["Recovered image and comparison"],
-            canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::ForComparison).unwrap()),
-            canvas_labeled_div("OUTPUT", &model.canvas_map.get(&CanvasName::ImageRecovered).unwrap()),
-            canvas_labeled_div("DIFFERENCE", &model.canvas_map.get(&CanvasName::Difference).unwrap()),
+            canvas_labeled_div(
+                "INPUT",
+                &model
+                    .preview_canvas_map
+                    .get(&PreviewCanvasName::ForComparison)
+                    .unwrap()
+            ),
+            canvas_labeled_div(
+                "OUTPUT",
+                &model.canvas_map.get(&CanvasName::ImageRecovered).unwrap()
+            ),
+            canvas_labeled_div(
+                "DIFFERENCE",
+                &model.canvas_map.get(&CanvasName::Difference).unwrap()
+            ),
         ]
     ]
 }
@@ -107,13 +161,15 @@ fn canvas_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>) -> Node<GM
                 At::Width => px(BLOCK_SIZE * ZOOM),
                 At::Height => px(BLOCK_SIZE * ZOOM),
             ],
-            ev(Ev::Click, move|event| {
+            ev(Ev::Click, move |event| {
                 let mouse_event: MouseEvent = event.unchecked_into();
-                let canvas_rect = cloned_canvas
-                    .get()
-                    .unwrap()
-                    .get_bounding_client_rect();
-                wrap(Msg::BlockChosen(mouse_event.x(), mouse_event.y(), canvas_rect.left() as i32, canvas_rect.top() as i32))
+                let canvas_rect = cloned_canvas.get().unwrap().get_bounding_client_rect();
+                wrap(Msg::BlockChosen(
+                    mouse_event.x(),
+                    mouse_event.y(),
+                    canvas_rect.left() as i32,
+                    canvas_rect.top() as i32,
+                ))
             })
         ],
         style![

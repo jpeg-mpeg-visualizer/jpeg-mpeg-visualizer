@@ -95,24 +95,30 @@ fn draw_block_choice_indicators(
     for (_canvas_name, canvas) in canvas_map {
         draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
     }
-    for(_canvas_name, canvas) in preview_canvas_map {
+    for (_canvas_name, canvas) in preview_canvas_map {
         draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
     }
 
-    fn draw_block_choice_indicator_for_canvas(canvas: &ElRef<HtmlCanvasElement>, start_x: f64, start_y: f64) {
+    fn draw_block_choice_indicator_for_canvas(
+        canvas: &ElRef<HtmlCanvasElement>,
+        start_x: f64,
+        start_y: f64,
+    ) {
         let ctx = canvas_context_2d(&canvas.get().unwrap());
         // Draw rect
         ctx.begin_path();
         let line_width: f64 = 2.0;
         ctx.set_line_width(line_width);
-        ctx.stroke_rect(start_x - line_width/2.0, start_y - line_width/2.0, 8.0 * ZOOM as f64 + line_width/2.0, 8.0 * ZOOM as f64 + line_width/2.0);
+        ctx.stroke_rect(
+            start_x - line_width / 2.0,
+            start_y - line_width / 2.0,
+            8.0 * ZOOM as f64 + line_width / 2.0,
+            8.0 * ZOOM as f64 + line_width / 2.0,
+        );
     }
 }
 
-fn draw_ycbcr(
-    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
-    pack: &mut ImagePack,
-) {
+fn draw_ycbcr(canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>, pack: &mut ImagePack) {
     let ys = pack.ycbcr.to_ys_channel();
     let cbs = pack.ycbcr.to_cbs_channel();
     let crs = pack.ycbcr.to_crs_channel();
@@ -156,24 +162,9 @@ fn draw_ycbcr(
         })
         .collect::<Vec<u8>>();
 
-    draw_and_fill_content_map(
-        &canvas_map,
-        CanvasName::Ys,
-        pack,
-        ys_image
-    );
-    draw_and_fill_content_map(
-        &canvas_map,
-        CanvasName::Cbs,
-        pack,
-        cbs_image
-    );
-    draw_and_fill_content_map(
-        &canvas_map,
-        CanvasName::Crs,
-        pack,
-        crs_image
-    );
+    draw_and_fill_content_map(&canvas_map, CanvasName::Ys, pack, ys_image);
+    draw_and_fill_content_map(&canvas_map, CanvasName::Cbs, pack, cbs_image);
+    draw_and_fill_content_map(&canvas_map, CanvasName::Crs, pack, crs_image);
 }
 
 fn draw_dct_quantized(
@@ -204,7 +195,7 @@ fn draw_dct_quantized(
         ys_block_matrix.height,
         canvas_map,
         CanvasName::YsQuant,
-        pack
+        pack,
     );
     draw_spatial_channel(
         &cbs_quantized.blocks,
@@ -212,7 +203,7 @@ fn draw_dct_quantized(
         cbs_block_matrix.height,
         canvas_map,
         CanvasName::CbsQuant,
-        pack
+        pack,
     );
     draw_spatial_channel(
         &crs_quantized.blocks,
@@ -220,7 +211,7 @@ fn draw_dct_quantized(
         crs_block_matrix.height,
         canvas_map,
         CanvasName::CrsQuant,
-        pack
+        pack,
     );
 
     draw_ycbcr_recovered(
@@ -240,7 +231,7 @@ fn draw_spatial_channel(
     height: usize,
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     canvas_name: CanvasName,
-    pack: &mut ImagePack
+    pack: &mut ImagePack,
 ) {
     let mut image_data = vec![0; (BLOCK_SIZE * BLOCK_SIZE * 4) as usize];
 
@@ -250,12 +241,7 @@ fn draw_spatial_channel(
             write_to_image_data(&mut image_data, &spatial.0, u, v);
         }
     }
-    draw_and_fill_content_map(
-        &canvas_map,
-        canvas_name,
-        pack,
-        image_data
-    );
+    draw_and_fill_content_map(&canvas_map, canvas_name, pack, image_data);
 }
 
 fn draw_ycbcr_recovered(
@@ -318,24 +304,9 @@ fn draw_ycbcr_recovered(
         })
         .collect::<Vec<u8>>();
 
-    draw_and_fill_content_map(
-        &canvas_map,
-        CanvasName::YsRecovered,
-        pack,
-        ys_image
-    );
-    draw_and_fill_content_map(
-        &canvas_map,
-        CanvasName::CbsRecovered,
-        pack,
-        cbs_image
-    );
-    draw_and_fill_content_map(
-        &canvas_map,
-        CanvasName::CrsRecovered,
-        pack,
-        crs_image
-    );
+    draw_and_fill_content_map(&canvas_map, CanvasName::YsRecovered, pack, ys_image);
+    draw_and_fill_content_map(&canvas_map, CanvasName::CbsRecovered, pack, cbs_image);
+    draw_and_fill_content_map(&canvas_map, CanvasName::CrsRecovered, pack, crs_image);
 
     draw_image_recovered(canvas_map, ys, cbs, crs, pack);
 }
@@ -345,7 +316,7 @@ fn draw_image_recovered(
     ys: Vec<u8>,
     cbs: Vec<u8>,
     crs: Vec<u8>,
-    pack: &mut ImagePack
+    pack: &mut ImagePack,
 ) {
     let output_image = ys
         .iter()
@@ -363,27 +334,17 @@ fn draw_image_recovered(
         .collect::<Vec<u8>>();
     let input_image = &pack.image_window.to_rgb_image().to_image();
     let image_diff = get_image_diff(&output_image, &input_image);
-    draw_and_fill_content_map(
-        &canvas_map,
-        CanvasName::ImageRecovered,
-        pack,
-        output_image
-    );
+    draw_and_fill_content_map(&canvas_map, CanvasName::ImageRecovered, pack, output_image);
 
     // TODO: Consider optimizing input_image calculation -> instead of to_rgb and then to image, make one method that would do both but in less steps!
-    draw_and_fill_content_map(
-        &canvas_map,
-        CanvasName::Difference,
-        pack,
-        image_diff
-    );
+    draw_and_fill_content_map(&canvas_map, CanvasName::Difference, pack, image_diff);
 }
 
 fn draw_and_fill_content_map(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     canvas_name: CanvasName,
     pack: &mut ImagePack,
-    image_data: Vec<u8>
+    image_data: Vec<u8>,
 ) {
     let canvas = canvas_map.get(&canvas_name).unwrap();
     draw_scaled_image_default(&canvas, &image_data);
@@ -404,12 +365,12 @@ fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[i16; 8]; 8], u: usi
 
 fn turn_antialiasing_off(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
-    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>
+    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
 ) {
     for (_canvas_name, canvas) in canvas_map {
         turn_antialising_off_for_specific_canvas(&canvas);
     }
-    for(_canvas_name, canvas) in preview_canvas_map {
+    for (_canvas_name, canvas) in preview_canvas_map {
         turn_antialising_off_for_specific_canvas(&canvas);
     }
 
@@ -466,24 +427,22 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::ImageLoaded(raw_image) => {
             turn_antialiasing_off(&model.canvas_map, &model.preview_canvas_map);
-            draw_original_image_preview(
-                &model.original_image_canvas,
-                &raw_image,
-            );
+            draw_original_image_preview(&model.original_image_canvas, &raw_image);
 
             let raw_image_rc = Rc::new(raw_image);
             let image_window =
                 RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
             draw_input_previews(&model.preview_canvas_map, &image_window);
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
-            let canvases_content: HashMap<CanvasName, Vec<u8>> = HashMap::<CanvasName, Vec<u8>>::new();
+            let canvases_content: HashMap<CanvasName, Vec<u8>> =
+                HashMap::<CanvasName, Vec<u8>>::new();
             let mut pack: ImagePack = ImagePack {
                 raw_image: raw_image_rc,
                 image_window,
                 start_x: 0,
                 start_y: 0,
                 ycbcr,
-                canvases_content
+                canvases_content,
             };
             draw_ycbcr(&model.canvas_map, &mut pack);
             draw_dct_quantized(&model.canvas_map, &mut pack, 50);
@@ -527,17 +486,19 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
                 draw_input_previews(&model.preview_canvas_map, &pack.image_window);
                 draw_ycbcr(&model.canvas_map, pack);
-                draw_dct_quantized(
-                    &model.canvas_map,
-                    pack,
-                    model.quality,
-                );
+                draw_dct_quantized(&model.canvas_map, pack, model.quality);
             }
         }
         Msg::BlockChosen(x, y, rect_x, rect_y) => {
             if let State::ImageView(pack) = &model.state {
-                let start_x: f64 = cmp::min((x - rect_x) - (x - rect_x)%(8 * ZOOM as i32), ((BLOCK_SIZE - 8) * ZOOM) as i32) as f64;
-                let start_y: f64 = cmp::min((y - rect_y) - (y - rect_y)%(8 * ZOOM as i32), ((BLOCK_SIZE - 8) * ZOOM) as i32) as f64;
+                let start_x: f64 = cmp::min(
+                    (x - rect_x) - (x - rect_x) % (8 * ZOOM as i32),
+                    ((BLOCK_SIZE - 8) * ZOOM) as i32,
+                ) as f64;
+                let start_y: f64 = cmp::min(
+                    (y - rect_y) - (y - rect_y) % (8 * ZOOM as i32),
+                    ((BLOCK_SIZE - 8) * ZOOM) as i32,
+                ) as f64;
 
                 // Reset previous block choice indicators
                 redraw_ordinary_canvases(&model.canvas_map, &pack.canvases_content);
