@@ -41,7 +41,6 @@ pub enum Msg {
 #[derive(Debug, PartialEq, Eq, Hash, EnumIter)]
 pub enum CanvasName {
     OriginalPreview,
-    Original,
     Ys,
     Cbs,
     Crs,
@@ -56,6 +55,7 @@ pub enum CanvasName {
 }
 #[derive(Debug, PartialEq, Eq, Hash, EnumIter)]
 pub enum PreviewCanvasName {
+    Original,
     YCbCr,
     YCbCrQuant,
     YCbCrRecovered,

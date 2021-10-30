@@ -39,7 +39,8 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                     wrap(Msg::PreviewCanvasClicked(mouse_event.x(), mouse_event.y()))
                 })
             ],
-            div![
+            canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::Original).unwrap()),
+            /*div![
                 C!["scrollable-canvas-wrapper"],
                 el_ref(&model.original_canvas_scrollable_div_wrapper),
                 style![
@@ -52,13 +53,13 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                 ],
                 canvas![
                     C!["original-canvas"],
-                    el_ref(&model.canvas_map.get(&CanvasName::Original).unwrap()),
+                    el_ref(&model.preview_canvas_map.get(&PreviewCanvasName::Original).unwrap()),
                     ev(Ev::Click, |event| {
                         let mouse_event: MouseEvent = event.unchecked_into();
                         wrap(Msg::BlockChosen(mouse_event.x(), mouse_event.y()))
                     })
                 ],
-            ]
+            ]*/
         ]
     ]
 }

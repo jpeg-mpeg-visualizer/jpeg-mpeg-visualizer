@@ -114,7 +114,7 @@ fn draw_block_choice_indicator(
     start_y: u32,
 ) {
     // Reset previous block choice indicator
-    draw_original_image(canvas, image);
+    //draw_original_image(canvas, image);
 
     let canvas = canvas.get().unwrap();
     let ctx = canvas_context_2d(&canvas);
@@ -429,10 +429,10 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 &model.canvas_map.get(&CanvasName::OriginalPreview).unwrap(),
                 &raw_image,
             );
-            draw_original_image(
+            /*draw_original_image(
                 &model.canvas_map.get(&CanvasName::Original).unwrap(),
                 &raw_image,
-            );
+            );*/
 
             let raw_image_rc = Rc::new(raw_image);
             let image_window =
@@ -482,8 +482,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     (pack.raw_image.height() - BLOCK_SIZE) as i32,
                 ) as u32;
 
-                let start_x: u32 = image_x * ZOOM;
-                let start_y: u32 = image_y * ZOOM;
+                /*let start_x: u32 = image_x * ZOOM;
+                let start_y: u32 = image_y * ZOOM;*/
 
                 pack.image_window.start_x = image_x;
                 pack.image_window.start_y = image_y;
@@ -499,18 +499,18 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     model.quality,
                 );
 
-                model
+                /*model
                     .original_canvas_scrollable_div_wrapper
                     .get()
                     .unwrap()
-                    .scroll_to_with_x_and_y(start_x.into(), start_y.into());
+                    .scroll_to_with_x_and_y(start_x.into(), start_y.into());*/
             }
         }
         Msg::BlockChosen(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
                 let canvas_rect = &model
-                    .canvas_map
-                    .get(&CanvasName::Original)
+                    .preview_canvas_map
+                    .get(&PreviewCanvasName::Original)
                     .unwrap()
                     .get()
                     .unwrap()
@@ -521,12 +521,12 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 let start_x: u32 = ((x - canvas_x as i32) as u32 / (16 * ZOOM)) * 16;
                 let start_y: u32 = ((y - canvas_y as i32) as u32 / (16 * ZOOM)) * 16;
 
-                draw_block_choice_indicator(
+                /*draw_block_choice_indicator(
                     &model.canvas_map.get(&CanvasName::Original).unwrap(),
                     &pack.raw_image,
                     start_x,
                     start_y,
-                );
+                );*/
             }
         }
     }
