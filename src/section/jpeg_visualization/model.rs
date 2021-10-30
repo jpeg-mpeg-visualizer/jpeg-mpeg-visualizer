@@ -40,7 +40,6 @@ pub enum Msg {
 
 #[derive(Debug, PartialEq, Eq, Hash, EnumIter)]
 pub enum CanvasName {
-    OriginalPreview,
     Ys,
     Cbs,
     Crs,
@@ -70,7 +69,7 @@ pub struct Model {
     pub file_chooser_zone_active: bool,
     pub base_url: Url,
     pub state: State,
-    pub original_canvas_scrollable_div_wrapper: ElRef<HtmlDivElement>,
+    pub original_image_canvas: ElRef<HtmlCanvasElement>,
     pub canvas_map: HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     pub preview_canvas_map: HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
 

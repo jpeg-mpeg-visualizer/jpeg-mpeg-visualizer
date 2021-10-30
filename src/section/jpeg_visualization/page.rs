@@ -38,9 +38,9 @@ pub fn init(url: Url) -> Option<Model> {
         file_chooser_zone_active: false,
         base_url,
         state: State::FileChooser,
+        original_image_canvas: ElRef::<HtmlCanvasElement>::default(),
         canvas_map,
         preview_canvas_map,
-        original_canvas_scrollable_div_wrapper: ElRef::<HtmlDivElement>::default(),
         quality: 50,
     })
 }
@@ -435,13 +435,9 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::ImageLoaded(raw_image) => {
             turn_antialiasing_off(&model.canvas_map, &model.preview_canvas_map);
             draw_original_image_preview(
-                &model.canvas_map.get(&CanvasName::OriginalPreview).unwrap(),
+                &model.original_image_canvas,
                 &raw_image,
             );
-            /*draw_original_image(
-                &model.canvas_map.get(&CanvasName::Original).unwrap(),
-                &raw_image,
-            );*/
 
             let raw_image_rc = Rc::new(raw_image);
             let image_window =
@@ -467,9 +463,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::PreviewCanvasClicked(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
                 let canvas_rect = &model
-                    .canvas_map
-                    .get(&CanvasName::OriginalPreview)
-                    .unwrap()
+                    .original_image_canvas
                     .get()
                     .unwrap()
                     .get_bounding_client_rect();
@@ -491,9 +485,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     (pack.raw_image.height() - BLOCK_SIZE) as i32,
                 ) as u32;
 
-                /*let start_x: u32 = image_x * ZOOM;
-                let start_y: u32 = image_y * ZOOM;*/
-
                 pack.image_window.start_x = image_x;
                 pack.image_window.start_y = image_y;
 
@@ -507,12 +498,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &pack.image_window,
                     model.quality,
                 );
-
-                /*model
-                    .original_canvas_scrollable_div_wrapper
-                    .get()
-                    .unwrap()
-                    .scroll_to_with_x_and_y(start_x.into(), start_y.into());*/
             }
         }
         Msg::BlockChosen(x, y, rect_x, rect_y) => {

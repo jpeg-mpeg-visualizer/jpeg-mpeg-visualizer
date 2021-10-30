@@ -29,7 +29,7 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                 }
             ],
             canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::OriginalPreview).unwrap()),
+                el_ref(&model.original_image_canvas),
                 attrs![
                     At::Width => px(BLOCK_SIZE * ZOOM),
                     At::Height => px(BLOCK_SIZE * ZOOM),
