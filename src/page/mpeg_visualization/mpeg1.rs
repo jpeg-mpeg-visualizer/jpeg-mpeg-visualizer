@@ -449,19 +449,25 @@ impl MPEG1 {
         loop {
             let mut run = 0;
             let coeff = self.read_huffman(&constants::DCT_COEFF);
-
-            if (coeff == 0x0001) && (n > 0) && !self.buffer[self.pointer] {
+            
+            let should_break = if coeff == 0x0001 && n > 0 {
                 self.pointer += 1;
+                !self.buffer[self.pointer - 1]
+            } else { 
+                false
+            };
+
+            if should_break {
                 break;
             }
             if coeff == 0xffff {
-                self.pointer += 1;
-                run = self.buffer[self.pointer..self.pointer+6].load::<u8>();
-                level = self.buffer[self.pointer+6..self.pointer+6+8].load::<u8>() as i32;
+                run = self.buffer[self.pointer..self.pointer+6].load_be::<u8>();
+                level = self.buffer[self.pointer+6..self.pointer+6+8].load_be::<u8>() as i32;
                 self.pointer += 6+8;
                 
                 if level == 0 {
                     level = self.buffer[self.pointer..self.pointer+8].load::<u8>() as i32;
+                    self.pointer += 8;
                 } else if level == 128 {
                     let tmp = self.buffer[self.pointer..self.pointer+8].load::<u8>() as i32;
                     self.pointer += 8;
@@ -1434,9 +1440,13 @@ mod test {
 
     #[test]
     fn test() {
-        let raw_bytes_ts = include_bytes!("../../../../video.ts");
+        let raw_bytes_ts = include_bytes!("../../../../bbb_720_mpeg1.ts");
         let mut ts_demuxer = TSDemuxer::from_raw_bytes(raw_bytes_ts.to_vec());
         let demuxed_bytes = ts_demuxer.parse_packets();
+        
+        // dbg!(demuxed_bytes[20481]);
+        // dbg!(demuxed_bytes[20482]);
+        // dbg!(demuxed_bytes[20483]);
 
         let mut mpeg1 = MPEG1::from_bytes(demuxed_bytes);
         mpeg1.decode();
