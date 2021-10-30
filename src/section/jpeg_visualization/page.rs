@@ -439,8 +439,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             let mut pack: ImagePack = ImagePack {
                 raw_image: raw_image_rc,
                 image_window,
-                start_x: 0,
-                start_y: 0,
                 ycbcr,
                 canvases_content,
             };
