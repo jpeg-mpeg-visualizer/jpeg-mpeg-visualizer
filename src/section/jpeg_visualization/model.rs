@@ -9,6 +9,8 @@ pub struct ImagePack {
     pub raw_image: Rc<image::RawImage>,
     pub image_window: image::RawImageWindow,
     pub ycbcr: image::YCbCrImage,
+    pub chosen_block_x: f64,
+    pub chosen_block_y: f64,
     pub canvases_content: HashMap<CanvasName, Vec<u8>>,
 }
 

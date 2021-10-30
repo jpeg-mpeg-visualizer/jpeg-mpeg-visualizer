@@ -86,36 +86,50 @@ fn draw_original_image_preview(
     );
 }
 
-fn draw_block_choice_indicators(
+fn draw_block_choice_indicator_for_canvas(
+    canvas: &ElRef<HtmlCanvasElement>,
+    start_x: f64,
+    start_y: f64,
+) {
+    let ctx = canvas_context_2d(&canvas.get().unwrap());
+    // Draw rect
+    ctx.begin_path();
+    let line_width: f64 = 2.0;
+    ctx.set_line_width(line_width);
+    ctx.stroke_rect(
+        start_x - line_width / 2.0,
+        start_y - line_width / 2.0,
+        8.0 * ZOOM as f64 + line_width / 2.0,
+        8.0 * ZOOM as f64 + line_width / 2.0,
+    );
+}
+fn draw_block_choice_indicators_for_ordinary(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
-    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
     start_x: f64,
     start_y: f64,
 ) {
     for (_canvas_name, canvas) in canvas_map {
         draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
     }
+}
+fn draw_block_choice_indicators_for_preview(
+    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
+    start_x: f64,
+    start_y: f64,
+) {
     for (_canvas_name, canvas) in preview_canvas_map {
         draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
     }
+}
 
-    fn draw_block_choice_indicator_for_canvas(
-        canvas: &ElRef<HtmlCanvasElement>,
-        start_x: f64,
-        start_y: f64,
-    ) {
-        let ctx = canvas_context_2d(&canvas.get().unwrap());
-        // Draw rect
-        ctx.begin_path();
-        let line_width: f64 = 2.0;
-        ctx.set_line_width(line_width);
-        ctx.stroke_rect(
-            start_x - line_width / 2.0,
-            start_y - line_width / 2.0,
-            8.0 * ZOOM as f64 + line_width / 2.0,
-            8.0 * ZOOM as f64 + line_width / 2.0,
-        );
-    }
+fn draw_block_choice_indicators(
+    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
+    start_x: f64,
+    start_y: f64,
+) {
+    draw_block_choice_indicators_for_ordinary(&canvas_map, start_x, start_y);
+    draw_block_choice_indicators_for_preview(&preview_canvas_map, start_x, start_y);
 }
 
 fn draw_ycbcr(canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>, pack: &mut ImagePack) {
@@ -440,6 +454,9 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 raw_image: raw_image_rc,
                 image_window,
                 ycbcr,
+                // -1.0 meaning nothing is chosen
+                chosen_block_x: -1.0,
+                chosen_block_y: -1.0,
                 canvases_content,
             };
             draw_ycbcr(&model.canvas_map, &mut pack);
@@ -450,6 +467,11 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             if let State::ImageView(ref mut pack) = model.state {
                 model.quality = quality;
                 draw_dct_quantized(&model.canvas_map, pack, quality);
+                draw_block_choice_indicators_for_ordinary(
+                    &model.canvas_map,
+                    pack.chosen_block_x,
+                    pack.chosen_block_y,
+                );
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
@@ -479,6 +501,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
                 pack.image_window.start_x = image_x;
                 pack.image_window.start_y = image_y;
+                pack.chosen_block_x = -1.0;
+                pack.chosen_block_y = -1.0;
 
                 pack.ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
 
@@ -488,7 +512,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             }
         }
         Msg::BlockChosen(x, y, rect_x, rect_y) => {
-            if let State::ImageView(pack) = &model.state {
+            if let State::ImageView(ref mut pack) = model.state {
                 let start_x: f64 = cmp::min(
                     (x - rect_x) - (x - rect_x) % (8 * ZOOM as i32),
                     ((BLOCK_SIZE - 8) * ZOOM) as i32,
@@ -508,6 +532,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     start_x,
                     start_y,
                 );
+                pack.chosen_block_x = start_x;
+                pack.chosen_block_y = start_y;
             }
         }
     }
