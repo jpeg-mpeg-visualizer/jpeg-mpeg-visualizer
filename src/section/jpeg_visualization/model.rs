@@ -40,8 +40,8 @@ pub enum Msg {
 
 #[derive(Debug, PartialEq, Eq, Hash, EnumIter)]
 pub enum CanvasName {
-    Original,
     OriginalPreview,
+    Original,
     Ys,
     Cbs,
     Crs,
@@ -52,8 +52,14 @@ pub enum CanvasName {
     CbsRecovered,
     CrsRecovered,
     ImageRecovered,
-    ImagePreviewForComparison,
     Difference,
+}
+#[derive(Debug, PartialEq, Eq, Hash, EnumIter)]
+pub enum PreviewCanvasName {
+    YCbCr,
+    YCbCrQuant,
+    YCbCrRecovered,
+    ForComparison,
 }
 
 // ------ ------
@@ -66,6 +72,7 @@ pub struct Model {
     pub state: State,
     pub original_canvas_scrollable_div_wrapper: ElRef<HtmlDivElement>,
     pub canvas_map: HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    pub preview_canvas_map: HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
 
     pub quality: u8,
 }

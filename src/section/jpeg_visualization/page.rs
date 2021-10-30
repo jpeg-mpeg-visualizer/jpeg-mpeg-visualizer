@@ -29,12 +29,17 @@ pub fn init(url: Url) -> Option<Model> {
     for canvas_name in CanvasName::iter() {
         canvas_map.insert(canvas_name, ElRef::<HtmlCanvasElement>::default());
     }
+    let mut preview_canvas_map = HashMap::<PreviewCanvasName, ElRef<HtmlCanvasElement>>::new();
+    for canvas_name in PreviewCanvasName::iter() {
+        preview_canvas_map.insert(canvas_name, ElRef::<HtmlCanvasElement>::default());
+    }
 
     Some(Model {
         file_chooser_zone_active: false,
         base_url,
         state: State::FileChooser,
         canvas_map,
+        preview_canvas_map,
         original_canvas_scrollable_div_wrapper: ElRef::<HtmlDivElement>::default(),
         quality: 50,
     })
@@ -178,7 +183,7 @@ fn draw_ycbcr(
 fn draw_dct_quantized(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     image: &image::YCbCrImage,
-    image_window: &RawImageWindow,
+    image_window : &RawImageWindow,
     quality: u8,
 ) {
     let canvas_ys_quant = canvas_map.get(&CanvasName::YsQuant).unwrap();
@@ -255,7 +260,7 @@ fn draw_ycbcr_recovered(
     ys_quantized: &BlockMatrix,
     cbs_quantized: &BlockMatrix,
     crs_quantized: &BlockMatrix,
-    image_window: &RawImageWindow,
+    image_window : &RawImageWindow,
     quality: u8,
 ) {
     let canvas_ys_recovered = canvas_map.get(&CanvasName::YsRecovered).unwrap();
@@ -326,14 +331,8 @@ fn draw_image_recovered(
     ys: Vec<u8>,
     cbs: Vec<u8>,
     crs: Vec<u8>,
-    image_window: &RawImageWindow,
+    image_window : &RawImageWindow
 ) {
-    let image_preview_for_comparison_canvas = canvas_map
-        .get(&CanvasName::ImagePreviewForComparison)
-        .unwrap();
-    let input_image = &image_window.to_rgb_image().to_image();
-    draw_scaled_image_default(&image_preview_for_comparison_canvas, &input_image);
-
     let image_recovered_canvas = canvas_map.get(&CanvasName::ImageRecovered).unwrap();
     let output_image = ys
         .iter()
@@ -351,6 +350,8 @@ fn draw_image_recovered(
         .collect::<Vec<u8>>();
     draw_scaled_image_default(&image_recovered_canvas, &output_image);
 
+    // TODO: Consider optimizing input_image calculation -> instead of to_rgb and then to image, make one method that would do both but in less steps!
+    let input_image = &image_window.to_rgb_image().to_image();
     let image_diff_canvas = canvas_map.get(&CanvasName::Difference).unwrap();
     let image_diff = get_image_diff(&output_image, &input_image);
     log(&image_diff);
@@ -369,14 +370,31 @@ fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[i16; 8]; 8], u: usi
     }
 }
 
-fn turn_antialiasing_off(canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>) {
+fn turn_antialiasing_off(
+    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>
+) {
     for (_canvas_name, canvas) in canvas_map {
-        turn_antialising_off_for_specific_canvas(canvas)
+        turn_antialising_off_for_specific_canvas(&canvas);
+    }
+    for(_canvas_name, canvas) in preview_canvas_map {
+        turn_antialising_off_for_specific_canvas(&canvas);
     }
 
     fn turn_antialising_off_for_specific_canvas(canvas: &ElRef<HtmlCanvasElement>) {
         let ctx = canvas_context_2d(&canvas.get().unwrap());
         ctx.set_image_smoothing_enabled(false);
+    }
+}
+
+fn draw_input_previews(
+    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
+    image_window: &RawImageWindow,
+) {
+    // TODO: Consider optimizing input_image calculation -> instead of to_rgb and then to image, make one method that would do both but in less steps!
+    let input_image = &image_window.to_rgb_image().to_image();
+    for (_canvas_name, canvas) in preview_canvas_map {
+        draw_scaled_image_default(&canvas, &input_image);
     }
 }
 
@@ -406,7 +424,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserDragStarted => model.file_chooser_zone_active = true,
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::ImageLoaded(raw_image) => {
-            turn_antialiasing_off(&model.canvas_map);
+            turn_antialiasing_off(&model.canvas_map, &model.preview_canvas_map);
             draw_original_image_preview(
                 &model.canvas_map.get(&CanvasName::OriginalPreview).unwrap(),
                 &raw_image,
@@ -419,6 +437,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             let raw_image_rc = Rc::new(raw_image);
             let image_window =
                 RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
+            draw_input_previews(&model.preview_canvas_map, &image_window);
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
             draw_ycbcr(&model.canvas_map, &ycbcr);
             draw_dct_quantized(&model.canvas_map, &ycbcr, &image_window, 50);
@@ -470,6 +489,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 pack.image_window.start_y = image_y;
 
                 pack.ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
+
+                draw_input_previews(&model.preview_canvas_map, &pack.image_window);
                 draw_ycbcr(&model.canvas_map, &pack.ycbcr);
                 draw_dct_quantized(
                     &model.canvas_map,
