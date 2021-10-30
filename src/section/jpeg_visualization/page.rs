@@ -107,21 +107,29 @@ fn draw_original_image(original_image_canvas: &ElRef<HtmlCanvasElement>, image: 
     );
 }
 
-fn draw_block_choice_indicator(
-    canvas: &ElRef<HtmlCanvasElement>,
-    image: &image::RawImage,
+fn draw_block_choice_indicators(
+    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
+    image_window: &RawImageWindow,
     start_x: u32,
     start_y: u32,
 ) {
-    // Reset previous block choice indicator
-    //draw_original_image(canvas, image);
+    // Reset previous block choice indicators
+    draw_input_previews(&preview_canvas_map, &image_window);
 
-    let canvas = canvas.get().unwrap();
-    let ctx = canvas_context_2d(&canvas);
-    // Draw rect
-    ctx.begin_path();
-    ctx.rect(start_x.into(), start_y.into(), 16.0_f64, 16.0_f64);
-    ctx.stroke();
+    for (_canvas_name, canvas) in canvas_map {
+        draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
+    }
+    for(_canvas_name, canvas) in preview_canvas_map {
+        draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
+    }
+
+    fn draw_block_choice_indicator_for_canvas(canvas: &ElRef<HtmlCanvasElement>, start_x: u32, start_y: u32) {
+        let ctx = canvas_context_2d(&canvas.get().unwrap());
+        // Draw rect
+        ctx.begin_path();
+        ctx.stroke_rect(start_x as f64, start_y as f64, 8.0 * ZOOM as f64, 16.0);
+    }
 }
 
 fn draw_ycbcr(
@@ -506,11 +514,9 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     .scroll_to_with_x_and_y(start_x.into(), start_y.into());*/
             }
         }
-        Msg::BlockChosen(x, y) => {
+        Msg::BlockChosen(x, y, rect_x, rect_y) => {
             if let State::ImageView(ref mut pack) = model.state {
-                let canvas_rect = &model
-                    .preview_canvas_map
-                    .get(&PreviewCanvasName::Original)
+                let canvas_rect = model.preview_canvas_map.get(&PreviewCanvasName::Original)
                     .unwrap()
                     .get()
                     .unwrap()
@@ -521,12 +527,13 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 let start_x: u32 = ((x - canvas_x as i32) as u32 / (16 * ZOOM)) * 16;
                 let start_y: u32 = ((y - canvas_y as i32) as u32 / (16 * ZOOM)) * 16;
 
-                /*draw_block_choice_indicator(
-                    &model.canvas_map.get(&CanvasName::Original).unwrap(),
-                    &pack.raw_image,
+                draw_block_choice_indicators(
+                    &model.canvas_map,
+                    &model.preview_canvas_map,
+                    &pack.image_window,
                     start_x,
                     start_y,
-                );*/
+                );
             }
         }
     }

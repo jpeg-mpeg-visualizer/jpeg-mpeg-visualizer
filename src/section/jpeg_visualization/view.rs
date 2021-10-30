@@ -40,26 +40,6 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                 })
             ],
             canvas_labeled_div("INPUT", &model.preview_canvas_map.get(&PreviewCanvasName::Original).unwrap()),
-            /*div![
-                C!["scrollable-canvas-wrapper"],
-                el_ref(&model.original_canvas_scrollable_div_wrapper),
-                style![
-                    St::MaxWidth => px(BLOCK_SIZE * ZOOM),
-                    St::MaxHeight => px(BLOCK_SIZE * ZOOM),
-                ],
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
-                ],
-                canvas![
-                    C!["original-canvas"],
-                    el_ref(&model.preview_canvas_map.get(&PreviewCanvasName::Original).unwrap()),
-                    ev(Ev::Click, |event| {
-                        let mouse_event: MouseEvent = event.unchecked_into();
-                        wrap(Msg::BlockChosen(mouse_event.x(), mouse_event.y()))
-                    })
-                ],
-            ]*/
         ]
     ]
 }
@@ -125,7 +105,15 @@ fn canvas_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>) -> Node<GM
             attrs![
                 At::Width => px(BLOCK_SIZE * ZOOM),
                 At::Height => px(BLOCK_SIZE * ZOOM),
-            ]
+            ],
+            ev(Ev::Click, |event| {
+                let mouse_event: MouseEvent = event.unchecked_into();
+                let canvas_rect = canvas
+                    .get()
+                    .unwrap()
+                    .get_bounding_client_rect();
+                wrap(Msg::BlockChosen(mouse_event.x(), mouse_event.y(), canvas_rect.left(), canvas_rect.top()))
+            })
         ],
         style![
             St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
