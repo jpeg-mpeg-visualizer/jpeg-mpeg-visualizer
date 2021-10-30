@@ -67,27 +67,9 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["YCbCr"],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::Ys).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
-                ]
-            ],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::Cbs).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
-                ]
-            ],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::Crs).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
-                ]
-            ]
+            canvas_labeled_div("YS", &CanvasName::Ys, &model),
+            canvas_labeled_div("CB", &CanvasName::Cbs, &model),
+            canvas_labeled_div("CR", &CanvasName::Crs, &model),
         ]
     ]
 }
@@ -97,27 +79,9 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["DCT Quantized"],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::YsQuant).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
-                ]
-            ],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::CbsQuant).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
-                ]
-            ],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::CrsQuant).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
-                ]
-            ]
+            canvas_labeled_div("YS QUANTIZED", &CanvasName::YsQuant, &model),
+            canvas_labeled_div("CB QUANTIZED", &CanvasName::CbsQuant, &model),
+            canvas_labeled_div("CR QUANTIZED", &CanvasName::CrsQuant, &model),
         ]
     ]
 }
@@ -127,84 +91,39 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["YCbCr recovered from quantized DCT"],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::YsRecovered).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
-                ]
-            ],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::CbsRecovered).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
-                ]
-            ],
-            canvas![
-                el_ref(&model.canvas_map.get(&CanvasName::CrsRecovered).unwrap()),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
-                ]
-            ]
+            canvas_labeled_div("YS RECOVERED", &CanvasName::YsRecovered, &model),
+            canvas_labeled_div("CB RECOVERED", &CanvasName::CbsRecovered, &model),
+            canvas_labeled_div("CR RECOVERED", &CanvasName::CrsRecovered, &model),
         ]
     ]
 }
 
 fn view_image_recovered(model: &Model) -> Node<GMsg> {
-    let padding = 10;
     div![
         C!["image_view"],
         details![
             summary!["Recovered image and comparison"],
-            div![
-                C!["labeled_canvas_wrapper"],
-                label![C!["canvas_label"], "OUTPUT"],
-                canvas![
-                    el_ref(&model.canvas_map.get(&CanvasName::ImageRecovered).unwrap()),
-                    attrs![
-                        At::Width => px(BLOCK_SIZE * ZOOM),
-                        At::Height => px(BLOCK_SIZE * ZOOM),
-                    ]
-                ],
-                style![
-                    St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
-                ]
-            ],
-            div![
-                C!["labeled_canvas_wrapper"],
-                label![C!["canvas_label"], "INPUT"],
-                canvas![
-                    el_ref(
-                        &model
-                            .canvas_map
-                            .get(&CanvasName::ImagePreviewForComparison)
-                            .unwrap()
-                    ),
-                    attrs![
-                        At::Width => px(BLOCK_SIZE * ZOOM),
-                        At::Height => px(BLOCK_SIZE * ZOOM),
-                    ]
-                ],
-                style![
-                    St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
-                ]
-            ],
-            div![
-                C!["labeled_canvas_wrapper"],
-                label![C!["canvas_label"], "DIFFERENCE"],
-                canvas![
-                    el_ref(&model.canvas_map.get(&CanvasName::Difference).unwrap()),
-                    attrs![
-                        At::Width => px(BLOCK_SIZE * ZOOM),
-                        At::Height => px(BLOCK_SIZE * ZOOM),
-                    ]
-                ],
-                style![
-                    St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
-                ]
-            ],
+            canvas_labeled_div("INPUT", &CanvasName::ImagePreviewForComparison, &model),
+            canvas_labeled_div("OUTPUT", &CanvasName::ImageRecovered, &model),
+            canvas_labeled_div("DIFFERENCE", &CanvasName::Difference, &model),
+        ]
+    ]
+}
+
+fn canvas_labeled_div(label: &str, canvas_id: &CanvasName, model: &Model) -> Node<GMsg> {
+    let padding = 10;
+    div![
+        C!["labeled_canvas_wrapper"],
+        label![C!["canvas_label"], &label],
+        canvas![
+            el_ref(&model.canvas_map.get(&canvas_id).unwrap()),
+            attrs![
+                At::Width => px(BLOCK_SIZE * ZOOM),
+                At::Height => px(BLOCK_SIZE * ZOOM),
+            ]
+        ],
+        style![
+            St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
         ]
     ]
 }
