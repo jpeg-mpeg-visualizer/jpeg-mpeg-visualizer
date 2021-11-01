@@ -156,22 +156,22 @@ impl MPEG1 {
             self.init_buffers(width, height);
         }
 
-        let load_intra_quantizer_matrix = self.buffer[self.pointer..self.pointer+1].load::<u8>();
+        let load_intra_quantizer_matrix = self.buffer[self.pointer..self.pointer+1].load_be::<u8>();
         self.pointer += 1;
 
         if load_intra_quantizer_matrix == 1 {
             for i in 0..64 {
-                self.intra_quant_matrix[constants::ZIG_ZAG[i]] = self.buffer[self.pointer..self.pointer+8].load::<u8>(); 
+                self.intra_quant_matrix[constants::ZIG_ZAG[i]] = self.buffer[self.pointer..self.pointer+8].load_be::<u8>(); 
                 self.pointer += 8;
             } 
         }
 
-        let load_non_intra_quantizer_matrix = self.buffer[self.pointer..self.pointer+1].load::<u8>();
+        let load_non_intra_quantizer_matrix = self.buffer[self.pointer..self.pointer+1].load_be::<u8>();
         self.pointer += 1;
 
         if load_non_intra_quantizer_matrix == 1 {
             for i in 0..64 {
-                self.non_intra_quant_matrix[constants::ZIG_ZAG[i]] = self.buffer[self.pointer..self.pointer+8].load::<u8>(); 
+                self.non_intra_quant_matrix[constants::ZIG_ZAG[i]] = self.buffer[self.pointer..self.pointer+8].load_be::<u8>(); 
                 self.pointer += 8;
             } 
         }
@@ -188,7 +188,7 @@ impl MPEG1 {
         // Skip over temporal reference
         self.pointer += 10;
         
-        self.picture_type = self.buffer[self.pointer..self.pointer+3].load::<u8>();
+        self.picture_type = self.buffer[self.pointer..self.pointer+3].load_be::<u8>();
         
         // Skip over VBV buffer delay
         self.pointer += 3 + 16;
@@ -198,7 +198,7 @@ impl MPEG1 {
 
         if self.picture_type == constants::PICTURE_TYPE_PREDICTIVE {
             self.full_pel_forward = self.buffer[self.pointer];
-            let forward_f_code = self.buffer[self.pointer+1..self.pointer+1+3].load::<u8>();
+            let forward_f_code = self.buffer[self.pointer+1..self.pointer+1+3].load_be::<u8>();
             self.pointer += 4;
             
             self.forward_r_size = forward_f_code as u32 - 1;
@@ -235,7 +235,7 @@ impl MPEG1 {
         self.dc_predictor_cr = 128;
         self.dc_predictor_cb = 128;
 
-        self.quantizer_scale = self.buffer[self.pointer..self.pointer+5].load::<u8>();
+        self.quantizer_scale = self.buffer[self.pointer..self.pointer+5].load_be::<u8>();
         self.pointer += 5;
 
 
@@ -310,7 +310,7 @@ impl MPEG1 {
         let macroblock_mot_fw = macroblock_type & 0b01000 != 0;
 
         if macroblock_type & 0b10000 != 0 {
-            self.quantizer_scale = self.buffer[self.pointer..self.pointer+5].load::<u8>();
+            self.quantizer_scale = self.buffer[self.pointer..self.pointer+5].load_be::<u8>();
             self.pointer += 5;
         }
         
@@ -466,10 +466,10 @@ impl MPEG1 {
                 self.pointer += 6+8;
                 
                 if level == 0 {
-                    level = self.buffer[self.pointer..self.pointer+8].load::<u8>() as i32;
+                    level = self.buffer[self.pointer..self.pointer+8].load_be::<u8>() as i32;
                     self.pointer += 8;
                 } else if level == 128 {
-                    let tmp = self.buffer[self.pointer..self.pointer+8].load::<u8>() as i32;
+                    let tmp = self.buffer[self.pointer..self.pointer+8].load_be::<u8>() as i32;
                     self.pointer += 8;
                     level = tmp - 256;
                 } else if level > 128 {
