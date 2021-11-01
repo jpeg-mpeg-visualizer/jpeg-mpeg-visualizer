@@ -11,12 +11,16 @@ pub fn init(_url: Url) -> Option<Model> {
         state: State::ChoosingFile,
         hello: 1,
         video_stream_length: 0,
+        mpeg1: None,
+        renderer: None,
+        canvas: ElRef::<_>::default(),
     })
 }
 
 pub fn view(model: &Model) -> Node<GMsg> {
     match &model.state {
         State::ChoosingFile => view_file_chooser(model),
+        State::DisplayingVideo => view_video_player(model),
     }
 }
 
@@ -106,6 +110,17 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
     ]
 }
 
+pub fn view_video_player(model: &Model) -> Node<GMsg> {
+    div![
+        canvas![
+            el_ref(&model.canvas),
+            ev(Ev::Click, |event| {
+                wrap(Msg::PlayerClicked)
+            })
+        ]
+    ]
+}
+
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::FileChooserLoadVideo(file) => {
@@ -120,9 +135,17 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::FileChooserDragStarted => model.file_chooser_zone_active = true,
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::VideoLoaded(video_stream) => {
-            model.video_stream_length = video_stream.len();
-            let mut mpeg1 = super::mpeg1::MPEG1::from_bytes(video_stream);
-            mpeg1.decode();
+            model.state = State::DisplayingVideo;
+            let mpeg1 = super::mpeg1::MPEG1::from_bytes(video_stream);
+            let renderer = super::renderer::Renderer::new(&model.canvas);
+            model.mpeg1 = Some(mpeg1);
+            model.renderer = Some(renderer);
+        }
+        Msg::PlayerClicked => {
+            if let Some((mpeg1, renderer)) = model.mpeg1.as_mut().zip(model.renderer.as_mut()) {
+                let decoded_frame = mpeg1.decode();
+                renderer.render_frame(decoded_frame);
+            }
         }
     }
 }
