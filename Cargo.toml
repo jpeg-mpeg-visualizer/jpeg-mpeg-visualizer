@@ -18,6 +18,34 @@ bitvec = "0.22.3"
 strum = "0.22.0"
 strum_macros = "0.22"
 
+#plots support
+plotters = "0.3.1"
+plotters-canvas = "0.3.0"
+
 [dependencies.web-sys]
 version = "0.3.50"
-features = [ "Window", "Document", "DomRect", "HtmlElement", "Element", "File", "FileReader", "HtmlImageElement", "ProgressEvent", "ImageData", "CanvasRenderingContext2d", "HtmlCanvasElement", "OffscreenCanvas", "HtmlDivElement" ]
+features = [
+    "Window",
+    "Document",
+    "DomRect",
+    "HtmlElement",
+    "Element",
+    "File",
+    "FileReader",
+    "HtmlImageElement",
+    "ProgressEvent",
+    "ImageData",
+    "CanvasRenderingContext2d",
+    "AudioContext",
+    "AudioBuffer",
+    "HtmlCanvasElement",
+    "HtmlAudioElement",
+    "HtmlMediaElement",
+    "AudioContextOptions",
+    "OfflineAudioContext",
+    "HtmlButtonElement",
+    "OffscreenCanvas",
+    "AudioBufferSourceNode",
+    "GainNode",
+    "AudioDestinationNode",
+    "HtmlDivElement" ]

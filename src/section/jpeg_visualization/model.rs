@@ -4,14 +4,14 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use strum_macros::EnumIter;
 use web_sys::HtmlCanvasElement;
-use web_sys::HtmlDivElement;
 
 pub struct ImagePack {
     pub raw_image: Rc<image::RawImage>,
     pub image_window: image::RawImageWindow,
-    pub start_x: u32,
-    pub start_y: u32,
     pub ycbcr: image::YCbCrImage,
+    pub chosen_block_x: f64,
+    pub chosen_block_y: f64,
+    pub canvases_content: HashMap<CanvasName, Vec<u8>>,
 }
 
 pub enum State {
@@ -32,17 +32,15 @@ pub enum Msg {
     ImageLoaded(image::RawImage),
     QualityUpdated(u8),
     PreviewCanvasClicked(i32, i32),
-    BlockChosen(i32, i32),
+    BlockChosen(i32, i32, i32, i32),
 }
 
 // ------ ------
 //   Canvases
 // ------ ------
 
-#[derive(Debug, PartialEq, Eq, Hash, EnumIter)]
+#[derive(Debug, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
 pub enum CanvasName {
-    Original,
-    OriginalPreview,
     Ys,
     Cbs,
     Crs,
@@ -53,6 +51,15 @@ pub enum CanvasName {
     CbsRecovered,
     CrsRecovered,
     ImageRecovered,
+    Difference,
+}
+#[derive(Debug, PartialEq, Eq, Hash, EnumIter)]
+pub enum PreviewCanvasName {
+    Original,
+    YCbCr,
+    YCbCrQuant,
+    YCbCrRecovered,
+    ForComparison,
 }
 
 // ------ ------
@@ -63,8 +70,9 @@ pub struct Model {
     pub file_chooser_zone_active: bool,
     pub base_url: Url,
     pub state: State,
-    pub original_canvas_scrollable_div_wrapper: ElRef<HtmlDivElement>,
+    pub original_image_canvas: ElRef<HtmlCanvasElement>,
     pub canvas_map: HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    pub preview_canvas_map: HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
 
     pub quality: u8,
 }

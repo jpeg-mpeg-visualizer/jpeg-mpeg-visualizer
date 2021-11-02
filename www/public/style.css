@@ -2,8 +2,6 @@
     box-sizing: border-box;
 }
 
-
-
 a:link    { color: #337ab7; text-decoration: none;      }
 a:hover   { color: #23527c; text-decoration: underline; }
 
@@ -51,7 +49,7 @@ body {
 }
 
 
-.select_menu_area, .choose_file_wrapper {
+.select_menu_area, .choose_file_wrapper, .spinner-page, .audio-visualizer-wrapper {
     display: flex;
     align-items: center;
     justify-content: center;
@@ -66,6 +64,10 @@ body {
     background-color: #23527c;
 }
 
+.select_menu_button:nth-child(even) {
+    background-color: #20723f;
+}
+
 .select_menu_button:after {
     content: "";
     display: block;
@@ -75,6 +77,11 @@ body {
 .select_menu_button:hover {
     box-shadow: 5px 10px #888888;
     background-color: #326795;
+}
+
+.select_menu_button:nth-child(even):hover {
+    box-shadow: 5px 10px #888888;
+    background-color: #329556;
 }
 
 .select_menu_button p {
@@ -232,4 +239,223 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .scrollable-canvas-wrapper {
     overflow: hidden;
     display: inline-block;
+}
+
+.dual-spinner {
+    display: inline-block;
+}
+
+.dual-spinner:after {
+    content: "";
+    display: block;
+    width: 20em;
+    height: 20em;
+    margin: auto;
+    border-radius: 50%;
+    border: 6px solid #fff;
+    border-color: #fff transparent #fff transparent;
+    animation: dual-spinner 1.2s linear infinite;
+}
+
+@keyframes dual-spinner {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.spinner-page .filename {
+    font-size: 2.5em;
+}
+
+.audio-visualizer-wrapper {
+    width: 100%;
+    align-items: flex-start !important;
+}
+
+.audio-visualizer-wrapper .audio-visualizer-box {
+    width: 80%;
+    margin: 0 auto;
+}
+
+.audio-visualizer-box .player-wrapper {
+    display: flex;
+    justify-content: center;
+}
+
+.audio-visualizer-box audio {
+    width: 80%;
+}
+
+/*  PLAYER  */
+
+.audio-player {
+    height: 4em;
+    width: 100%;
+    background: #ffffff;
+    box-shadow: 0 0 20px 0 #000a;
+    color: black;
+    font-size: 2em;
+    overflow: hidden;
+    display: grid;
+    grid-template-rows: 6px auto;
+}
+
+.audio-player .timeline {
+    background: white;
+    width: 100%;
+    position: relative;
+    cursor: pointer;
+    box-shadow: 0 2px 10px 0 #0008;
+}
+
+.audio-player .timeline .progress {
+    background: blue;
+    width: 0;
+    height: 100%;
+    transition: 0.25s;
+}
+
+.audio-player .controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: stretch;
+    padding: 0 20px;
+}
+
+.audio-player .controls > * {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.audio-player .controls .toggle-play.play {
+    cursor: pointer;
+    position: relative;
+    left: 0;
+    height: 0;
+    width: 0;
+    border: 7px solid white;
+    border-left: 13px solid black;
+}
+
+.audio-player .controls .toggle-play.play:hover {
+    transform: scale(1.1);
+}
+
+.audio-player .controls .toggle-play.pause {
+    height: 15px;
+    width: 20px;
+    cursor: pointer;
+    position: relative;
+}
+
+.audio-player .controls .toggle-play.pause:before {
+    position: absolute;
+    top: 0;
+    left: 0px;
+    background: black;
+    content: "";
+    height: 15px;
+    width: 3px;
+}
+
+.audio-player .controls .toggle-play.pause:after {
+    position: absolute;
+    top: 0;
+    right: 8px;
+    background: black;
+    content: "";
+    height: 15px;
+    width: 3px;
+}
+
+.audio-player .controls .toggle-play.pause:hover {
+    transform: scale(1.1);
+}
+
+.audio-player .controls .time {
+    display: flex;
+}
+
+.audio-player .controls .time > * {
+    padding: 2px;
+}
+
+.audio-player .controls .volume-container {
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+}
+
+.audio-player .controls .volume-container .volume-button {
+    height: 26px;
+    display: flex;
+    align-items: center;
+}
+
+.audio-player .controls .volume-container .volume-button .volume {
+    transform: scale(0.7);
+}
+
+.audio-player .controls .volume-container .volume-slider {
+    position: absolute;
+    top: 15px;
+    left: -3px;
+    z-index: -1;
+    width: 0;
+    height: 15px;
+    background: black;
+    box-shadow: 0 0 20px #000a;
+    transition: 0.25s;
+}
+.audio-player .controls .volume-container .volume-slider .volume-percentage {
+    background: coral;
+    height: 100%;
+    width: 75%;
+}
+.audio-player .controls .volume-container:hover .volume-slider {
+    left: -123px;
+    width: 120px;
+}
+
+.playback-controls button {
+    background-color: white;
+    color: black;
+    border: 2px solid #555555;
+    width: 18em;
+    padding: 16px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    transition-duration: 0.4s;
+    cursor: pointer;
+}
+
+.playback-controls button:hover {
+    background-color: #555555;
+    color: white;
+}
+
+.playback-controls .playback-button {
+    margin-left: 1em;
+}
+
+.labeled_canvas_wrapper {
+    display: inline-block;
+    text-align: center;
+    padding: 5px 0 0 0;
+}
+.labeled_canvas_wrapper canvas {
+    margin: 5px;
+}
+.canvas_label {
+    font-size: 1.5em;
+    color:white;
+    margin: 5px 0;
 }

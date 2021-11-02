@@ -9,6 +9,10 @@ pub mod pixel {
     }
 
     impl RGB {
+        pub fn to_flat_data(&self) -> [u8; 4] {
+            [self.r, self.g, self.b, 255]
+        }
+
         pub fn to_ycbcr(&self) -> YCbCr {
             let (r, g, b) = (self.r as f32, self.g as f32, self.b as f32);
 
@@ -161,6 +165,14 @@ impl std::ops::Index<usize> for RawImageWindow {
 pub struct RGBImage(pub Vec<pixel::RGB>);
 
 impl RGBImage {
+    pub fn to_image(&self) -> Vec<u8> {
+        self.0
+            .iter()
+            .map(|rgb| rgb.to_flat_data())
+            .flatten()
+            .collect::<Vec<u8>>()
+    }
+
     pub fn to_ycbcr_image(&self) -> YCbCrImage {
         YCbCrImage(
             self.0
