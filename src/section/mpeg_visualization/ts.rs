@@ -35,7 +35,8 @@ impl TSDemuxer {
         self.pointer += 8;
 
         // Read the rest of the header
-        let _transport_error_indicator = self.buffer[self.pointer..self.pointer + 1].load_be::<u8>();
+        let _transport_error_indicator =
+            self.buffer[self.pointer..self.pointer + 1].load_be::<u8>();
         let payload_start = self.buffer[self.pointer + 1..self.pointer + 2].load_be::<u8>();
         let _transport_priority = self.buffer[self.pointer + 2..self.pointer + 3].load_be::<u8>();
         let pid = self.buffer[self.pointer + 3..self.pointer + 3 + 13].load_be::<u16>();

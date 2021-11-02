@@ -111,14 +111,10 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
 }
 
 pub fn view_video_player(model: &Model) -> Node<GMsg> {
-    div![
-        canvas![
-            el_ref(&model.canvas),
-            ev(Ev::Click, |event| {
-                wrap(Msg::PlayerClicked)
-            })
-        ]
-    ]
+    div![canvas![
+        el_ref(&model.canvas),
+        ev(Ev::Click, |_event| { wrap(Msg::PlayerClicked) })
+    ]]
 }
 
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
