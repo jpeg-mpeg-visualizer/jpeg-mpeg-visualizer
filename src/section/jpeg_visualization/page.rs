@@ -468,16 +468,18 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             if let State::ImageView(ref mut pack) = model.state {
                 model.quality = quality;
                 draw_dct_quantized(&model.canvas_map, pack, quality);
-                draw_block_choice_indicators_for_ordinary(
-                    &model.canvas_map,
-                    pack.chosen_block_x,
-                    pack.chosen_block_y,
-                );
+                if pack.chosen_block_x >= 0.0 && pack.chosen_block_y >= 0.0 {
+                    draw_block_choice_indicators_for_ordinary(
+                        &model.canvas_map,
+                        pack.chosen_block_x,
+                        pack.chosen_block_y,
+                    );
+                }
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
-                let preview_canvas_ref = &model.original_image_canvas
+                let preview_canvas_ref = &model.original_image_canvas;
                 let preview_canvas = preview_canvas_ref.get().unwrap();
                 let canvas_rect = preview_canvas.get_bounding_client_rect();
 
