@@ -1,5 +1,4 @@
 use bitvec::prelude::*;
-// use seed::*;
 
 use self::constants::{DCT_DC_SIZE_CHROMINANCE, DCT_DC_SIZE_LUMINANCE};
 
@@ -8,6 +7,8 @@ pub struct DecodedFrame {
     pub height: u16,
     pub picture_type: u8,
     pub y: Vec<u8>,
+    pub cr: Vec<u8>,
+    pub cb: Vec<u8>,
 }
 
 pub struct MPEG1 {
@@ -132,12 +133,12 @@ impl MPEG1 {
         let coded_size = self.coded_width * coded_height;
 
         self.current_y = vec![0; coded_size as usize];
-        self.current_cb = vec![0; coded_size as usize / 2];
-        self.current_cr = vec![0; coded_size as usize / 2];
+        self.current_cb = vec![0; coded_size as usize / 4];
+        self.current_cr = vec![0; coded_size as usize / 4];
 
         self.forward_y = vec![0; coded_size as usize];
-        self.forward_cb = vec![0; coded_size as usize / 2];
-        self.forward_cr = vec![0; coded_size as usize / 2];
+        self.forward_cb = vec![0; coded_size as usize / 4];
+        self.forward_cr = vec![0; coded_size as usize / 4];
     }
     
     fn decode_sequence_header(&mut self) {
@@ -184,8 +185,6 @@ impl MPEG1 {
         }
         
         self.has_sequence_header = true;
-
-        // log(format!("width: {}, height: {}", width, height));
     }
     
     fn decode_picture(&mut self) -> DecodedFrame {
@@ -227,7 +226,9 @@ impl MPEG1 {
             width: self.width,
             height: self.height,
             picture_type: self.picture_type,
-            y: self.current_y.clone()
+            y: self.current_y.clone(),
+            cr: self.current_cr.clone(),
+            cb: self.current_cb.clone()
         };
         
         std::mem::swap(&mut self.current_y, &mut self.forward_y);
@@ -367,13 +368,13 @@ impl MPEG1 {
 
     fn decode_motion_vectors(&mut self, macroblock_mot_fw: bool) {
         if macroblock_mot_fw {
-            let mut d;
+            let mut d: i32;
 
             let code = self.read_huffman(&constants::MOTION) as i32;
             if code != 0 && self.forward_f != 1 {
                 let r = self.buffer[self.pointer..self.pointer+self.forward_r_size as usize].load_be::<u32>();
                 self.pointer += self.forward_r_size as usize;
-                d = (code.abs() - 1) << self.forward_r_size + r + 1;
+                d = ((code.abs() - 1) << self.forward_r_size) + r as i32 + 1;
                 if code < 0 {
                     d = -d;
                 }
@@ -397,7 +398,7 @@ impl MPEG1 {
             if code != 0 && self.forward_f != 1 {
                 let r = self.buffer[self.pointer..self.pointer+self.forward_r_size as usize].load_be::<u32>();
                 self.pointer += self.forward_r_size as usize;
-                d = (code.abs() - 1) << self.forward_r_size + r + 1;
+                d = ((code.abs() - 1) << self.forward_r_size) + r as i32 + 1;
                 if code < 0 {
                     d = -d;
                 }
@@ -568,13 +569,13 @@ impl MPEG1 {
         let width = self.coded_width as usize;
         let scan = width - 16;
 
-        let H = motion_h as isize / 2;
-        let V = motion_v as isize / 2;
+        let h = motion_h as isize / 2;
+        let v = motion_v as isize / 2;
         
         let is_motion_h_odd = motion_h & 1 == 1;
         let is_motion_v_odd = motion_v & 1 == 1;
         
-        let mut src = (((self.mb_row as isize * 16) + V) * width as isize + (self.mb_col as isize * 16) + H) as usize;
+        let mut src = (((self.mb_row as isize * 16) + v) * width as isize + (self.mb_col as isize * 16) + h) as usize;
         let mut dest = (self.mb_row * width + self.mb_col) * 16;
         let last = dest + (width * 16);
         
@@ -586,7 +587,8 @@ impl MPEG1 {
                         let mut sum: u16 = s_y[src] as u16 + s_y[src+1] as u16 + 2;
                         sum += if src+width < self.current_y.len() { s_y[src+width] as u16 } else { 0 };
                         sum += if src+width+1 < self.current_y.len() { s_y[src+width+1] as u16 } else { 0 };
-                        self.current_y[dest] = (sum / 4) as u8;
+                        let count = 2 + (src+width < self.current_y.len()) as u16 + (src+width+1 < self.current_y.len()) as u16;
+                        self.current_y[dest] = (sum / count) as u8;
                         dest += 1;
                         src += 1;
                     }
@@ -610,7 +612,8 @@ impl MPEG1 {
                     for x in 0..16 {
                         let mut sum: u16 = s_y[src] as u16 + 1;
                         sum += if src+width < self.current_y.len() { s_y[src+width] as u16 } else { 0 };
-                        self.current_y[dest] = (sum / 2) as u8;
+                        let count = 1 + (src+width < self.current_y.len()) as u16;
+                        self.current_y[dest] = (sum / count) as u8;
                         dest += 1;
                         src += 1;
                     }
@@ -634,13 +637,13 @@ impl MPEG1 {
         let width = self.mb_width as usize * 8;
         let scan = width - 8;
 
-        let H = motion_h as isize / 4;
-        let V = motion_v as isize / 4;
+        let h = motion_h as isize / 4;
+        let v = motion_v as isize / 4;
         
         let is_motion_h_odd = motion_h / 2 & 1 == 1;
         let is_motion_v_odd = motion_v / 2 & 1 == 1;
         
-        let mut src = (((self.mb_row as isize * 8) + V) * width as isize + (self.mb_col as isize * 8) + H) as usize;
+        let mut src = (((self.mb_row as isize * 8) + v) * width as isize + (self.mb_col as isize * 8) + h) as usize;
         let mut dest = (self.mb_row * width + self.mb_col) * 8;
         let last = dest + (width * 8);
         
@@ -649,8 +652,19 @@ impl MPEG1 {
                 while dest < last {
                     for x in 0..8 {
                         // vertical motion is half pel (?) so we have to compute average of above pixel
-                        self.current_cr[dest] = ((s_cr[src] as u16 + s_cr[src+1] as u16 + s_cr[src+width] as u16 + s_cr[src+width+1] as u16 + 2) / 4) as u8; 
-                        self.current_cb[dest] = ((s_cb[src] as u16 + s_cb[src+1] as u16 + s_cb[src+width] as u16 + s_cb[src+width+1] as u16 + 2) / 4) as u8; 
+                        let mut sum = s_cr[src] as u16 + 2;
+                        sum += if src+1 < s_cr.len() { s_cr[src+1] as u16 } else { 0 };
+                        sum += if src+width < s_cr.len() { s_cr[src+width] as u16 } else { 0 };
+                        sum += if src+width+1 < s_cr.len() { s_cr[src+width+1] as u16 } else { 0 };
+                        let count = 1 + (src+1 < self.current_cr.len()) as u16 + (src+width < self.current_cr.len()) as u16 + (src+width+1 < self.current_cr.len()) as u16;
+                        self.current_cr[dest] = (sum / count) as u8;
+
+                        let mut sum = s_cb[src] as u16 + 2;
+                        sum += if src+1 < s_cb.len() { s_cb[src+1] as u16 } else { 0 };
+                        sum += if src+width < s_cb.len() { s_cb[src+width] as u16 } else { 0 };
+                        sum += if src+width+1 < s_cb.len() { s_cb[src+width+1] as u16 } else { 0 };
+                        self.current_cb[dest] = (sum / count) as u8;
+                        
                         dest += 1;
                         src += 1;
                     }
@@ -660,8 +674,15 @@ impl MPEG1 {
             } else {
                 while dest < last {
                     for x in 0..8 {
-                        self.current_cr[dest] = ((s_cr[src] as u16 + s_cr[src+1] as u16 + 1) / 2) as u8; 
-                        self.current_cb[dest] = ((s_cb[src] as u16 + s_cb[src+1] as u16  + 1) / 2) as u8; 
+                        let mut sum = s_cr[src] as u16 + 1;
+                        sum += if src+1 < s_cr.len() { s_cr[src+1] as u16 } else { 0 };
+                        let count = 1 + (src+1 < self.current_cr.len()) as u16;
+                        self.current_cr[dest] = (sum / count) as u8;
+
+                        let mut sum = s_cb[src] as u16 + 1;
+                        sum += if src+1 < s_cb.len() { s_cb[src+1] as u16 } else { 0 };
+                        self.current_cb[dest] = (sum / count) as u8;
+
                         dest += 1;
                         src += 1;
                     }
@@ -673,8 +694,15 @@ impl MPEG1 {
             if is_motion_v_odd {
                 while dest < last {
                     for x in 0..8 {
-                        self.current_cr[dest] = ((s_cr[src] as u16 + s_cr[src+width] as u16 + 1) / 2) as u8; 
-                        self.current_cb[dest] = ((s_cb[src] as u16 + s_cb[src+width] as u16  + 1) / 2) as u8; 
+                        let mut sum = s_cr[src] as u16 + 1;
+                        sum += if src+width < s_cr.len() { s_cr[src+width] as u16 } else { 0 };
+                        let count = 1 + (src+width < self.current_cr.len()) as u16;
+                        self.current_cr[dest] = (sum / count) as u8;
+
+                        let mut sum = s_cb[src] as u16 + 1;
+                        sum += if src+width < s_cb.len() { s_cb[src+width] as u16 } else { 0 };
+                        self.current_cb[dest] = (sum / count) as u8;
+
                         dest += 1;
                         src += 1;
                     }
@@ -683,7 +711,7 @@ impl MPEG1 {
                 }
             } else {
                 while dest < last {
-                    for x in 0..16 {
+                    for x in 0..8 {
                         self.current_cr[dest] = s_cr[src];
                         self.current_cb[dest] = s_cb[src];
                         dest += 1;
@@ -1457,18 +1485,26 @@ mod constants {
 
 }
 
-#[cfg(test)]
-mod test {
-    use crate::page::mpeg_visualization::{mpeg1::MPEG1, ts::TSDemuxer};
+// #[cfg(test)]
+// mod test {
+    // use std::fs::File;
+    // use std::io::Read;
 
-    #[test]
-    fn test() {
-        let raw_bytes_ts = include_bytes!("../../../../bbb_720_mpeg1.ts");
-        let mut ts_demuxer = TSDemuxer::from_raw_bytes(raw_bytes_ts.to_vec());
-        let demuxed_bytes = ts_demuxer.parse_packets();
+    // use crate::page::mpeg_visualization::{mpeg1::MPEG1, ts::TSDemuxer};
 
-        let mut mpeg1 = MPEG1::from_bytes(demuxed_bytes.clone());
-        mpeg1.decode();
-        mpeg1.decode();
-    }
-}
+    // #[test]
+    // fn test() {
+    //     // let raw_bytes_ts = include_bytes!("../../../../bbb_720_mpeg1.ts");
+    //     let mut raw_bytes_ts = Vec::new();
+    //     let mut file = File::open("../video.ts").unwrap();
+    //     file.read_to_end(&mut raw_bytes_ts).unwrap();
+
+    //     let raw_bytes_ts = include_bytes!("../../../../video.ts");
+    //     let mut ts_demuxer = TSDemuxer::from_raw_bytes(raw_bytes_ts.to_vec());
+    //     let demuxed_bytes = ts_demuxer.parse_packets();
+    //     let mut mpeg1 = MPEG1::from_bytes(demuxed_bytes.clone());
+    //     for i in 0..333 {
+    //         mpeg1.decode();
+    //     }
+    // }
+// }
