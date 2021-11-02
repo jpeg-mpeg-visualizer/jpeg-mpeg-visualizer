@@ -20,7 +20,6 @@ use super::drawing_utils::{
 use super::utils::get_image_diff;
 use std::collections::HashMap;
 use web_sys::HtmlCanvasElement;
-use web_sys::HtmlDivElement;
 
 pub fn init(url: Url) -> Option<Model> {
     let base_url = url.to_base_url();
@@ -29,13 +28,18 @@ pub fn init(url: Url) -> Option<Model> {
     for canvas_name in CanvasName::iter() {
         canvas_map.insert(canvas_name, ElRef::<HtmlCanvasElement>::default());
     }
+    let mut preview_canvas_map = HashMap::<PreviewCanvasName, ElRef<HtmlCanvasElement>>::new();
+    for canvas_name in PreviewCanvasName::iter() {
+        preview_canvas_map.insert(canvas_name, ElRef::<HtmlCanvasElement>::default());
+    }
 
     Some(Model {
         file_chooser_zone_active: false,
         base_url,
         state: State::FileChooser,
+        original_image_canvas: ElRef::<HtmlCanvasElement>::default(),
         canvas_map,
-        original_canvas_scrollable_div_wrapper: ElRef::<HtmlDivElement>::default(),
+        preview_canvas_map,
         quality: 50,
     })
 }
@@ -82,54 +86,56 @@ fn draw_original_image_preview(
     );
 }
 
-fn draw_original_image(original_image_canvas: &ElRef<HtmlCanvasElement>, image: &image::RawImage) {
-    let canvas = original_image_canvas.get().unwrap();
-    canvas.set_height(image.height() * ZOOM);
-    canvas.set_width(image.width() * ZOOM);
-    let img = web_sys::ImageData::new_with_u8_clamped_array(
-        wasm_bindgen::Clamped(image.as_ref()),
-        image.width(),
-    )
-    .unwrap();
-
-    draw_scaled_image_with_image_data_with_w_h_and_scale(
-        &original_image_canvas,
-        &img,
-        image.width(),
-        image.height(),
-        ZOOM as f64,
-        ZOOM as f64,
-    );
-}
-
-fn draw_block_choice_indicator(
+fn draw_block_choice_indicator_for_canvas(
     canvas: &ElRef<HtmlCanvasElement>,
-    image: &image::RawImage,
-    start_x: u32,
-    start_y: u32,
+    start_x: f64,
+    start_y: f64,
 ) {
-    // Reset previous block choice indicator
-    draw_original_image(canvas, image);
-
-    let canvas = canvas.get().unwrap();
-    let ctx = canvas_context_2d(&canvas);
+    let ctx = canvas_context_2d(&canvas.get().unwrap());
     // Draw rect
     ctx.begin_path();
-    ctx.rect(start_x.into(), start_y.into(), 16.0_f64, 16.0_f64);
-    ctx.stroke();
+    let line_width: f64 = 2.0;
+    ctx.set_line_width(line_width);
+    ctx.stroke_rect(
+        start_x - line_width / 2.0,
+        start_y - line_width / 2.0,
+        8.0 * ZOOM as f64 + line_width / 2.0,
+        8.0 * ZOOM as f64 + line_width / 2.0,
+    );
+}
+fn draw_block_choice_indicators_for_ordinary(
+    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    start_x: f64,
+    start_y: f64,
+) {
+    for (_canvas_name, canvas) in canvas_map {
+        draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
+    }
+}
+fn draw_block_choice_indicators_for_preview(
+    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
+    start_x: f64,
+    start_y: f64,
+) {
+    for (_canvas_name, canvas) in preview_canvas_map {
+        draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
+    }
 }
 
-fn draw_ycbcr(
+fn draw_block_choice_indicators(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
-    image: &image::YCbCrImage,
+    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
+    start_x: f64,
+    start_y: f64,
 ) {
-    let canvas_ys = canvas_map.get(&CanvasName::Ys).unwrap();
-    let canvas_cbs = canvas_map.get(&CanvasName::Cbs).unwrap();
-    let canvas_crs = canvas_map.get(&CanvasName::Crs).unwrap();
+    draw_block_choice_indicators_for_ordinary(&canvas_map, start_x, start_y);
+    draw_block_choice_indicators_for_preview(&preview_canvas_map, start_x, start_y);
+}
 
-    let ys = image.to_ys_channel();
-    let cbs = image.to_cbs_channel();
-    let crs = image.to_crs_channel();
+fn draw_ycbcr(canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>, pack: &mut ImagePack) {
+    let ys = pack.ycbcr.to_ys_channel();
+    let cbs = pack.ycbcr.to_cbs_channel();
+    let crs = pack.ycbcr.to_crs_channel();
 
     let ys_image = ys
         .iter()
@@ -170,24 +176,19 @@ fn draw_ycbcr(
         })
         .collect::<Vec<u8>>();
 
-    draw_scaled_image_default(&canvas_ys, &ys_image);
-    draw_scaled_image_default(&canvas_cbs, &cbs_image);
-    draw_scaled_image_default(&canvas_crs, &crs_image);
+    draw_and_fill_content_map(&canvas_map, CanvasName::Ys, pack, ys_image);
+    draw_and_fill_content_map(&canvas_map, CanvasName::Cbs, pack, cbs_image);
+    draw_and_fill_content_map(&canvas_map, CanvasName::Crs, pack, crs_image);
 }
 
 fn draw_dct_quantized(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
-    image: &image::YCbCrImage,
-    image_window: &RawImageWindow,
+    pack: &mut ImagePack,
     quality: u8,
 ) {
-    let canvas_ys_quant = canvas_map.get(&CanvasName::YsQuant).unwrap();
-    let canvas_cbs_quant = canvas_map.get(&CanvasName::CbsQuant).unwrap();
-    let canvas_crs_quant = canvas_map.get(&CanvasName::CrsQuant).unwrap();
-
-    let ys = image.to_ys_channel();
-    let cbs = image.to_cbs_channel();
-    let crs = image.to_crs_channel();
+    let ys = pack.ycbcr.to_ys_channel();
+    let cbs = pack.ycbcr.to_cbs_channel();
+    let crs = pack.ycbcr.to_crs_channel();
 
     let scaled_luminance_quant_table =
         quant::scale_quantization_table(&quant::LUMINANCE_QUANTIZATION_TABLE, quality);
@@ -206,19 +207,25 @@ fn draw_dct_quantized(
         &ys_quantized.blocks,
         ys_block_matrix.width,
         ys_block_matrix.height,
-        &canvas_ys_quant,
+        canvas_map,
+        CanvasName::YsQuant,
+        pack,
     );
     draw_spatial_channel(
         &cbs_quantized.blocks,
         cbs_block_matrix.width,
         cbs_block_matrix.height,
-        &canvas_cbs_quant,
+        canvas_map,
+        CanvasName::CbsQuant,
+        pack,
     );
     draw_spatial_channel(
         &crs_quantized.blocks,
         crs_block_matrix.width,
         crs_block_matrix.height,
-        &canvas_crs_quant,
+        canvas_map,
+        CanvasName::CrsQuant,
+        pack,
     );
 
     draw_ycbcr_recovered(
@@ -226,7 +233,7 @@ fn draw_dct_quantized(
         &ys_quantized,
         &cbs_quantized,
         &crs_quantized,
-        &image_window,
+        pack,
         quality,
     );
 }
@@ -236,7 +243,9 @@ fn draw_spatial_channel(
     data: &Vec<Block>,
     width: usize,
     height: usize,
-    canvas: &ElRef<HtmlCanvasElement>,
+    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    canvas_name: CanvasName,
+    pack: &mut ImagePack,
 ) {
     let mut image_data = vec![0; (BLOCK_SIZE * BLOCK_SIZE * 4) as usize];
 
@@ -246,8 +255,7 @@ fn draw_spatial_channel(
             write_to_image_data(&mut image_data, &spatial.0, u, v);
         }
     }
-
-    draw_scaled_image_default(&canvas, &image_data);
+    draw_and_fill_content_map(&canvas_map, canvas_name, pack, image_data);
 }
 
 fn draw_ycbcr_recovered(
@@ -255,13 +263,9 @@ fn draw_ycbcr_recovered(
     ys_quantized: &BlockMatrix,
     cbs_quantized: &BlockMatrix,
     crs_quantized: &BlockMatrix,
-    image_window: &RawImageWindow,
+    pack: &mut ImagePack,
     quality: u8,
 ) {
-    let canvas_ys_recovered = canvas_map.get(&CanvasName::YsRecovered).unwrap();
-    let canvas_cbs_recovered = canvas_map.get(&CanvasName::CbsRecovered).unwrap();
-    let canvas_crs_recovered = canvas_map.get(&CanvasName::CrsRecovered).unwrap();
-
     let scaled_luminance_quant_table =
         quant::scale_quantization_table(&quant::LUMINANCE_QUANTIZATION_TABLE, quality);
     let scaled_chrominance_quant_table =
@@ -314,11 +318,11 @@ fn draw_ycbcr_recovered(
         })
         .collect::<Vec<u8>>();
 
-    draw_scaled_image_default(&canvas_ys_recovered, &ys_image);
-    draw_scaled_image_default(&canvas_cbs_recovered, &cbs_image);
-    draw_scaled_image_default(&canvas_crs_recovered, &crs_image);
+    draw_and_fill_content_map(&canvas_map, CanvasName::YsRecovered, pack, ys_image);
+    draw_and_fill_content_map(&canvas_map, CanvasName::CbsRecovered, pack, cbs_image);
+    draw_and_fill_content_map(&canvas_map, CanvasName::CrsRecovered, pack, crs_image);
 
-    draw_image_recovered(canvas_map, ys, cbs, crs, &image_window);
+    draw_image_recovered(canvas_map, ys, cbs, crs, pack);
 }
 
 fn draw_image_recovered(
@@ -326,15 +330,8 @@ fn draw_image_recovered(
     ys: Vec<u8>,
     cbs: Vec<u8>,
     crs: Vec<u8>,
-    image_window: &RawImageWindow,
+    pack: &mut ImagePack,
 ) {
-    let image_preview_for_comparison_canvas = canvas_map
-        .get(&CanvasName::ImagePreviewForComparison)
-        .unwrap();
-    let input_image = &image_window.to_rgb_image().to_image();
-    draw_scaled_image_default(&image_preview_for_comparison_canvas, &input_image);
-
-    let image_recovered_canvas = canvas_map.get(&CanvasName::ImageRecovered).unwrap();
     let output_image = ys
         .iter()
         .zip(cbs.iter())
@@ -349,11 +346,23 @@ fn draw_image_recovered(
             vec![r, g, b, 255]
         })
         .collect::<Vec<u8>>();
-    draw_scaled_image_default(&image_recovered_canvas, &output_image);
-
-    let image_diff_canvas = canvas_map.get(&CanvasName::Difference).unwrap();
+    let input_image = &pack.image_window.to_rgb_image().to_image();
     let image_diff = get_image_diff(&output_image, &input_image);
-    draw_scaled_image_default(&image_diff_canvas, &image_diff);
+    draw_and_fill_content_map(&canvas_map, CanvasName::ImageRecovered, pack, output_image);
+
+    // TODO: Consider optimizing input_image calculation -> instead of to_rgb and then to image, make one method that would do both but in less steps!
+    draw_and_fill_content_map(&canvas_map, CanvasName::Difference, pack, image_diff);
+}
+
+fn draw_and_fill_content_map(
+    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    canvas_name: CanvasName,
+    pack: &mut ImagePack,
+    image_data: Vec<u8>,
+) {
+    let canvas = canvas_map.get(&canvas_name).unwrap();
+    draw_scaled_image_default(&canvas, &image_data);
+    pack.canvases_content.insert(canvas_name, image_data);
 }
 
 fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[i16; 8]; 8], u: usize, v: usize) {
@@ -368,14 +377,40 @@ fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[i16; 8]; 8], u: usi
     }
 }
 
-fn turn_antialiasing_off(canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>) {
+fn turn_antialiasing_off(
+    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
+) {
     for (_canvas_name, canvas) in canvas_map {
-        turn_antialising_off_for_specific_canvas(canvas)
+        turn_antialising_off_for_specific_canvas(&canvas);
+    }
+    for (_canvas_name, canvas) in preview_canvas_map {
+        turn_antialising_off_for_specific_canvas(&canvas);
     }
 
     fn turn_antialising_off_for_specific_canvas(canvas: &ElRef<HtmlCanvasElement>) {
         let ctx = canvas_context_2d(&canvas.get().unwrap());
         ctx.set_image_smoothing_enabled(false);
+    }
+}
+
+fn draw_input_previews(
+    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
+    image_window: &RawImageWindow,
+) {
+    // TODO: Consider optimizing input_image calculation -> instead of to_rgb and then to image, make one method that would do both but in less steps!
+    let input_image = &image_window.to_rgb_image().to_image();
+    for (_canvas_name, canvas) in preview_canvas_map {
+        draw_scaled_image_default(&canvas, &input_image);
+    }
+}
+fn redraw_ordinary_canvases(
+    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
+    canvases_content: &HashMap<CanvasName, Vec<u8>>,
+) {
+    for (canvas_name, image) in canvases_content {
+        let canvas = canvas_map.get(canvas_name).unwrap();
+        draw_scaled_image_default(&canvas, &image);
     }
 }
 
@@ -405,41 +440,46 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserDragStarted => model.file_chooser_zone_active = true,
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::ImageLoaded(raw_image) => {
-            turn_antialiasing_off(&model.canvas_map);
-            draw_original_image_preview(
-                &model.canvas_map.get(&CanvasName::OriginalPreview).unwrap(),
-                &raw_image,
-            );
-            draw_original_image(
-                &model.canvas_map.get(&CanvasName::Original).unwrap(),
-                &raw_image,
-            );
+            turn_antialiasing_off(&model.canvas_map, &model.preview_canvas_map);
+            draw_original_image_preview(&model.original_image_canvas, &raw_image);
 
             let raw_image_rc = Rc::new(raw_image);
             // TODO: Consider drawing initial rect here (currently it is drawn only after user chooses a block - but that might be what we actually want)
             let image_window =
                 RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
+            draw_input_previews(&model.preview_canvas_map, &image_window);
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
-            draw_ycbcr(&model.canvas_map, &ycbcr);
-            draw_dct_quantized(&model.canvas_map, &ycbcr, &image_window, 50);
-            model.state = State::ImageView(ImagePack {
+            let canvases_content: HashMap<CanvasName, Vec<u8>> =
+                HashMap::<CanvasName, Vec<u8>>::new();
+            let mut pack: ImagePack = ImagePack {
                 raw_image: raw_image_rc,
                 image_window,
-                start_x: 0,
-                start_y: 0,
                 ycbcr,
-            });
+                // -1.0 meaning nothing is chosen
+                chosen_block_x: -1.0,
+                chosen_block_y: -1.0,
+                canvases_content,
+            };
+            draw_ycbcr(&model.canvas_map, &mut pack);
+            draw_dct_quantized(&model.canvas_map, &mut pack, 50);
+            model.state = State::ImageView(pack);
         }
         Msg::QualityUpdated(quality) => {
-            if let State::ImageView(pack) = &model.state {
+            if let State::ImageView(ref mut pack) = model.state {
                 model.quality = quality;
-                draw_dct_quantized(&model.canvas_map, &pack.ycbcr, &pack.image_window, quality);
+                draw_dct_quantized(&model.canvas_map, pack, quality);
+                if pack.chosen_block_x >= 0.0 && pack.chosen_block_y >= 0.0 {
+                    draw_block_choice_indicators_for_ordinary(
+                        &model.canvas_map,
+                        pack.chosen_block_x,
+                        pack.chosen_block_y,
+                    );
+                }
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
-                let preview_canvas_ref =
-                    &model.canvas_map.get(&CanvasName::OriginalPreview).unwrap();
+                let preview_canvas_ref = &model.original_image_canvas;
                 let preview_canvas = preview_canvas_ref.get().unwrap();
                 let canvas_rect = preview_canvas.get_bounding_client_rect();
 
@@ -460,26 +500,16 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     (pack.raw_image.height() - BLOCK_SIZE) as i32,
                 ) as u32;
 
-                let start_x: u32 = image_x * ZOOM;
-                let start_y: u32 = image_y * ZOOM;
-
                 pack.image_window.start_x = image_x;
                 pack.image_window.start_y = image_y;
+                pack.chosen_block_x = -1.0;
+                pack.chosen_block_y = -1.0;
 
                 pack.ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
-                draw_ycbcr(&model.canvas_map, &pack.ycbcr);
-                draw_dct_quantized(
-                    &model.canvas_map,
-                    &pack.ycbcr,
-                    &pack.image_window,
-                    model.quality,
-                );
 
-                model
-                    .original_canvas_scrollable_div_wrapper
-                    .get()
-                    .unwrap()
-                    .scroll_to_with_x_and_y(start_x.into(), start_y.into());
+                draw_input_previews(&model.preview_canvas_map, &pack.image_window);
+                draw_ycbcr(&model.canvas_map, pack);
+                draw_dct_quantized(&model.canvas_map, pack, model.quality);
 
                 // We need to calculate offset of line_width so that all pixels of the image window are inside stroked rect (as in not covered by the lines)
                 let line_width: i32 = 4;
@@ -503,27 +533,29 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 preview_ctx.stroke_rect(rect_x, rect_y, rect_a, rect_a);
             }
         }
-        Msg::BlockChosen(x, y) => {
+        Msg::BlockChosen(x, y, rect_x, rect_y) => {
             if let State::ImageView(ref mut pack) = model.state {
-                let canvas_rect = &model
-                    .canvas_map
-                    .get(&CanvasName::Original)
-                    .unwrap()
-                    .get()
-                    .unwrap()
-                    .get_bounding_client_rect();
-                let canvas_x = canvas_rect.left();
-                let canvas_y = canvas_rect.top();
+                let start_x: f64 = cmp::min(
+                    (x - rect_x) - (x - rect_x) % (8 * ZOOM as i32),
+                    ((BLOCK_SIZE - 8) * ZOOM) as i32,
+                ) as f64;
+                let start_y: f64 = cmp::min(
+                    (y - rect_y) - (y - rect_y) % (8 * ZOOM as i32),
+                    ((BLOCK_SIZE - 8) * ZOOM) as i32,
+                ) as f64;
 
-                let start_x: u32 = ((x - canvas_x as i32) as u32 / (16 * ZOOM)) * 16;
-                let start_y: u32 = ((y - canvas_y as i32) as u32 / (16 * ZOOM)) * 16;
-
-                draw_block_choice_indicator(
-                    &model.canvas_map.get(&CanvasName::Original).unwrap(),
-                    &pack.raw_image,
+                // Reset previous block choice indicators
+                redraw_ordinary_canvases(&model.canvas_map, &pack.canvases_content);
+                draw_input_previews(&model.preview_canvas_map, &pack.image_window);
+                // Draw actual square (block choice indicator)
+                draw_block_choice_indicators(
+                    &model.canvas_map,
+                    &model.preview_canvas_map,
                     start_x,
                     start_y,
                 );
+                pack.chosen_block_x = start_x;
+                pack.chosen_block_y = start_y;
             }
         }
     }
