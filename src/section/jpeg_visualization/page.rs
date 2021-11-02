@@ -444,6 +444,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             draw_original_image_preview(&model.original_image_canvas, &raw_image);
 
             let raw_image_rc = Rc::new(raw_image);
+            // TODO: Consider drawing initial rect here (currently it is drawn only after user chooses a block - but that might be what we actually want)
             let image_window =
                 RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
             draw_input_previews(&model.preview_canvas_map, &image_window);
@@ -476,11 +477,9 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         }
         Msg::PreviewCanvasClicked(x, y) => {
             if let State::ImageView(ref mut pack) = model.state {
-                let canvas_rect = &model
-                    .original_image_canvas
-                    .get()
-                    .unwrap()
-                    .get_bounding_client_rect();
+                let preview_canvas_ref = &model.original_image_canvas
+                let preview_canvas = preview_canvas_ref.get().unwrap();
+                let canvas_rect = preview_canvas.get_bounding_client_rect();
 
                 let canvas_x = canvas_rect.left();
                 let canvas_y = canvas_rect.top();
@@ -509,6 +508,27 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 draw_input_previews(&model.preview_canvas_map, &pack.image_window);
                 draw_ycbcr(&model.canvas_map, pack);
                 draw_dct_quantized(&model.canvas_map, pack, model.quality);
+
+                // We need to calculate offset of line_width so that all pixels of the image window are inside stroked rect (as in not covered by the lines)
+                let line_width: i32 = 4;
+                draw_original_image_preview(&preview_canvas_ref, &pack.raw_image);
+                let preview_ctx = canvas_context_2d(&preview_canvas);
+                let rect_a = (((preview_canvas.height() * BLOCK_SIZE) / pack.raw_image.height())
+                    as i32
+                    + line_width) as f64;
+                let rect_x = cmp::max(
+                    0,
+                    ((image_x * preview_canvas.height()) / pack.raw_image.height()) as i32
+                        - line_width / 2,
+                ) as f64;
+                let rect_y = cmp::max(
+                    0,
+                    ((image_y * preview_canvas.width()) / pack.raw_image.width()) as i32
+                        - line_width / 2,
+                ) as f64;
+
+                preview_ctx.set_line_width(line_width as f64);
+                preview_ctx.stroke_rect(rect_x, rect_y, rect_a, rect_a);
             }
         }
         Msg::BlockChosen(x, y, rect_x, rect_y) => {
