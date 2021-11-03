@@ -53,7 +53,7 @@ pub enum CanvasName {
     ImageRecovered,
     Difference,
 }
-#[derive(Debug, PartialEq, Eq, Hash, EnumIter)]
+#[derive(Debug, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
 pub enum PreviewCanvasName {
     Original,
     YCbCr,
@@ -70,12 +70,15 @@ pub struct Model {
     pub file_chooser_zone_active: bool,
     pub base_url: Url,
     pub state: State,
+
     pub original_image_canvas: ElRef<HtmlCanvasElement>,
     pub canvas_map: HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     pub preview_canvas_map: HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
-    // overlay_image_map and preview_image_map could be one but lack of inheritance makes it at least difficult
+
     pub original_image_overlay: ElRef<HtmlImageElement>,
-    //pub overlay_image_map: HashMap<CanvasName, HtmlImageElement>,
-    //pub preview_overlay_image_map: HashMap<CanvasName, HtmlImageElement>,
+    // overlay_image_map and preview_image_map could be one but lack of inheritance makes it at least difficult
+    pub overlay_map: HashMap<CanvasName, ElRef<HtmlImageElement>>,
+    pub preview_overlay_map: HashMap<PreviewCanvasName, ElRef<HtmlImageElement>>,
+
     pub quality: u8,
 }

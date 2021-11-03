@@ -6,7 +6,7 @@ use super::model::{CanvasName, Model, Msg, PreviewCanvasName, State};
 use super::page::wrap;
 use crate::graphic_helpers::drag_n_drop::*;
 use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
-use web_sys::HtmlCanvasElement;
+use web_sys::{HtmlCanvasElement, Event, HtmlImageElement};
 
 macro_rules! stop_and_prevent {
     { $event:expr } => {
@@ -42,10 +42,6 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                         let mouse_event: MouseEvent = event.unchecked_into();
                         wrap(Msg::PreviewCanvasClicked(mouse_event.x(), mouse_event.y()))
                     }),
-                    ev(Ev::DragEnd, |event| {
-                        let mouse_event: MouseEvent = event.unchecked_into();
-                        wrap(Msg::PreviewCanvasClicked(mouse_event.x(), mouse_event.y()))
-                    }),
                 ],
                 canvas![
                     el_ref(&model.original_image_canvas),
@@ -60,7 +56,8 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                 &model
                     .preview_canvas_map
                     .get(&PreviewCanvasName::Original)
-                    .unwrap()
+                    .unwrap(),
+                &model.preview_overlay_map.get(&PreviewCanvasName::Original).unwrap()
             ),
         ]
     ]
@@ -76,11 +73,12 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
                 &model
                     .preview_canvas_map
                     .get(&PreviewCanvasName::YCbCr)
-                    .unwrap()
+                    .unwrap(),
+                &model.preview_overlay_map.get(&PreviewCanvasName::YCbCr).unwrap()
             ),
-            canvas_labeled_div(" Y ", &model.canvas_map.get(&CanvasName::Ys).unwrap()),
-            canvas_labeled_div("CB", &model.canvas_map.get(&CanvasName::Cbs).unwrap()),
-            canvas_labeled_div("CR", &model.canvas_map.get(&CanvasName::Crs).unwrap()),
+            canvas_labeled_div(" Y ", &model.canvas_map.get(&CanvasName::Ys).unwrap(), &model.overlay_map.get(&CanvasName::Ys).unwrap()),
+            canvas_labeled_div("CB", &model.canvas_map.get(&CanvasName::Cbs).unwrap(), &model.overlay_map.get(&CanvasName::Cbs).unwrap()),
+            canvas_labeled_div("CR", &model.canvas_map.get(&CanvasName::Crs).unwrap(), &model.overlay_map.get(&CanvasName::Crs).unwrap()),
         ]
     ]
 }
@@ -95,19 +93,23 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                 &model
                     .preview_canvas_map
                     .get(&PreviewCanvasName::YCbCrQuant)
-                    .unwrap()
+                    .unwrap(),
+                &model.preview_overlay_map.get(&PreviewCanvasName::YCbCrQuant).unwrap()
             ),
             canvas_labeled_div(
                 "Y QUANTIZED",
-                &model.canvas_map.get(&CanvasName::YsQuant).unwrap()
+                &model.canvas_map.get(&CanvasName::YsQuant).unwrap(),
+                &model.overlay_map.get(&CanvasName::YsQuant).unwrap()
             ),
             canvas_labeled_div(
                 "CB QUANTIZED",
-                &model.canvas_map.get(&CanvasName::CbsQuant).unwrap()
+                &model.canvas_map.get(&CanvasName::CbsQuant).unwrap(),
+                &model.overlay_map.get(&CanvasName::CbsQuant).unwrap()
             ),
             canvas_labeled_div(
                 "CR QUANTIZED",
-                &model.canvas_map.get(&CanvasName::CrsQuant).unwrap()
+                &model.canvas_map.get(&CanvasName::CrsQuant).unwrap(),
+                &model.overlay_map.get(&CanvasName::CrsQuant).unwrap()
             ),
         ]
     ]
@@ -123,19 +125,23 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
                 &model
                     .preview_canvas_map
                     .get(&PreviewCanvasName::YCbCrRecovered)
-                    .unwrap()
+                    .unwrap(),
+                &model.preview_overlay_map.get(&PreviewCanvasName::YCbCrRecovered).unwrap()
             ),
             canvas_labeled_div(
                 "Y RECOVERED",
-                &model.canvas_map.get(&CanvasName::YsRecovered).unwrap()
+                &model.canvas_map.get(&CanvasName::YsRecovered).unwrap(),
+                &model.overlay_map.get(&CanvasName::YsRecovered).unwrap()
             ),
             canvas_labeled_div(
                 "CB RECOVERED",
-                &model.canvas_map.get(&CanvasName::CbsRecovered).unwrap()
+                &model.canvas_map.get(&CanvasName::CbsRecovered).unwrap(),
+                &model.overlay_map.get(&CanvasName::CbsRecovered).unwrap()
             ),
             canvas_labeled_div(
                 "CR RECOVERED",
-                &model.canvas_map.get(&CanvasName::CrsRecovered).unwrap()
+                &model.canvas_map.get(&CanvasName::CrsRecovered).unwrap(),
+                &model.overlay_map.get(&CanvasName::CrsRecovered).unwrap()
             ),
         ]
     ]
@@ -151,42 +157,58 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
                 &model
                     .preview_canvas_map
                     .get(&PreviewCanvasName::ForComparison)
-                    .unwrap()
+                    .unwrap(),
+                &model.preview_overlay_map.get(&PreviewCanvasName::ForComparison).unwrap()
             ),
             canvas_labeled_div(
                 "OUTPUT",
-                &model.canvas_map.get(&CanvasName::ImageRecovered).unwrap()
+                &model.canvas_map.get(&CanvasName::ImageRecovered).unwrap(),
+                &model.overlay_map.get(&CanvasName::ImageRecovered).unwrap()
             ),
             canvas_labeled_div(
                 "DIFFERENCE",
-                &model.canvas_map.get(&CanvasName::Difference).unwrap()
+                &model.canvas_map.get(&CanvasName::Difference).unwrap(),
+                &model.overlay_map.get(&CanvasName::Difference).unwrap()
             ),
         ]
     ]
 }
 
-fn canvas_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>) -> Node<GMsg> {
+fn canvas_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>, img: &ElRef<HtmlImageElement>) -> Node<GMsg> {
     let padding = 10;
     let cloned_canvas = canvas.clone();
+
     div![
         C!["labeled_canvas_wrapper"],
         label![C!["canvas_label"], &label],
-        canvas![
-            el_ref(&canvas),
-            attrs![
-                At::Width => px(BLOCK_SIZE * ZOOM),
-                At::Height => px(BLOCK_SIZE * ZOOM),
+         div![
+            C!["canvas_with_overlay_container"],
+            img![
+                C!["canvas_overlay"],
+                el_ref(&img),
+                attrs![
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
+                    At::Draggable => false,
+                ],
+                ev(Ev::Click, move |event: Event| {
+                    let mouse_event: MouseEvent = event.unchecked_into();
+                    let canvas_rect = cloned_canvas.get().unwrap().get_bounding_client_rect();
+                    wrap(Msg::BlockChosen(
+                        mouse_event.x(),
+                        mouse_event.y(),
+                        canvas_rect.left() as i32,
+                        canvas_rect.top() as i32,
+                    ))
+                }),
             ],
-            ev(Ev::Click, move |event| {
-                let mouse_event: MouseEvent = event.unchecked_into();
-                let canvas_rect = cloned_canvas.get().unwrap().get_bounding_client_rect();
-                wrap(Msg::BlockChosen(
-                    mouse_event.x(),
-                    mouse_event.y(),
-                    canvas_rect.left() as i32,
-                    canvas_rect.top() as i32,
-                ))
-            })
+            canvas![
+                el_ref(&canvas),
+                attrs![
+                    At::Width => px(BLOCK_SIZE * ZOOM),
+                    At::Height => px(BLOCK_SIZE * ZOOM),
+                ],
+            ],
         ],
         style![
             St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),

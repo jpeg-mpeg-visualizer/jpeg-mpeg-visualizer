@@ -25,12 +25,16 @@ pub fn init(url: Url) -> Option<Model> {
     let base_url = url.to_base_url();
 
     let mut canvas_map = HashMap::<CanvasName, ElRef<HtmlCanvasElement>>::new();
+    let mut overlay_map = HashMap::<CanvasName, ElRef<HtmlImageElement>>::new();
     for canvas_name in CanvasName::iter() {
         canvas_map.insert(canvas_name, ElRef::<HtmlCanvasElement>::default());
+        overlay_map.insert(canvas_name, ElRef::<HtmlImageElement>::default());
     }
     let mut preview_canvas_map = HashMap::<PreviewCanvasName, ElRef<HtmlCanvasElement>>::new();
+    let mut preview_overlay_map = HashMap::<PreviewCanvasName, ElRef<HtmlImageElement>>::new();
     for canvas_name in PreviewCanvasName::iter() {
         preview_canvas_map.insert(canvas_name, ElRef::<HtmlCanvasElement>::default());
+        preview_overlay_map.insert(canvas_name, ElRef::<HtmlImageElement>::default());
     }
 
     Some(Model {
@@ -41,6 +45,8 @@ pub fn init(url: Url) -> Option<Model> {
         canvas_map,
         preview_canvas_map,
         original_image_overlay: ElRef::<HtmlImageElement>::default(),
+        overlay_map,
+        preview_overlay_map,
         quality: 50,
     })
 }
