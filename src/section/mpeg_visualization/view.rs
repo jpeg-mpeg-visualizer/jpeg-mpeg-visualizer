@@ -2,8 +2,10 @@ use crate::graphic_helpers::drag_n_drop::IntoDragEvent;
 use crate::Msg as GMsg;
 use seed::prelude::*;
 use seed::*;
+use strum::IntoEnumIterator;
 
-use super::model::{Model, Msg};
+use super::model::{ExplainationTab, Model, Msg};
+use super::mpeg1::constants::{PICTURE_TYPE_INTRA, PICTURE_TYPE_PREDICTIVE};
 use super::page::wrap;
 
 macro_rules! stop_and_prevent {
@@ -47,7 +49,7 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
                         At::For => "file"
                     },
                     strong!["Choose a file"],
-                    format!(" or drag it here {:?}", model.video_stream_length),
+                    " or drag it here",
                 ],
             ],
             ev(Ev::DragEnter, |event| {
@@ -78,8 +80,75 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
 }
 
 pub fn view_video_player(model: &Model) -> Node<GMsg> {
-    div![canvas![
-        el_ref(&model.canvas),
-        ev(Ev::Click, |_event| { wrap(Msg::PlayerClicked) })
-    ]]
+    div![
+        C!["mpeg-container"],
+        div![
+            C!["frames-accordion"],
+            model.frames.iter().enumerate().map(|(i, frame)| {
+                div![
+                    C!["frame-item"],
+                    C![IF!(frame.picture_type == PICTURE_TYPE_INTRA => "-intra")],
+                    C![IF!(frame.picture_type == PICTURE_TYPE_PREDICTIVE => "-predictive")],
+                    C![IF!(i == model.selected_frame => "-selected")],
+                    ev(Ev::Click, move |_| wrap(Msg::FrameChanged(i))),
+                    p![(i + 1).to_string()],
+                    p![C!["typeletter"], get_frame_type(frame.picture_type, true)]
+                ]
+            }),
+        ],
+        div![
+            C!["frame-container"],
+            canvas![el_ref(&model.canvas)],
+            IF!(not(model.frames.is_empty()) => {
+                let frame = &model.frames[model.selected_frame];
+                div![
+                    C!["frame-info"],
+                    h3![format!("Frame #{}", model.selected_frame + 1)],
+                    p!["type: ", strong![get_frame_type(frame.picture_type, false)]],
+                    p!["width: ", strong![frame.width.to_string()]],
+                    p!["height: ", strong![frame.height.to_string()]],
+                    p!["size: ", strong![format!("{:.2} KB", frame.size as f32 / 1000.0 / 8.0)]],
+                    h4!["Additional information"],
+                    p!["# of macroblocks: ", strong![frame.macroblock_count.to_string()]],
+                    p!["# of blocks: ", strong![frame.block_count.to_string()]]
+                ]
+            })
+        ],
+        IF!(not(model.frames.is_empty()) => {
+            div![
+                C!["frame-type-explaination"],
+                div![
+                    C!["tabs"],
+                    ExplainationTab::iter().map(|tab| {
+                        div![
+                            IF!(model.selected_explaination_tab == tab => C!["-selected"]),
+                            tab.to_string(),
+                            ev(Ev::Click, move |_| wrap(Msg::ExplainationTabChanged(tab)))
+                        ]
+                    })
+                ],
+                div![
+                    C!["content"],
+                    h3!["Lorem ipsum"],
+                    "Lorem ipsum dolor sit amet."
+                ],
+            ]
+        })
+    ]
+}
+
+const fn get_frame_type(code: u8, letter: bool) -> &'static str {
+    if code == PICTURE_TYPE_INTRA {
+        if letter {
+            "I"
+        } else {
+            "Intra"
+        }
+    } else {
+        if letter {
+            "P"
+        } else {
+            "Predictive"
+        }
+    }
 }

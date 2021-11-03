@@ -9,6 +9,9 @@ pub struct DecodedFrame {
     pub y: Vec<u8>,
     pub cr: Vec<u8>,
     pub cb: Vec<u8>,
+    pub size: usize,
+    pub macroblock_count: usize,
+    pub block_count: usize,
 }
 
 pub struct MPEG1 {
@@ -53,6 +56,8 @@ pub struct MPEG1 {
 
     block_data: [i32; 64],
     quantizer_scale: u8,
+    macroblock_count: usize,
+    block_count: usize,
 }
 
 impl MPEG1 {
@@ -90,6 +95,8 @@ impl MPEG1 {
             forward_r_size: 0,
             block_data: [0; 64],
             quantizer_scale: 0,
+            macroblock_count: 0,
+            block_count: 0,
         }
     }
 
@@ -191,6 +198,8 @@ impl MPEG1 {
     }
 
     fn decode_picture(&mut self) -> DecodedFrame {
+        let old_pointer = self.pointer;
+
         // Skip over picture start code
         self.pointer += 32;
 
@@ -239,8 +248,13 @@ impl MPEG1 {
             y: self.current_y.clone(),
             cr: self.current_cr.clone(),
             cb: self.current_cb.clone(),
+            size: self.pointer - old_pointer,
+            macroblock_count: self.macroblock_count,
+            block_count: self.block_count,
         };
 
+        self.macroblock_count = 0;
+        self.block_count = 0;
         std::mem::swap(&mut self.current_y, &mut self.forward_y);
         std::mem::swap(&mut self.current_cb, &mut self.forward_cb);
         std::mem::swap(&mut self.current_cr, &mut self.forward_cr);
@@ -276,6 +290,7 @@ impl MPEG1 {
         // There must be at least one macroblock
         loop {
             self.decode_macroblock();
+            self.macroblock_count += 1;
             if self.next_bytes_are_start_code() {
                 break;
             };
@@ -377,6 +392,7 @@ impl MPEG1 {
             let mask = 0b100000 >> block;
             if cbp & mask != 0 {
                 self.decode_block(block, macroblock_intra);
+                self.block_count += 1;
             }
         }
     }
@@ -973,7 +989,7 @@ fn IDCT(block: &mut [i32; 64]) {
 
 #[rustfmt::skip]
 #[allow(clippy::identity_op)]
-mod constants {
+pub mod constants {
     pub const PICTURE_START_CODE: u32 = 0x00_00_01_00;
     pub const SLICE_FIRST_START_CODE: u32 = 0x00_00_01_01;
     pub const SLICE_LAST_START_CODE: u32 = 0x00_00_01_AF;

@@ -94,7 +94,7 @@ body {
     padding: 20% 0;
 }
 
-.drop_area_wrapper {;
+.drop_area_wrapper {
     width: 70%;
     background-color: #efefef;
     outline: 2px dashed grey;
@@ -473,4 +473,104 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 
 .canvas_overlay[src]{
     opacity: 1;
+}
+
+
+/* MPEG */
+.mpeg-container {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.frames-accordion {
+    display: flex;
+    width: 100%;
+    gap: 3px;
+    user-select: none;
+}
+
+.frame-item {
+    font-size: 1.2rem;
+    width: 40px;
+    text-align: center;
+    height: 60px;
+    clip-path: polygon(0% 0%, 100% 0%, 100% 90%, 50% 100%, 0% 90%);
+    cursor: pointer;
+}
+
+.frame-item.-selected {
+    background-color: slateblue;
+    color: white;
+}
+
+.frame-item.-intra:not(.-selected) {
+    background-color: antiquewhite;
+}
+
+.frame-item.-predictive:not(.-selected) {
+    background-color: honeydew;
+}
+
+.frame-item > p {
+    margin: 3px 0px 0px 0px;
+}
+
+.frame-item > .typeletter {
+    font-size: 1rem;
+    margin-top: 5px;
+}
+
+.frame-container {
+    display: flex;
+    gap: 20px;
+    margin-top: 4px;
+    align-items: start;
+}
+
+.frame-info {
+    font-size: initial;
+    background: white;
+    min-width: 200px;
+    padding: 1rem 1em;
+}
+
+.frame-info > h3 {
+    margin: 0;
+}
+
+.frame-type-explaination {
+    margin-top: 5rem;
+    display: flex;
+    flex-direction: column;
+}
+
+.frame-type-explaination > .tabs {
+    display: flex
+}
+
+.frame-type-explaination > .tabs > div {
+    padding: 0.3rem 0.5rem;
+    font-weight: bold;
+    font-size: 1rem;
+    background-color: #efefef;
+    border-top: 1px solid black;
+    border-left: 1px solid black;
+}
+
+.frame-type-explaination > .tabs > div:last-child {
+    border-right: 1px solid black;
+}
+
+.frame-type-explaination > .tabs > div.-selected {
+    background-color: white;
+}
+
+.frame-type-explaination > .content {
+    font-size: 1rem;
+    padding: 1rem;
+    background: white;
+    margin-top: 0;
+    min-width: 130ch;
 }
