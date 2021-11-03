@@ -11,7 +11,6 @@ pub struct ImagePack {
     pub ycbcr: image::YCbCrImage,
     pub chosen_block_x: f64,
     pub chosen_block_y: f64,
-    pub canvases_content: HashMap<CanvasName, Vec<u8>>,
 }
 
 pub enum State {
