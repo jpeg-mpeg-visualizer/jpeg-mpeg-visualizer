@@ -28,16 +28,32 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                     _ => AtValue::Ignored,
                 }
             ],
-            canvas![
-                el_ref(&model.original_image_canvas),
-                attrs![
-                    At::Width => px(BLOCK_SIZE * ZOOM),
-                    At::Height => px(BLOCK_SIZE * ZOOM),
+            div![
+                C!["canvas_with_overlay_container"],
+                img![
+                    C!["canvas_overlay"],
+                    el_ref(&model.original_image_overlay),
+                    attrs![
+                        At::Width => px(BLOCK_SIZE * ZOOM),
+                        At::Height => px(BLOCK_SIZE * ZOOM),
+                        At::Draggable => false,
+                    ],
+                    ev(Ev::Click, |event| {
+                        let mouse_event: MouseEvent = event.unchecked_into();
+                        wrap(Msg::PreviewCanvasClicked(mouse_event.x(), mouse_event.y()))
+                    }),
+                    ev(Ev::DragEnd, |event| {
+                        let mouse_event: MouseEvent = event.unchecked_into();
+                        wrap(Msg::PreviewCanvasClicked(mouse_event.x(), mouse_event.y()))
+                    }),
                 ],
-                ev(Ev::Click, |event| {
-                    let mouse_event: MouseEvent = event.unchecked_into();
-                    wrap(Msg::PreviewCanvasClicked(mouse_event.x(), mouse_event.y()))
-                })
+                canvas![
+                    el_ref(&model.original_image_canvas),
+                    attrs![
+                        At::Width => px(BLOCK_SIZE * ZOOM),
+                        At::Height => px(BLOCK_SIZE * ZOOM),
+                    ],
+                ],
             ],
             canvas_labeled_div(
                 "INPUT",

@@ -3,7 +3,7 @@ use seed::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use strum_macros::EnumIter;
-use web_sys::HtmlCanvasElement;
+use web_sys::{HtmlCanvasElement, HtmlImageElement};
 
 pub struct ImagePack {
     pub raw_image: Rc<image::RawImage>,
@@ -73,6 +73,9 @@ pub struct Model {
     pub original_image_canvas: ElRef<HtmlCanvasElement>,
     pub canvas_map: HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     pub preview_canvas_map: HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
-
+    // overlay_image_map and preview_image_map could be one but lack of inheritance makes it at least difficult
+    pub original_image_overlay: ElRef<HtmlImageElement>,
+    //pub overlay_image_map: HashMap<CanvasName, HtmlImageElement>,
+    //pub preview_overlay_image_map: HashMap<CanvasName, HtmlImageElement>,
     pub quality: u8,
 }

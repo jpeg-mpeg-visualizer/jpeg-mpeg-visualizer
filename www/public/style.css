@@ -459,3 +459,15 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     color:white;
     margin: 5px 0;
 }
+
+.canvas_with_overlay_container {
+    display: inline-block;
+}
+.canvas_overlay {
+    position: absolute;
+    display: block;
+    box-shadow: none;
+}
+img {
+    box-shadow: none !important;
+}

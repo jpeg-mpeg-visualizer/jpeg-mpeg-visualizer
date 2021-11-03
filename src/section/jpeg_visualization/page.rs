@@ -19,7 +19,7 @@ use super::drawing_utils::{
 };
 use super::utils::get_image_diff;
 use std::collections::HashMap;
-use web_sys::HtmlCanvasElement;
+use web_sys::{Blob, HtmlCanvasElement, HtmlImageElement};
 
 pub fn init(url: Url) -> Option<Model> {
     let base_url = url.to_base_url();
@@ -40,6 +40,7 @@ pub fn init(url: Url) -> Option<Model> {
         original_image_canvas: ElRef::<HtmlCanvasElement>::default(),
         canvas_map,
         preview_canvas_map,
+        original_image_overlay: ElRef::<HtmlImageElement>::default(),
         quality: 50,
     })
 }
@@ -60,6 +61,19 @@ pub fn wrap(msg: Msg) -> GMsg {
     GMsg::JPEGVisualizationMessage(msg)
 }
 
+fn prepare_original_image_preview(
+    original_canvas_preview: &ElRef<HtmlCanvasElement>,
+    original_canvas_overlay: &ElRef<HtmlImageElement>,
+    image: &image::RawImage,
+) {
+    let canvas = original_canvas_preview.get().unwrap();
+    // Adjust original image preview width so that it isn't squeezed
+    let new_width =
+        ((image.width() as f64 / image.height() as f64) * canvas.height() as f64) as u32;
+    canvas.set_width(new_width);
+    // We also need to adjust the overlay
+    original_canvas_overlay.get().unwrap().set_width(new_width);
+}
 fn draw_original_image_preview(
     original_canvas_preview: &ElRef<HtmlCanvasElement>,
     image: &image::RawImage,
@@ -70,11 +84,6 @@ fn draw_original_image_preview(
         image.width(),
     )
     .unwrap();
-
-    // Adjust original image preview width so that it isn't squeezed
-    let new_width =
-        ((image.width() as f64 / image.height() as f64) * canvas.height() as f64) as u32;
-    canvas.set_width(new_width);
 
     draw_scaled_image_with_image_data_with_w_h_and_scale(
         &original_canvas_preview,
@@ -414,6 +423,59 @@ fn redraw_ordinary_canvases(
     }
 }
 
+fn draw_input_selection_indicator(
+    overlay_image_ref: &ElRef<HtmlImageElement>,
+    image_window: &RawImageWindow,
+    image: &image::RawImage,
+) {
+    let overlay_image = overlay_image_ref.get().unwrap();
+
+    let tmp_canvas = web_sys::window()
+        .unwrap()
+        .document()
+        .unwrap()
+        .create_element("canvas")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .unwrap();
+
+    tmp_canvas.set_width(overlay_image.width());
+    tmp_canvas.set_height(overlay_image.height());
+
+    let preview_ctx = canvas_context_2d(&tmp_canvas);
+
+    // We need to calculate offset of line_width so that all pixels of the image window are inside stroked rect (as in not covered by the lines)
+    let line_width: i32 = 4;
+    let rect_a =
+        (((overlay_image.height() * BLOCK_SIZE) / image.height()) as i32 + line_width) as f64;
+    let rect_x = cmp::max(
+        0,
+        ((image_window.start_x * overlay_image.height()) / image.height()) as i32 - line_width / 2,
+    ) as f64;
+    let rect_y = cmp::max(
+        0,
+        ((image_window.start_y * overlay_image.width()) / image.width()) as i32 - line_width / 2,
+    ) as f64;
+
+    preview_ctx.set_line_width(line_width as f64);
+    preview_ctx.stroke_rect(rect_x, rect_y, rect_a, rect_a);
+
+    let f = Closure::once_into_js(move |blob: &Blob| {
+        let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
+
+        overlay_image.set_src(&url);
+        overlay_image.set_onload(Some(
+            Closure::once_into_js(move || {
+                // no longer need to read the blob so it's revoked
+                web_sys::Url::revoke_object_url(&url);
+            })
+            .as_ref()
+            .unchecked_ref(),
+        ));
+    });
+    tmp_canvas.to_blob(f.as_ref().unchecked_ref());
+}
+
 struct_urls!();
 #[allow(dead_code)]
 impl<'a> Urls<'a> {
@@ -441,6 +503,11 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::ImageLoaded(raw_image) => {
             turn_antialiasing_off(&model.canvas_map, &model.preview_canvas_map);
+            prepare_original_image_preview(
+                &model.original_image_canvas,
+                &model.original_image_overlay,
+                &raw_image,
+            );
             draw_original_image_preview(&model.original_image_canvas, &raw_image);
 
             let raw_image_rc = Rc::new(raw_image);
@@ -511,26 +578,11 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 draw_ycbcr(&model.canvas_map, pack);
                 draw_dct_quantized(&model.canvas_map, pack, model.quality);
 
-                // We need to calculate offset of line_width so that all pixels of the image window are inside stroked rect (as in not covered by the lines)
-                let line_width: i32 = 4;
-                draw_original_image_preview(&preview_canvas_ref, &pack.raw_image);
-                let preview_ctx = canvas_context_2d(&preview_canvas);
-                let rect_a = (((preview_canvas.height() * BLOCK_SIZE) / pack.raw_image.height())
-                    as i32
-                    + line_width) as f64;
-                let rect_x = cmp::max(
-                    0,
-                    ((image_x * preview_canvas.height()) / pack.raw_image.height()) as i32
-                        - line_width / 2,
-                ) as f64;
-                let rect_y = cmp::max(
-                    0,
-                    ((image_y * preview_canvas.width()) / pack.raw_image.width()) as i32
-                        - line_width / 2,
-                ) as f64;
-
-                preview_ctx.set_line_width(line_width as f64);
-                preview_ctx.stroke_rect(rect_x, rect_y, rect_a, rect_a);
+                draw_input_selection_indicator(
+                    &model.original_image_overlay,
+                    &pack.image_window,
+                    &pack.raw_image,
+                );
             }
         }
         Msg::BlockChosen(x, y, rect_x, rect_y) => {

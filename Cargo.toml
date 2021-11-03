@@ -48,4 +48,6 @@ features = [
     "AudioBufferSourceNode",
     "GainNode",
     "AudioDestinationNode",
-    "HtmlDivElement" ]
+    "HtmlDivElement",
+    "Blob",
+    "Url" ]
