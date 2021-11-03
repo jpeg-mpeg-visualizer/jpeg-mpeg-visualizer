@@ -466,5 +466,11 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .canvas_overlay {
     position: absolute;
     display: block;
-    box-shadow: none;
+}
+.canvas_overlay:not([src]){
+    opacity: 0;
+}
+
+.canvas_overlay[src]{
+    opacity: 1;
 }
