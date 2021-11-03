@@ -101,50 +101,52 @@ fn draw_original_image_preview(
     );
 }
 
-fn draw_block_choice_indicator_for_canvas(
-    canvas: &ElRef<HtmlCanvasElement>,
+fn draw_block_choice_indicators(
+    overlay_map: &HashMap<CanvasName, ElRef<HtmlImageElement>>,
+    preview_overlay_map: &HashMap<PreviewCanvasName, ElRef<HtmlImageElement>>,
     start_x: f64,
     start_y: f64,
 ) {
-    let ctx = canvas_context_2d(&canvas.get().unwrap());
-    // Draw rect
-    ctx.begin_path();
+    let tmp_canvas = web_sys::window()
+        .unwrap()
+        .document()
+        .unwrap()
+        .create_element("canvas")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .unwrap();
+    tmp_canvas.set_width(BLOCK_SIZE * ZOOM);
+    tmp_canvas.set_height(BLOCK_SIZE * ZOOM);
+
+    let tmp_ctx = canvas_context_2d(&tmp_canvas);
+
+    tmp_ctx.begin_path();
+    // We need to calculate offset of line_width so that all pixels of the image window are inside stroked rect (as in not covered by the lines)
     let line_width: f64 = 2.0;
-    ctx.set_line_width(line_width);
-    ctx.stroke_rect(
+    tmp_ctx.set_line_width(line_width);
+    tmp_ctx.stroke_rect(
         start_x - line_width / 2.0,
         start_y - line_width / 2.0,
         8.0 * ZOOM as f64 + line_width / 2.0,
         8.0 * ZOOM as f64 + line_width / 2.0,
     );
-}
-fn draw_block_choice_indicators_for_ordinary(
-    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
-    start_x: f64,
-    start_y: f64,
-) {
-    for (_canvas_name, canvas) in canvas_map {
-        draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
-    }
-}
-fn draw_block_choice_indicators_for_preview(
-    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
-    start_x: f64,
-    start_y: f64,
-) {
-    for (_canvas_name, canvas) in preview_canvas_map {
-        draw_block_choice_indicator_for_canvas(&canvas, start_x, start_y);
-    }
-}
 
-fn draw_block_choice_indicators(
-    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
-    preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
-    start_x: f64,
-    start_y: f64,
-) {
-    draw_block_choice_indicators_for_ordinary(&canvas_map, start_x, start_y);
-    draw_block_choice_indicators_for_preview(&preview_canvas_map, start_x, start_y);
+    let overlay_map_cloned = overlay_map.clone();
+    let preview_overlay_map_cloned = preview_overlay_map.clone();
+    let f = Closure::once_into_js(move |blob: &Blob| {
+        let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
+
+        for (_canvas_name, overlay_image) in overlay_map_cloned {
+            overlay_image.get().unwrap().set_src(&url);
+        }
+        for (_preview_canvas_name, overlay_image) in preview_overlay_map_cloned {
+            overlay_image.get().unwrap().set_src(&url);
+        }
+        // TODO: Consider checking if all images has loaded and after all are loaded revoke no longer needed url
+    });
+    tmp_canvas
+        .to_blob(f.as_ref().unchecked_ref::<js_sys::Function>())
+        .unwrap();
 }
 
 fn draw_ycbcr(canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>, pack: &mut ImagePack) {
@@ -419,15 +421,6 @@ fn draw_input_previews(
         draw_scaled_image_default(&canvas, &input_image);
     }
 }
-fn redraw_ordinary_canvases(
-    canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
-    canvases_content: &HashMap<CanvasName, Vec<u8>>,
-) {
-    for (canvas_name, image) in canvases_content {
-        let canvas = canvas_map.get(canvas_name).unwrap();
-        draw_scaled_image_default(&canvas, &image);
-    }
-}
 
 fn draw_input_selection_indicator(
     overlay_image_ref: &ElRef<HtmlImageElement>,
@@ -448,7 +441,7 @@ fn draw_input_selection_indicator(
     tmp_canvas.set_width(overlay_image.width());
     tmp_canvas.set_height(overlay_image.height());
 
-    let preview_ctx = canvas_context_2d(&tmp_canvas);
+    let tmp_ctx = canvas_context_2d(&tmp_canvas);
 
     // We need to calculate offset of line_width so that all pixels of the image window are inside stroked rect (as in not covered by the lines)
     let line_width: i32 = 4;
@@ -463,8 +456,8 @@ fn draw_input_selection_indicator(
         ((image_window.start_y * overlay_image.width()) / image.width()) as i32 - line_width / 2,
     ) as f64;
 
-    preview_ctx.set_line_width(line_width as f64);
-    preview_ctx.stroke_rect(rect_x, rect_y, rect_a, rect_a);
+    tmp_ctx.set_line_width(line_width as f64);
+    tmp_ctx.stroke_rect(rect_x, rect_y, rect_a, rect_a);
 
     let f = Closure::once_into_js(move |blob: &Blob| {
         let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
@@ -473,13 +466,15 @@ fn draw_input_selection_indicator(
         overlay_image.set_onload(Some(
             Closure::once_into_js(move || {
                 // no longer need to read the blob so it's revoked
-                web_sys::Url::revoke_object_url(&url);
+                web_sys::Url::revoke_object_url(&url).unwrap();
             })
             .as_ref()
-            .unchecked_ref(),
+            .unchecked_ref::<js_sys::Function>(),
         ));
     });
-    tmp_canvas.to_blob(f.as_ref().unchecked_ref());
+    tmp_canvas
+        .to_blob(f.as_ref().unchecked_ref::<js_sys::Function>())
+        .unwrap();
 }
 
 struct_urls!();
@@ -541,13 +536,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             if let State::ImageView(ref mut pack) = model.state {
                 model.quality = quality;
                 draw_dct_quantized(&model.canvas_map, pack, quality);
-                if pack.chosen_block_x >= 0.0 && pack.chosen_block_y >= 0.0 {
-                    draw_block_choice_indicators_for_ordinary(
-                        &model.canvas_map,
-                        pack.chosen_block_x,
-                        pack.chosen_block_y,
-                    );
-                }
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
@@ -580,15 +568,15 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
                 pack.ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
 
-                draw_input_previews(&model.preview_canvas_map, &pack.image_window);
-                draw_ycbcr(&model.canvas_map, pack);
-                draw_dct_quantized(&model.canvas_map, pack, model.quality);
-
                 draw_input_selection_indicator(
                     &model.original_image_overlay,
                     &pack.image_window,
                     &pack.raw_image,
                 );
+
+                draw_input_previews(&model.preview_canvas_map, &pack.image_window);
+                draw_ycbcr(&model.canvas_map, pack);
+                draw_dct_quantized(&model.canvas_map, pack, model.quality);
             }
         }
         Msg::BlockChosen(x, y, rect_x, rect_y) => {
@@ -602,13 +590,9 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     ((BLOCK_SIZE - 8) * ZOOM) as i32,
                 ) as f64;
 
-                // Reset previous block choice indicators
-                redraw_ordinary_canvases(&model.canvas_map, &pack.canvases_content);
-                draw_input_previews(&model.preview_canvas_map, &pack.image_window);
-                // Draw actual square (block choice indicator)
                 draw_block_choice_indicators(
-                    &model.canvas_map,
-                    &model.preview_canvas_map,
+                    &model.overlay_map,
+                    &model.preview_overlay_map,
                     start_x,
                     start_y,
                 );

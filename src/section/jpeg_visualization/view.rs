@@ -6,7 +6,7 @@ use super::model::{CanvasName, Model, Msg, PreviewCanvasName, State};
 use super::page::wrap;
 use crate::graphic_helpers::drag_n_drop::*;
 use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
-use web_sys::{HtmlCanvasElement, Event, HtmlImageElement};
+use web_sys::{Event, HtmlCanvasElement, HtmlImageElement};
 
 macro_rules! stop_and_prevent {
     { $event:expr } => {
@@ -57,7 +57,10 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                     .preview_canvas_map
                     .get(&PreviewCanvasName::Original)
                     .unwrap(),
-                &model.preview_overlay_map.get(&PreviewCanvasName::Original).unwrap()
+                &model
+                    .preview_overlay_map
+                    .get(&PreviewCanvasName::Original)
+                    .unwrap()
             ),
         ]
     ]
@@ -74,11 +77,26 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
                     .preview_canvas_map
                     .get(&PreviewCanvasName::YCbCr)
                     .unwrap(),
-                &model.preview_overlay_map.get(&PreviewCanvasName::YCbCr).unwrap()
+                &model
+                    .preview_overlay_map
+                    .get(&PreviewCanvasName::YCbCr)
+                    .unwrap()
             ),
-            canvas_labeled_div(" Y ", &model.canvas_map.get(&CanvasName::Ys).unwrap(), &model.overlay_map.get(&CanvasName::Ys).unwrap()),
-            canvas_labeled_div("CB", &model.canvas_map.get(&CanvasName::Cbs).unwrap(), &model.overlay_map.get(&CanvasName::Cbs).unwrap()),
-            canvas_labeled_div("CR", &model.canvas_map.get(&CanvasName::Crs).unwrap(), &model.overlay_map.get(&CanvasName::Crs).unwrap()),
+            canvas_labeled_div(
+                " Y ",
+                &model.canvas_map.get(&CanvasName::Ys).unwrap(),
+                &model.overlay_map.get(&CanvasName::Ys).unwrap()
+            ),
+            canvas_labeled_div(
+                "CB",
+                &model.canvas_map.get(&CanvasName::Cbs).unwrap(),
+                &model.overlay_map.get(&CanvasName::Cbs).unwrap()
+            ),
+            canvas_labeled_div(
+                "CR",
+                &model.canvas_map.get(&CanvasName::Crs).unwrap(),
+                &model.overlay_map.get(&CanvasName::Crs).unwrap()
+            ),
         ]
     ]
 }
@@ -94,7 +112,10 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                     .preview_canvas_map
                     .get(&PreviewCanvasName::YCbCrQuant)
                     .unwrap(),
-                &model.preview_overlay_map.get(&PreviewCanvasName::YCbCrQuant).unwrap()
+                &model
+                    .preview_overlay_map
+                    .get(&PreviewCanvasName::YCbCrQuant)
+                    .unwrap()
             ),
             canvas_labeled_div(
                 "Y QUANTIZED",
@@ -126,7 +147,10 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
                     .preview_canvas_map
                     .get(&PreviewCanvasName::YCbCrRecovered)
                     .unwrap(),
-                &model.preview_overlay_map.get(&PreviewCanvasName::YCbCrRecovered).unwrap()
+                &model
+                    .preview_overlay_map
+                    .get(&PreviewCanvasName::YCbCrRecovered)
+                    .unwrap()
             ),
             canvas_labeled_div(
                 "Y RECOVERED",
@@ -158,7 +182,10 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
                     .preview_canvas_map
                     .get(&PreviewCanvasName::ForComparison)
                     .unwrap(),
-                &model.preview_overlay_map.get(&PreviewCanvasName::ForComparison).unwrap()
+                &model
+                    .preview_overlay_map
+                    .get(&PreviewCanvasName::ForComparison)
+                    .unwrap()
             ),
             canvas_labeled_div(
                 "OUTPUT",
@@ -174,14 +201,18 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
     ]
 }
 
-fn canvas_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>, img: &ElRef<HtmlImageElement>) -> Node<GMsg> {
+fn canvas_labeled_div(
+    label: &str,
+    canvas: &ElRef<HtmlCanvasElement>,
+    img: &ElRef<HtmlImageElement>,
+) -> Node<GMsg> {
     let padding = 10;
     let cloned_canvas = canvas.clone();
 
     div![
         C!["labeled_canvas_wrapper"],
         label![C!["canvas_label"], &label],
-         div![
+        div![
             C!["canvas_with_overlay_container"],
             img![
                 C!["canvas_overlay"],
