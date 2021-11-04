@@ -75,7 +75,7 @@ pub struct Model {
     pub preview_canvas_map: HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
 
     pub original_image_overlay: ElRef<HtmlImageElement>,
-    // overlay_image_map and preview_image_map could be one but lack of inheritance makes it at least difficult
+    // overlay_map and preview_overlay_map could be one but lack of inheritance makes it at least difficult
     pub overlay_map: HashMap<CanvasName, ElRef<HtmlImageElement>>,
     pub preview_overlay_map: HashMap<PreviewCanvasName, ElRef<HtmlImageElement>>,
 
