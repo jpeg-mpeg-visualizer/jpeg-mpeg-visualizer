@@ -451,11 +451,26 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     text-align: center;
     padding: 5px 0 0 0;
 }
-.labeled_canvas_wrapper canvas {
-    margin: 5px;
-}
 .canvas_label {
     font-size: 1.5em;
     color:white;
     margin: 5px 0;
+}
+.canvas_with_overlay_container {
+    margin: 5px;
+}
+
+.canvas_with_overlay_container {
+    display: inline-block;
+}
+.canvas_overlay {
+    position: absolute;
+    display: block;
+}
+.canvas_overlay:not([src]){
+    opacity: 0;
+}
+
+.canvas_overlay[src]{
+    opacity: 1;
 }

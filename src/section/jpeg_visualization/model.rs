@@ -3,7 +3,7 @@ use seed::prelude::*;
 use std::collections::HashMap;
 use std::rc::Rc;
 use strum_macros::EnumIter;
-use web_sys::HtmlCanvasElement;
+use web_sys::{HtmlCanvasElement, HtmlImageElement};
 
 pub struct ImagePack {
     pub raw_image: Rc<image::RawImage>,
@@ -11,7 +11,6 @@ pub struct ImagePack {
     pub ycbcr: image::YCbCrImage,
     pub chosen_block_x: f64,
     pub chosen_block_y: f64,
-    pub canvases_content: HashMap<CanvasName, Vec<u8>>,
 }
 
 pub enum State {
@@ -53,7 +52,7 @@ pub enum CanvasName {
     ImageRecovered,
     Difference,
 }
-#[derive(Debug, PartialEq, Eq, Hash, EnumIter)]
+#[derive(Debug, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
 pub enum PreviewCanvasName {
     Original,
     YCbCr,
@@ -70,9 +69,15 @@ pub struct Model {
     pub file_chooser_zone_active: bool,
     pub base_url: Url,
     pub state: State,
+
     pub original_image_canvas: ElRef<HtmlCanvasElement>,
     pub canvas_map: HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     pub preview_canvas_map: HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
+
+    pub original_image_overlay: ElRef<HtmlImageElement>,
+    // overlay_map and preview_overlay_map could be one but lack of inheritance makes it at least difficult
+    pub overlay_map: HashMap<CanvasName, ElRef<HtmlImageElement>>,
+    pub preview_overlay_map: HashMap<PreviewCanvasName, ElRef<HtmlImageElement>>,
 
     pub quality: u8,
 }
