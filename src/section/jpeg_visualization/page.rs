@@ -325,9 +325,9 @@ fn draw_dct_quantized_plot(
     let mut chart = ChartBuilder::on(&area)
         .margin(20)
         .build_cartesian_3d(
-            (0i32..(width * (8 as usize)) as i32).with_key_points(key_points.clone()),
+            (0i32..(width * (8usize)) as i32).with_key_points(key_points.clone()),
             0i32..255i32,
-            (0i32..(height * (8 as usize)) as i32).with_key_points(key_points),
+            (0i32..(height * (8usize)) as i32).with_key_points(key_points),
         )
         .unwrap();
 
@@ -342,8 +342,8 @@ fn draw_dct_quantized_plot(
 
     chart
         .draw_series(
-            (0i32..(width * (8 as usize)) as i32)
-                .map(|x| std::iter::repeat(x).zip(0i32..(height * (8 as usize)) as i32))
+            (0i32..(width * (8usize)) as i32)
+                .map(|x| std::iter::repeat(x).zip(0i32..(height * (8usize)) as i32))
                 .flatten()
                 .map(|(x, z)| {
                     let block_x = (x / 8i32) as usize;
