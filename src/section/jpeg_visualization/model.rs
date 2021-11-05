@@ -1,3 +1,4 @@
+use crate::block::BlockMatrix;
 use crate::image;
 use seed::prelude::*;
 use std::collections::HashMap;
@@ -9,6 +10,9 @@ pub struct ImagePack {
     pub raw_image: Rc<image::RawImage>,
     pub image_window: image::RawImageWindow,
     pub ycbcr: image::YCbCrImage,
+
+    pub plot_data: HashMap<PlotName, BlockMatrix>,
+
     pub chosen_block_x: f64,
     pub chosen_block_y: f64,
 }
@@ -52,6 +56,14 @@ pub enum CanvasName {
     ImageRecovered,
     Difference,
 }
+
+#[derive(PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
+pub enum PlotName {
+    YsQuant3d,
+    CbsQuant3d,
+    CrsQuant3d,
+}
+
 #[derive(Debug, PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
 pub enum PreviewCanvasName {
     Original,
@@ -73,6 +85,7 @@ pub struct Model {
     pub original_image_canvas: ElRef<HtmlCanvasElement>,
     pub canvas_map: HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     pub preview_canvas_map: HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
+    pub plot_map: HashMap<PlotName, ElRef<HtmlCanvasElement>>,
 
     pub original_image_overlay: ElRef<HtmlImageElement>,
     // overlay_map and preview_overlay_map could be one but lack of inheritance makes it at least difficult

@@ -3,6 +3,9 @@ use seed::*;
 use std::cmp;
 use strum::IntoEnumIterator;
 
+use plotters::prelude::*;
+use plotters_canvas::CanvasBackend;
+
 use super::model::*;
 use super::utils;
 use super::view::*;
@@ -19,6 +22,7 @@ use super::drawing_utils::{
 };
 use super::utils::get_image_diff;
 use std::collections::HashMap;
+
 use web_sys::{Blob, HtmlCanvasElement, HtmlImageElement};
 
 pub fn init(url: Url) -> Option<Model> {
@@ -37,6 +41,11 @@ pub fn init(url: Url) -> Option<Model> {
         preview_overlay_map.insert(canvas_name, ElRef::<HtmlImageElement>::default());
     }
 
+    let mut plot_map = HashMap::<PlotName, ElRef<HtmlCanvasElement>>::new();
+    for plot_name in PlotName::iter() {
+        plot_map.insert(plot_name, ElRef::<HtmlCanvasElement>::default());
+    }
+
     Some(Model {
         file_chooser_zone_active: false,
         base_url,
@@ -44,6 +53,7 @@ pub fn init(url: Url) -> Option<Model> {
         original_image_canvas: ElRef::<HtmlCanvasElement>::default(),
         canvas_map,
         preview_canvas_map,
+        plot_map,
         original_image_overlay: ElRef::<HtmlImageElement>::default(),
         overlay_map,
         preview_overlay_map,
@@ -203,10 +213,12 @@ fn draw_ycbcr(
 
 fn draw_dct_quantized(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
-    ycbcr: &image::YCbCrImage,
-    image_window: &image::RawImageWindow,
+    pack: &mut ImagePack,
     quality: u8,
 ) {
+    let ycbcr = &pack.ycbcr;
+    let image_window = &pack.image_window;
+
     let ys = ycbcr.to_ys_channel();
     let cbs = ycbcr.to_cbs_channel();
     let crs = ycbcr.to_crs_channel();
@@ -246,14 +258,120 @@ fn draw_dct_quantized(
         CanvasName::CrsQuant,
     );
 
+    pack.plot_data.insert(PlotName::YsQuant3d, ys_quantized);
+    pack.plot_data.insert(PlotName::CbsQuant3d, cbs_quantized);
+    pack.plot_data.insert(PlotName::CrsQuant3d, crs_quantized);
+
     draw_ycbcr_recovered(
         &canvas_map,
-        &ys_quantized,
-        &cbs_quantized,
-        &crs_quantized,
+        &pack.plot_data.get(&PlotName::YsQuant3d).unwrap(),
+        &pack.plot_data.get(&PlotName::CbsQuant3d).unwrap(),
+        &pack.plot_data.get(&PlotName::CrsQuant3d).unwrap(),
         image_window,
         quality,
     );
+}
+
+fn draw_dct_quantized_plots(
+    pack: &ImagePack,
+    plot_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
+) {
+    let selected_x = (pack.chosen_block_x / (ZOOM * 8) as f64) as usize;
+    let selected_y = (pack.chosen_block_y / (ZOOM * 8) as f64) as usize;
+
+    draw_dct_quantized_plot(
+        &pack.plot_data.get(&PlotName::YsQuant3d).unwrap(),
+        selected_x,
+        selected_y,
+        plot_map,
+        PlotName::YsQuant3d,
+    );
+    draw_dct_quantized_plot(
+        &pack.plot_data.get(&PlotName::CbsQuant3d).unwrap(),
+        selected_x,
+        selected_y,
+        plot_map,
+        PlotName::CbsQuant3d,
+    );
+    draw_dct_quantized_plot(
+        &pack.plot_data.get(&PlotName::CrsQuant3d).unwrap(),
+        selected_x,
+        selected_y,
+        plot_map,
+        PlotName::CrsQuant3d,
+    );
+}
+
+fn draw_dct_quantized_plot(
+    data: &BlockMatrix,
+    selected_x: usize,
+    selected_z: usize,
+    canvas_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
+    canvas_name: PlotName,
+) {
+    let width: usize = data.width;
+    let height: usize = data.height;
+    let blocks = &data.blocks;
+
+    let canvas = canvas_map.get(&canvas_name).unwrap().get().unwrap();
+    let area = CanvasBackend::with_canvas_object(canvas)
+        .unwrap()
+        .into_drawing_area();
+
+    area.fill(&RGBColor(113, 113, 114)).unwrap();
+
+    let key_points = vec![0, 8, 16, 24, 32, 40, 48, 56, 64];
+
+    let mut chart = ChartBuilder::on(&area)
+        .margin(20)
+        .build_cartesian_3d(
+            (0i32..(width * (8 as usize)) as i32).with_key_points(key_points.clone()),
+            0i32..255i32,
+            (0i32..(height * (8 as usize)) as i32).with_key_points(key_points),
+        )
+        .unwrap();
+
+    chart.with_projection(|mut pb| {
+        pb.pitch = 1.2;
+        pb.yaw = 0.5;
+        pb.scale = 0.7;
+        pb.into_matrix()
+    });
+
+    chart.configure_axes().draw().unwrap();
+
+    chart
+        .draw_series(
+            (0i32..(width * (8 as usize)) as i32)
+                .map(|x| std::iter::repeat(x).zip(0i32..(height * (8 as usize)) as i32))
+                .flatten()
+                .map(|(x, z)| {
+                    let block_x = (x / 8i32) as usize;
+                    let block_z = (z / 8i32) as usize;
+                    let block_x_offset = (x % 8i32) as usize;
+                    let block_z_offset = (z % 8i32) as usize;
+                    let block = blocks[block_x + block_z * width].0;
+                    let value = (block[block_x_offset][block_z_offset]).abs().clamp(0, 255) as i32;
+                    let face = if value == 0 {
+                        TRANSPARENT
+                    } else {
+                        HSLColor(240.0 / 360.0 - 240.0 / 360.0 * value as f64 / 5.0, 1.0, 0.7)
+                            .to_rgba()
+                    };
+
+                    let edge = if block_x == selected_x && block_z == selected_z {
+                        YELLOW.to_rgba()
+                    } else {
+                        if value == 0 {
+                            TRANSPARENT
+                        } else {
+                            BLACK.to_rgba()
+                        }
+                    };
+                    Cubiod::new([(x, 0, z), (x + 1, value, z + 1)], face.filled(), &edge)
+                }),
+        )
+        .unwrap();
 }
 
 #[allow(clippy::ptr_arg)]
@@ -515,22 +633,30 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
             draw_input_previews(&model.preview_canvas_map, &image_window);
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
-            let pack: ImagePack = ImagePack {
+            let mut pack: ImagePack = ImagePack {
                 raw_image: raw_image_rc,
                 image_window,
                 ycbcr,
-                // -1.0 meaning nothing is chosen
-                chosen_block_x: -1.0,
-                chosen_block_y: -1.0,
+                plot_data: HashMap::<PlotName, BlockMatrix>::new(),
+                chosen_block_x: 0.0,
+                chosen_block_y: 0.0,
             };
             draw_ycbcr(&model.canvas_map, &pack.ycbcr);
-            draw_dct_quantized(&model.canvas_map, &pack.ycbcr, &pack.image_window, 50);
+            draw_dct_quantized(&model.canvas_map, &mut pack, 50);
+            draw_block_choice_indicators(
+                &model.overlay_map,
+                &model.preview_overlay_map,
+                pack.chosen_block_x,
+                pack.chosen_block_y,
+            );
+            draw_dct_quantized_plots(&pack, &model.plot_map);
             model.state = State::ImageView(pack);
         }
         Msg::QualityUpdated(quality) => {
             if let State::ImageView(ref mut pack) = model.state {
                 model.quality = quality;
-                draw_dct_quantized(&model.canvas_map, &pack.ycbcr, &pack.image_window, quality);
+                draw_dct_quantized(&model.canvas_map, pack, quality);
+                draw_dct_quantized_plots(&pack, &model.plot_map);
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
@@ -571,12 +697,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
                 draw_input_previews(&model.preview_canvas_map, &pack.image_window);
                 draw_ycbcr(&model.canvas_map, &pack.ycbcr);
-                draw_dct_quantized(
-                    &model.canvas_map,
-                    &pack.ycbcr,
-                    &pack.image_window,
-                    model.quality,
-                );
+                draw_dct_quantized(&model.canvas_map, pack, model.quality);
+                draw_dct_quantized_plots(&pack, &model.plot_map);
             }
         }
         Msg::BlockChosen(x, y, rect_x, rect_y) => {
@@ -590,14 +712,17 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     ((BLOCK_SIZE - 8) * ZOOM) as i32,
                 ) as f64;
 
+                pack.chosen_block_x = start_x;
+                pack.chosen_block_y = start_y;
+
                 draw_block_choice_indicators(
                     &model.overlay_map,
                     &model.preview_overlay_map,
                     start_x,
                     start_y,
                 );
-                pack.chosen_block_x = start_x;
-                pack.chosen_block_y = start_y;
+
+                draw_dct_quantized_plots(&pack, &model.plot_map);
             }
         }
     }
