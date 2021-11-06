@@ -183,15 +183,16 @@ fn draw_frame(model: &Model) {
 
     let scaling_factor = model.bitrate / 8000_f32;
     let sample_8khz_offset = (8000_f32 * model.player_state.position() as f32) as usize;
-    let mut sample_8khz_end_offset =
-        sample_8khz_offset + (points_count as f32 * scaling_factor) as usize;
+    let mut sample_8khz_end_offset = (sample_end_offset as f32 / scaling_factor) as usize;
 
     sample_end_offset = sample_end_offset.min(model.pcm_i16.len());
     sample_8khz_end_offset = sample_8khz_end_offset.min(model.compressed_u8_8khz_ulaw.len());
 
-    let x_axis = (0.0..points_count as f64).step(1.0);
-    let y_axis = (i16::MIN as f64 / 2.0..i16::MAX as f64 / 2.0).step(i16::MAX as f64 / 8.0);
-    let y_axis_8 = (u8::MIN as f64..u8::MAX as f64).step(8.0);
+    let x_axis = (sample_offset as f64 / model.bitrate as f64
+        ..sample_end_offset as f64 / model.bitrate as f64)
+        .step(0.001);
+    let y_axis = (i16::MIN as f64 / 2.0..i16::MAX as f64 / 2.0).step(4096.0);
+    let y_axis_8 = (0 as f64..(u8::MAX as u16 + 50) as f64).step(64.0);
 
     let g711_area = CanvasBackend::with_canvas_object(g711_graph_canvas)
         .unwrap()
@@ -208,40 +209,59 @@ fn draw_frame(model: &Model) {
     };
 
     let mut compressed_chart = ChartBuilder::on(&g711_area)
+        .margin(30)
         .caption(format!("G711-{}", compression_name), ("sans-serif", 30))
         .set_label_area_size(LabelAreaPosition::Left, (8).percent())
         .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .build_cartesian_2d(x_axis.clone(), y_axis_8)
         .unwrap();
 
+    compressed_chart.configure_mesh().draw().unwrap();
+
     let compressed_style = Palette99::pick(2).mix(0.9).stroke_width(8);
     compressed_chart
         .draw_series(LineSeries::new(
-            compressed_u8_8khz[sample_8khz_offset..sample_8khz_end_offset]
-                .iter()
-                .enumerate()
-                .map(|(x, point)| (((x as f32 * scaling_factor) as f64), *point as f64)),
+            (sample_8khz_offset..sample_8khz_end_offset)
+                .step_by(1)
+                .map(|x| {
+                    (
+                        ((x as f32 * scaling_factor) as f64 / model.bitrate as f64),
+                        ((i8::from_ne_bytes([compressed_u8_8khz[x]]).to_ne_bytes())[0] as f64),
+                    )
+                }),
             compressed_style,
         ))
+        .unwrap()
+        .label(compression_name)
+        .legend(move |(x, y)| {
+            Rectangle::new([(x - 5, y - 5), (x + 5, y + 5)], &Palette99::pick(3))
+        });
+
+    compressed_chart
+        .configure_series_labels()
+        .border_style(&BLACK)
+        .background_style(&WHITE.mix(0.5))
+        .draw()
         .unwrap();
 
-    compressed_chart.configure_series_labels().draw().unwrap();
-
     let mut chart = ChartBuilder::on(&pcm_area)
+        .margin(30)
         .caption("Original vs Recovered", ("sans-serif", 30))
         .set_label_area_size(LabelAreaPosition::Left, (8).percent())
         .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .build_cartesian_2d(x_axis, y_axis)
         .unwrap();
+
+    chart.configure_mesh().draw().unwrap();
+
     let original_pcm_style = Palette99::pick(2).mix(0.9).stroke_width(3);
     let recovered_pcm_style = Palette99::pick(0).mix(0.9).stroke_width(3);
 
     chart
         .draw_series(LineSeries::new(
-            model.pcm_i16[sample_offset..sample_end_offset]
-                .iter()
-                .enumerate()
-                .map(|(x, point)| ((x as f64), *point as f64)),
+            (sample_offset..sample_end_offset)
+                .step_by(1)
+                .map(|x| ((x as f64 / model.bitrate as f64), model.pcm_i16[x] as f64)),
             original_pcm_style,
         ))
         .unwrap()
@@ -257,10 +277,14 @@ fn draw_frame(model: &Model) {
 
     chart
         .draw_series(LineSeries::new(
-            decompressed_pcm_i16_8khz[sample_8khz_offset..sample_8khz_end_offset]
-                .iter()
-                .enumerate()
-                .map(|(x, point)| ((scaling_factor as f64 * x as f64), *point as f64)),
+            (sample_8khz_offset..sample_8khz_end_offset)
+                .step_by(1)
+                .map(|x| {
+                    (
+                        (scaling_factor as f64 * x as f64 / model.bitrate as f64),
+                        decompressed_pcm_i16_8khz[x] as f64,
+                    )
+                }),
             recovered_pcm_style,
         ))
         .unwrap()
@@ -269,7 +293,12 @@ fn draw_frame(model: &Model) {
             Rectangle::new([(x - 5, y - 5), (x + 5, y + 5)], &Palette99::pick(0))
         });
 
-    chart.configure_series_labels().draw().unwrap();
+    chart
+        .configure_series_labels()
+        .border_style(&BLACK)
+        .background_style(&WHITE.mix(0.5))
+        .draw()
+        .unwrap();
 }
 
 fn update_view(model: &mut Model) {
