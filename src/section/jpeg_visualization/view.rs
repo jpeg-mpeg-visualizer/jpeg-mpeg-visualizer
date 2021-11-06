@@ -5,6 +5,7 @@ use seed::*;
 use super::model::{CanvasName, Model, Msg, PreviewCanvasName, State};
 use super::page::wrap;
 use crate::graphic_helpers::drag_n_drop::*;
+use crate::section::jpeg_visualization::model::PlotName;
 use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
 use web_sys::{Event, HtmlCanvasElement, HtmlImageElement};
 
@@ -51,7 +52,7 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                     ],
                 ],
             ],
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "INPUT",
                 &model
                     .preview_canvas_map
@@ -71,7 +72,7 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["YCbCr"],
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "INPUT",
                 &model
                     .preview_canvas_map
@@ -82,17 +83,17 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
                     .get(&PreviewCanvasName::YCbCr)
                     .unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 " Y ",
                 &model.canvas_map.get(&CanvasName::Ys).unwrap(),
                 &model.overlay_map.get(&CanvasName::Ys).unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "CB",
                 &model.canvas_map.get(&CanvasName::Cbs).unwrap(),
                 &model.overlay_map.get(&CanvasName::Cbs).unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "CR",
                 &model.canvas_map.get(&CanvasName::Crs).unwrap(),
                 &model.overlay_map.get(&CanvasName::Crs).unwrap()
@@ -106,7 +107,7 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["DCT Quantized"],
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "INPUT",
                 &model
                     .preview_canvas_map
@@ -117,20 +118,32 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                     .get(&PreviewCanvasName::YCbCrQuant)
                     .unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "Y QUANTIZED",
                 &model.canvas_map.get(&CanvasName::YsQuant).unwrap(),
                 &model.overlay_map.get(&CanvasName::YsQuant).unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "CB QUANTIZED",
                 &model.canvas_map.get(&CanvasName::CbsQuant).unwrap(),
                 &model.overlay_map.get(&CanvasName::CbsQuant).unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "CR QUANTIZED",
                 &model.canvas_map.get(&CanvasName::CrsQuant).unwrap(),
                 &model.overlay_map.get(&CanvasName::CrsQuant).unwrap()
+            ),
+            plot_labeled_div(
+                "Y QUANTIZED 3D",
+                &model.plot_map.get(&PlotName::YsQuant3d).unwrap(),
+            ),
+            plot_labeled_div(
+                "CB QUANTIZED 3D",
+                &model.plot_map.get(&PlotName::CbsQuant3d).unwrap(),
+            ),
+            plot_labeled_div(
+                "CR QUANTIZED 3D",
+                &model.plot_map.get(&PlotName::CrsQuant3d).unwrap(),
             ),
         ]
     ]
@@ -141,7 +154,7 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["YCbCr recovered from quantized DCT"],
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "INPUT",
                 &model
                     .preview_canvas_map
@@ -152,17 +165,17 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
                     .get(&PreviewCanvasName::YCbCrRecovered)
                     .unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "Y RECOVERED",
                 &model.canvas_map.get(&CanvasName::YsRecovered).unwrap(),
                 &model.overlay_map.get(&CanvasName::YsRecovered).unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "CB RECOVERED",
                 &model.canvas_map.get(&CanvasName::CbsRecovered).unwrap(),
                 &model.overlay_map.get(&CanvasName::CbsRecovered).unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "CR RECOVERED",
                 &model.canvas_map.get(&CanvasName::CrsRecovered).unwrap(),
                 &model.overlay_map.get(&CanvasName::CrsRecovered).unwrap()
@@ -176,7 +189,7 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["Recovered image and comparison"],
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "INPUT",
                 &model
                     .preview_canvas_map
@@ -187,12 +200,12 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
                     .get(&PreviewCanvasName::ForComparison)
                     .unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "OUTPUT",
                 &model.canvas_map.get(&CanvasName::ImageRecovered).unwrap(),
                 &model.overlay_map.get(&CanvasName::ImageRecovered).unwrap()
             ),
-            canvas_labeled_div(
+            canvas_labeled_div_with_overlay(
                 "DIFFERENCE",
                 &model.canvas_map.get(&CanvasName::Difference).unwrap(),
                 &model.overlay_map.get(&CanvasName::Difference).unwrap()
@@ -201,7 +214,7 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
     ]
 }
 
-fn canvas_labeled_div(
+fn canvas_labeled_div_with_overlay(
     label: &str,
     canvas: &ElRef<HtmlCanvasElement>,
     img: &ElRef<HtmlImageElement>,
@@ -241,6 +254,25 @@ fn canvas_labeled_div(
                 ],
             ],
         ],
+        style![
+            St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
+        ]
+    ]
+}
+
+fn plot_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>) -> Node<GMsg> {
+    let padding = 10;
+
+    div![
+        C!["labeled_canvas_wrapper"],
+        label![C!["canvas_label"], &label],
+        div![canvas![
+            el_ref(&canvas),
+            attrs![
+                At::Width => px(BLOCK_SIZE * ZOOM),
+                At::Height => px(BLOCK_SIZE * ZOOM),
+            ],
+        ],],
         style![
             St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
         ]
