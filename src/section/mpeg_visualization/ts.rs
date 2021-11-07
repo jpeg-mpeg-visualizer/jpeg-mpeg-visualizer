@@ -30,20 +30,21 @@ impl TSDemuxer {
         let end_pointer = self.pointer + 188 * 8;
 
         // Read the Sync byte
-        let sync_byte = self.buffer[self.pointer..self.pointer + 8].load::<u8>();
+        let sync_byte = self.buffer[self.pointer..self.pointer + 8].load_be::<u8>();
         assert!(sync_byte == 0x47);
         self.pointer += 8;
 
         // Read the rest of the header
-        let _transport_error_indicator = self.buffer[self.pointer..self.pointer + 1].load::<u8>();
-        let payload_start = self.buffer[self.pointer + 1..self.pointer + 2].load::<u8>();
-        let _transport_priority = self.buffer[self.pointer + 2..self.pointer + 3].load::<u8>();
-        let pid = self.buffer[self.pointer + 3..self.pointer + 3 + 13].load::<u16>();
+        let _transport_error_indicator =
+            self.buffer[self.pointer..self.pointer + 1].load_be::<u8>();
+        let payload_start = self.buffer[self.pointer + 1..self.pointer + 2].load_be::<u8>();
+        let _transport_priority = self.buffer[self.pointer + 2..self.pointer + 3].load_be::<u8>();
+        let pid = self.buffer[self.pointer + 3..self.pointer + 3 + 13].load_be::<u16>();
         let _transport_scrambling =
-            self.buffer[self.pointer + 16..self.pointer + 16 + 2].load::<u8>();
+            self.buffer[self.pointer + 16..self.pointer + 16 + 2].load_be::<u8>();
         let adaptation_field_control =
-            self.buffer[self.pointer + 18..self.pointer + 18 + 2].load::<u8>();
-        let _continuity_counter = self.buffer[self.pointer + 20..self.pointer + 24].load::<u8>();
+            self.buffer[self.pointer + 18..self.pointer + 18 + 2].load_be::<u8>();
+        let _continuity_counter = self.buffer[self.pointer + 20..self.pointer + 24].load_be::<u8>();
         self.pointer += 24;
 
         let mut stream_id = self.pids_to_stream_id.get(&pid).copied();
@@ -53,7 +54,7 @@ impl TSDemuxer {
             // adaptation field is present, skip over it
             if adaptation_field_control & 0b10 == 0b10 {
                 let adaptation_field_length =
-                    self.buffer[self.pointer..self.pointer + 8].load::<u8>() as usize;
+                    self.buffer[self.pointer..self.pointer + 8].load_be::<u8>() as usize;
                 self.pointer += 8 + adaptation_field_length * 8;
             }
 
@@ -63,7 +64,7 @@ impl TSDemuxer {
             {
                 self.pointer += 24;
 
-                stream_id = Some(self.buffer[self.pointer..self.pointer + 8].load::<u8>());
+                stream_id = Some(self.buffer[self.pointer..self.pointer + 8].load_be::<u8>());
                 self.pids_to_stream_id.insert(pid, stream_id.unwrap());
 
                 // Skip over 24 bits of data:
@@ -76,8 +77,8 @@ impl TSDemuxer {
                 // Original or Copy - 1 bit
                 self.pointer += 32;
 
-                // let pts_dts_indicator = self.buffer[self.pointer .. self.pointer+2].load::<u8>();
-                // Skip over 6 bits of data:
+                // Skip over 8 bits of data:
+                // PTS DTS indicator - 2 bits
                 // ESCR flag - 1 bits
                 // ES rate flag - 1 bits
                 // DSM trick mode flag - 1 bit
@@ -87,7 +88,7 @@ impl TSDemuxer {
                 self.pointer += 8;
 
                 let header_length =
-                    self.buffer[self.pointer..self.pointer + 8].load::<u8>() as usize;
+                    self.buffer[self.pointer..self.pointer + 8].load_be::<u8>() as usize;
 
                 // Skip over whole header (TODO we might want to revisit presentation timestamp later on)
                 self.pointer += 8 + header_length * 8;
