@@ -77,8 +77,8 @@ impl TSDemuxer {
                 // Original or Copy - 1 bit
                 self.pointer += 32;
 
-                // let pts_dts_indicator = self.buffer[self.pointer .. self.pointer+2].load_be::<u8>();
-                // Skip over 6 bits of data:
+                // Skip over 8 bits of data:
+                // PTS DTS indicator - 2 bits
                 // ESCR flag - 1 bits
                 // ES rate flag - 1 bits
                 // DSM trick mode flag - 1 bit

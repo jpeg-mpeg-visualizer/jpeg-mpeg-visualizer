@@ -31,7 +31,6 @@ impl Renderer {
 
         log!("frame type: ", frame.picture_type);
         let mut rgb_data: Vec<u8> = vec![0; self.width as usize * self.height as usize * 4];
-        log!(frame.y.len(), self.width, self.height, rgb_data.len());
 
         for row in 0..(self.height as usize / 2) {
             for col in 0..(self.width as usize / 2) {

@@ -126,7 +126,6 @@ impl MPEG1 {
     fn init_buffers(&mut self, width: u16, height: u16) {
         self.mb_width = (width + 15) / 16;
         let mb_height = (height + 15) / 16;
-        // let mb_size = self.mb_width * mb_height;
 
         self.coded_width = self.mb_width as u32 * 16;
         let coded_height = mb_height as u32 * 16;
@@ -1598,29 +1597,4 @@ mod constants {
         17, 24, 23, 20, 17, 14,  9,  5,
          9, 12, 12, 10,  9,  7,  5,  2
     ];
-
 }
-
-// #[cfg(test)]
-// mod test {
-// use std::fs::File;
-// use std::io::Read;
-
-// use crate::page::mpeg_visualization::{mpeg1::MPEG1, ts::TSDemuxer};
-
-// #[test]
-// fn test() {
-//     // let raw_bytes_ts = include_bytes!("../../../../bbb_720_mpeg1.ts");
-//     let mut raw_bytes_ts = Vec::new();
-//     let mut file = File::open("../video.ts").unwrap();
-//     file.read_to_end(&mut raw_bytes_ts).unwrap();
-
-//     let raw_bytes_ts = include_bytes!("../../../../video.ts");
-//     let mut ts_demuxer = TSDemuxer::from_raw_bytes(raw_bytes_ts.to_vec());
-//     let demuxed_bytes = ts_demuxer.parse_packets();
-//     let mut mpeg1 = MPEG1::from_bytes(demuxed_bytes.clone());
-//     for i in 0..333 {
-//         mpeg1.decode();
-//     }
-// }
-// }
