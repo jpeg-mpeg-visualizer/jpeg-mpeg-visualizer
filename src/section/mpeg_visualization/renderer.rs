@@ -12,6 +12,7 @@ pub struct Renderer {
     canvas: ElRef<HtmlCanvasElement>,
     width: u16,
     height: u16,
+    rgb_data: Vec<u8>,
 }
 
 impl Renderer {
@@ -20,17 +21,15 @@ impl Renderer {
             canvas: canvas.clone(),
             width: 0,
             height: 0,
+            rgb_data: Vec::new(),
         }
     }
 
-    pub fn render_frame(&mut self, frame: DecodedFrame) {
+    pub fn render_frame(&mut self, frame: &DecodedFrame) {
         let canvas = self.canvas.get().unwrap();
         if (frame.width, frame.height) != (self.width, self.height) {
             self.resize(frame.width, frame.height);
         }
-
-        log!("frame type: ", frame.picture_type);
-        let mut rgb_data: Vec<u8> = vec![0; self.width as usize * self.height as usize * 4];
 
         for row in 0..(self.height as usize / 2) {
             for col in 0..(self.width as usize / 2) {
@@ -49,11 +48,15 @@ impl Renderer {
                 let ycbr3 = crate::image::pixel::YCbCr { y: y3, cr, cb };
                 let ycbr4 = crate::image::pixel::YCbCr { y: y4, cr, cb };
 
-                Self::insert_at(&mut rgb_data, y_index, ycbr1.to_rgb());
-                Self::insert_at(&mut rgb_data, y_index + 1, ycbr2.to_rgb());
-                Self::insert_at(&mut rgb_data, y_index + self.width as usize, ycbr3.to_rgb());
+                Self::insert_at(&mut self.rgb_data, y_index, ycbr1.to_rgb());
+                Self::insert_at(&mut self.rgb_data, y_index + 1, ycbr2.to_rgb());
                 Self::insert_at(
-                    &mut rgb_data,
+                    &mut self.rgb_data,
+                    y_index + self.width as usize,
+                    ycbr3.to_rgb(),
+                );
+                Self::insert_at(
+                    &mut self.rgb_data,
                     y_index + self.width as usize + 1,
                     ycbr4.to_rgb(),
                 );
@@ -61,7 +64,7 @@ impl Renderer {
         }
 
         let image_data = ImageData::new_with_u8_clamped_array_and_sh(
-            Clamped(&mut rgb_data),
+            Clamped(&mut self.rgb_data),
             self.width.into(),
             self.height.into(),
         )
@@ -85,5 +88,7 @@ impl Renderer {
 
         self.width = width;
         self.height = height;
+        self.rgb_data
+            .resize(width as usize * height as usize * 4, 0);
     }
 }
