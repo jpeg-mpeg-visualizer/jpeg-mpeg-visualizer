@@ -12,6 +12,21 @@ pub struct DecodedFrame {
     pub size: usize,
     pub macroblock_count: usize,
     pub block_count: usize,
+    pub skipped_y: Vec<u8>,
+    pub skipped_cr: Vec<u8>,
+    pub skipped_cb: Vec<u8>,
+    pub moved_y: Vec<u8>,
+    pub moved_cr: Vec<u8>,
+    pub moved_cb: Vec<u8>,
+    pub intra_y: Vec<u8>,
+    pub intra_cr: Vec<u8>,
+    pub intra_cb: Vec<u8>,
+}
+
+enum MacroblockDestination {
+    Current,
+    Skipped,
+    Moved,
 }
 
 pub struct MPEG1 {
@@ -34,6 +49,15 @@ pub struct MPEG1 {
     forward_y: Vec<u8>,
     forward_cr: Vec<u8>,
     forward_cb: Vec<u8>,
+    skipped_y: Vec<u8>,
+    skipped_cr: Vec<u8>,
+    skipped_cb: Vec<u8>,
+    moved_y: Vec<u8>,
+    moved_cr: Vec<u8>,
+    moved_cb: Vec<u8>,
+    intra_y: Vec<u8>,
+    intra_cr: Vec<u8>,
+    intra_cb: Vec<u8>,
 
     intra_quant_matrix: [u8; 64],
     non_intra_quant_matrix: [u8; 64],
@@ -79,6 +103,15 @@ impl MPEG1 {
             forward_y: Vec::new(),
             forward_cr: Vec::new(),
             forward_cb: Vec::new(),
+            skipped_y: Vec::new(),
+            skipped_cr: Vec::new(),
+            skipped_cb: Vec::new(),
+            moved_y: Vec::new(),
+            moved_cr: Vec::new(),
+            moved_cb: Vec::new(),
+            intra_y: Vec::new(),
+            intra_cr: Vec::new(),
+            intra_cb: Vec::new(),
             intra_quant_matrix: constants::DEFAULT_INTRA_QUANT_MATRIX,
             non_intra_quant_matrix: constants::DEFAULT_NON_INTRA_QUANT_MATRIX,
             slice_beginning: false,
@@ -145,6 +178,16 @@ impl MPEG1 {
         self.forward_y = vec![0; coded_size as usize];
         self.forward_cb = vec![0; coded_size as usize / 4];
         self.forward_cr = vec![0; coded_size as usize / 4];
+
+        self.skipped_y = vec![0; coded_size as usize];
+        self.skipped_cb = vec![0; coded_size as usize / 4];
+        self.skipped_cr = vec![0; coded_size as usize / 4];
+        self.moved_y = vec![0; coded_size as usize];
+        self.moved_cb = vec![0; coded_size as usize / 4];
+        self.moved_cr = vec![0; coded_size as usize / 4];
+        self.intra_y = vec![0; coded_size as usize];
+        self.intra_cb = vec![0; coded_size as usize / 4];
+        self.intra_cr = vec![0; coded_size as usize / 4];
     }
 
     fn decode_sequence_header(&mut self) {
@@ -251,6 +294,15 @@ impl MPEG1 {
             size: self.pointer - old_pointer,
             macroblock_count: self.macroblock_count,
             block_count: self.block_count,
+            skipped_y: std::mem::take(&mut self.skipped_y),
+            skipped_cb: std::mem::take(&mut self.skipped_cb),
+            skipped_cr: std::mem::take(&mut self.skipped_cr),
+            moved_y: std::mem::take(&mut self.moved_y),
+            moved_cb: std::mem::take(&mut self.moved_cb),
+            moved_cr: std::mem::take(&mut self.moved_cr),
+            intra_y: std::mem::take(&mut self.intra_y),
+            intra_cb: std::mem::take(&mut self.intra_cb),
+            intra_cr: std::mem::take(&mut self.intra_cr),
         };
 
         self.macroblock_count = 0;
@@ -258,6 +310,15 @@ impl MPEG1 {
         std::mem::swap(&mut self.current_y, &mut self.forward_y);
         std::mem::swap(&mut self.current_cb, &mut self.forward_cb);
         std::mem::swap(&mut self.current_cr, &mut self.forward_cr);
+        self.skipped_y.resize(self.current_y.len(), 0);
+        self.skipped_cr.resize(self.current_cr.len(), 0);
+        self.skipped_cb.resize(self.current_cb.len(), 0);
+        self.moved_y.resize(self.current_y.len(), 0);
+        self.moved_cr.resize(self.current_cr.len(), 0);
+        self.moved_cb.resize(self.current_cb.len(), 0);
+        self.intra_y.resize(self.current_y.len(), 0);
+        self.intra_cr.resize(self.current_cr.len(), 0);
+        self.intra_cb.resize(self.current_cb.len(), 0);
 
         decoded_frame
     }
@@ -339,7 +400,8 @@ impl MPEG1 {
                 self.macroblock_address += 1;
                 self.mb_row = self.macroblock_address as usize / self.mb_width as usize;
                 self.mb_col = self.macroblock_address as usize % self.mb_width as usize;
-                self.copy_macroblock(self.motion_fw_h, self.motion_fw_v);
+                self.copy_macroblock(0, 0, MacroblockDestination::Current);
+                self.copy_macroblock(0, 0, MacroblockDestination::Skipped);
                 increment -= 1;
             }
 
@@ -376,7 +438,16 @@ impl MPEG1 {
             self.dc_predictor_cb = 128;
 
             self.decode_motion_vectors(macroblock_mot_fw);
-            self.copy_macroblock(self.motion_fw_h, self.motion_fw_v);
+            self.copy_macroblock(
+                self.motion_fw_h,
+                self.motion_fw_v,
+                MacroblockDestination::Current,
+            );
+            self.copy_macroblock(
+                self.motion_fw_h,
+                self.motion_fw_v,
+                MacroblockDestination::Moved,
+            );
         }
 
         // Decode blocks
@@ -566,12 +637,17 @@ impl MPEG1 {
                 level * constants::PREMULTIPLIER_MATRIX[de_zig_zagged] as i32;
         }
 
-        let dest_array;
+        let (dest_array, dest_array_new);
         let mut dest_index;
         let scan;
 
         if block < 4 {
             dest_array = &mut self.current_y;
+            dest_array_new = if macroblock_intra {
+                &mut self.intra_y
+            } else {
+                &mut self.moved_y
+            };
             scan = self.coded_width as usize - 8;
             dest_index = (self.mb_row * self.coded_width as usize + self.mb_col) * 16;
             if block & 1 != 0 {
@@ -581,10 +657,20 @@ impl MPEG1 {
                 dest_index += self.coded_width as usize * 8;
             }
         } else {
-            dest_array = if block == 4 {
-                &mut self.current_cb
+            if block == 4 {
+                dest_array = &mut self.current_cb;
+                dest_array_new = if macroblock_intra {
+                    &mut self.intra_cb
+                } else {
+                    &mut self.moved_cb
+                };
             } else {
-                &mut self.current_cr
+                dest_array = &mut self.current_cr;
+                dest_array_new = if macroblock_intra {
+                    &mut self.intra_cr
+                } else {
+                    &mut self.moved_cr
+                };
             };
             scan = self.coded_width as usize / 2 - 8;
             dest_index = ((self.mb_row * self.coded_width as usize) * 4) + self.mb_col * 8;
@@ -593,37 +679,53 @@ impl MPEG1 {
         if macroblock_intra {
             // Overwrite
             if n == 1 {
-                copy_value_to_destination(
-                    ((self.block_data[0] + 128) >> 8) as u8,
-                    dest_array,
-                    dest_index,
-                    scan,
-                );
+                let value = ((self.block_data[0] + 128) >> 8) as u8;
+                copy_value_to_destination(value, dest_array, dest_index, scan);
+                copy_value_to_destination(value, dest_array_new, dest_index, scan);
                 self.block_data[0] = 0;
             } else {
                 IDCT(&mut self.block_data);
                 copy_block_to_destination(&self.block_data, dest_array, dest_index, scan);
+                copy_block_to_destination(&self.block_data, dest_array_new, dest_index, scan);
                 self.block_data = [0; 64];
             }
         } else {
             if n == 1 {
-                add_value_to_destination(
-                    (self.block_data[0] + 128) >> 8,
-                    dest_array,
-                    dest_index,
-                    scan,
-                );
+                let value = (self.block_data[0] + 128) >> 8;
+                add_value_to_destination(value, dest_array, dest_index, scan);
+                add_value_to_destination(value, dest_array_new, dest_index, scan);
                 self.block_data[0] = 0;
             } else {
                 IDCT(&mut self.block_data);
                 add_block_to_destination(&self.block_data, dest_array, dest_index, scan);
+                add_block_to_destination(&self.block_data, dest_array_new, dest_index, scan);
                 self.block_data = [0; 64];
             }
         }
     }
 
-    fn copy_macroblock(&mut self, motion_h: i32, motion_v: i32) {
+    fn copy_macroblock(
+        &mut self,
+        motion_h: i32,
+        motion_v: i32,
+        destination: MacroblockDestination,
+    ) {
         let (s_y, s_cr, s_cb) = (&self.forward_y, &self.forward_cr, &self.forward_cb);
+        let (d_y, d_cr, d_cb) = match destination {
+            MacroblockDestination::Current => (
+                &mut self.current_y,
+                &mut self.current_cr,
+                &mut self.current_cb,
+            ),
+            MacroblockDestination::Skipped => (
+                &mut self.skipped_y,
+                &mut self.skipped_cr,
+                &mut self.skipped_cb,
+            ),
+            MacroblockDestination::Moved => {
+                (&mut self.moved_y, &mut self.moved_cr, &mut self.moved_cb)
+            }
+        };
 
         // Luminance
         let width = self.coded_width as usize;
@@ -647,20 +749,20 @@ impl MPEG1 {
                     for _x in 0..16 {
                         // vertical motion is half pel (?) so we have to compute average of above pixel
                         let mut sum: u16 = s_y[src] as u16 + s_y[src + 1] as u16 + 2;
-                        sum += if src + width < self.current_y.len() {
+                        sum += if src + width < d_y.len() {
                             s_y[src + width] as u16
                         } else {
                             0
                         };
-                        sum += if src + width + 1 < self.current_y.len() {
+                        sum += if src + width + 1 < d_y.len() {
                             s_y[src + width + 1] as u16
                         } else {
                             0
                         };
                         let count = 2
-                            + (src + width < self.current_y.len()) as u16
-                            + (src + width + 1 < self.current_y.len()) as u16;
-                        self.current_y[dest] = (sum / count) as u8;
+                            + (src + width < d_y.len()) as u16
+                            + (src + width + 1 < d_y.len()) as u16;
+                        d_y[dest] = (sum / count) as u8;
                         dest += 1;
                         src += 1;
                     }
@@ -670,8 +772,7 @@ impl MPEG1 {
             } else {
                 while dest < last {
                     for _x in 0..16 {
-                        self.current_y[dest] =
-                            ((s_y[src] as u16 + s_y[src + 1] as u16 + 1) / 2) as u8;
+                        d_y[dest] = ((s_y[src] as u16 + s_y[src + 1] as u16 + 1) / 2) as u8;
                         dest += 1;
                         src += 1;
                     }
@@ -684,13 +785,13 @@ impl MPEG1 {
                 while dest < last {
                     for _x in 0..16 {
                         let mut sum: u16 = s_y[src] as u16 + 1;
-                        sum += if src + width < self.current_y.len() {
+                        sum += if src + width < d_y.len() {
                             s_y[src + width] as u16
                         } else {
                             0
                         };
-                        let count = 1 + (src + width < self.current_y.len()) as u16;
-                        self.current_y[dest] = (sum / count) as u8;
+                        let count = 1 + (src + width < d_y.len()) as u16;
+                        d_y[dest] = (sum / count) as u8;
                         dest += 1;
                         src += 1;
                     }
@@ -700,7 +801,7 @@ impl MPEG1 {
             } else {
                 while dest < last {
                     for _x in 0..16 {
-                        self.current_y[dest] = s_y[src];
+                        d_y[dest] = s_y[src];
                         dest += 1;
                         src += 1;
                     }
@@ -748,10 +849,10 @@ impl MPEG1 {
                             0
                         };
                         let count = 1
-                            + (src + 1 < self.current_cr.len()) as u16
-                            + (src + width < self.current_cr.len()) as u16
-                            + (src + width + 1 < self.current_cr.len()) as u16;
-                        self.current_cr[dest] = (sum / count) as u8;
+                            + (src + 1 < d_cr.len()) as u16
+                            + (src + width < d_cr.len()) as u16
+                            + (src + width + 1 < d_cr.len()) as u16;
+                        d_cr[dest] = (sum / count) as u8;
 
                         let mut sum = s_cb[src] as u16 + 2;
                         sum += if src + 1 < s_cb.len() {
@@ -769,7 +870,7 @@ impl MPEG1 {
                         } else {
                             0
                         };
-                        self.current_cb[dest] = (sum / count) as u8;
+                        d_cb[dest] = (sum / count) as u8;
 
                         dest += 1;
                         src += 1;
@@ -786,8 +887,8 @@ impl MPEG1 {
                         } else {
                             0
                         };
-                        let count = 1 + (src + 1 < self.current_cr.len()) as u16;
-                        self.current_cr[dest] = (sum / count) as u8;
+                        let count = 1 + (src + 1 < d_cr.len()) as u16;
+                        d_cr[dest] = (sum / count) as u8;
 
                         let mut sum = s_cb[src] as u16 + 1;
                         sum += if src + 1 < s_cb.len() {
@@ -795,7 +896,7 @@ impl MPEG1 {
                         } else {
                             0
                         };
-                        self.current_cb[dest] = (sum / count) as u8;
+                        d_cb[dest] = (sum / count) as u8;
 
                         dest += 1;
                         src += 1;
@@ -814,8 +915,8 @@ impl MPEG1 {
                         } else {
                             0
                         };
-                        let count = 1 + (src + width < self.current_cr.len()) as u16;
-                        self.current_cr[dest] = (sum / count) as u8;
+                        let count = 1 + (src + width < d_cr.len()) as u16;
+                        d_cr[dest] = (sum / count) as u8;
 
                         let mut sum = s_cb[src] as u16 + 1;
                         sum += if src + width < s_cb.len() {
@@ -823,7 +924,7 @@ impl MPEG1 {
                         } else {
                             0
                         };
-                        self.current_cb[dest] = (sum / count) as u8;
+                        d_cb[dest] = (sum / count) as u8;
 
                         dest += 1;
                         src += 1;
@@ -834,8 +935,8 @@ impl MPEG1 {
             } else {
                 while dest < last {
                     for _x in 0..8 {
-                        self.current_cr[dest] = s_cr[src];
-                        self.current_cb[dest] = s_cb[src];
+                        d_cr[dest] = s_cr[src];
+                        d_cb[dest] = s_cb[src];
                         dest += 1;
                         src += 1;
                     }

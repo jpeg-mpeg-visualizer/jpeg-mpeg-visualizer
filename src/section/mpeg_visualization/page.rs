@@ -1,4 +1,4 @@
-use super::model::{ExplainationTab, Model, Msg, State};
+use super::model::{ControlState, ExplainationTab, MacroblockType, Model, Msg, State};
 use super::mpeg1::constants::PICTURE_TYPE_INTRA;
 use super::view::{view_file_chooser, view_video_player};
 use crate::Msg as GMsg;
@@ -16,6 +16,11 @@ pub fn init(_url: Url) -> Option<Model> {
         frames: Vec::new(),
         selected_frame: 0,
         selected_explaination_tab: ExplainationTab::General,
+        control_state: ControlState {
+            skipped: true,
+            moved: true,
+            intra: true,
+        },
     })
 }
 
@@ -64,7 +69,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .renderer
                 .as_mut()
                 .unwrap()
-                .render_frame(&model.frames[0]);
+                .render_frame(&model.frames[0], &model.control_state);
         }
         Msg::FrameChanged(i) => {
             model.selected_frame = i;
@@ -72,7 +77,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .renderer
                 .as_mut()
                 .unwrap()
-                .render_frame(&model.frames[i]);
+                .render_frame(&model.frames[i], &model.control_state);
             model.selected_explaination_tab = if model.frames[i].picture_type == PICTURE_TYPE_INTRA
             {
                 ExplainationTab::Intra
@@ -82,6 +87,20 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::ExplainationTabChanged(new_tab) => {
             model.selected_explaination_tab = new_tab;
+        }
+        Msg::ToggleControl(macroblock_type) => {
+            match macroblock_type {
+                MacroblockType::Skipped => {
+                    model.control_state.skipped = !model.control_state.skipped
+                }
+                MacroblockType::Moved => model.control_state.moved = !model.control_state.moved,
+                MacroblockType::Intra => model.control_state.intra = !model.control_state.intra,
+            };
+            model
+                .renderer
+                .as_mut()
+                .unwrap()
+                .render_frame(&model.frames[model.selected_frame], &model.control_state);
         }
     }
 }
