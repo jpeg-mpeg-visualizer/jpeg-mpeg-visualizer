@@ -32,6 +32,7 @@ pub fn view_file_chooser(_: &Model, zone_active: bool) -> Node<GMsg> {
                         At::Type => "file",
                         At::Id => "file",
                         At::Name => "file",
+                        At::Accept => "audio/*"
                     },
                     ev(Ev::Change, |event| {
                         let file = event
