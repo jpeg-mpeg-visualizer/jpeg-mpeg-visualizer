@@ -221,13 +221,12 @@ fn draw_frame(model: &Model) {
     let compressed_style = Palette99::pick(2).mix(0.9).stroke_width(8);
     compressed_chart
         .draw_series(LineSeries::new(
-            (sample_8khz_offset..sample_8khz_end_offset)
-                .map(|x| {
-                    (
-                        ((x as f32 * scaling_factor) as f64 / model.bitrate as f64),
-                        ((i8::from_ne_bytes([compressed_u8_8khz[x]]).to_ne_bytes())[0] as f64),
-                    )
-                }),
+            (sample_8khz_offset..sample_8khz_end_offset).map(|x| {
+                (
+                    ((x as f32 * scaling_factor) as f64 / model.bitrate as f64),
+                    ((i8::from_ne_bytes([compressed_u8_8khz[x]]).to_ne_bytes())[0] as f64),
+                )
+            }),
             compressed_style,
         ))
         .unwrap()
@@ -275,13 +274,12 @@ fn draw_frame(model: &Model) {
 
     chart
         .draw_series(LineSeries::new(
-            (sample_8khz_offset..sample_8khz_end_offset)
-                .map(|x| {
-                    (
-                        (scaling_factor as f64 * x as f64 / model.bitrate as f64),
-                        decompressed_pcm_i16_8khz[x] as f64,
-                    )
-                }),
+            (sample_8khz_offset..sample_8khz_end_offset).map(|x| {
+                (
+                    (scaling_factor as f64 * x as f64 / model.bitrate as f64),
+                    decompressed_pcm_i16_8khz[x] as f64,
+                )
+            }),
             recovered_pcm_style,
         ))
         .unwrap()
