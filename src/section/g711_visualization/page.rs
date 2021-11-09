@@ -222,7 +222,6 @@ fn draw_frame(model: &Model) {
     compressed_chart
         .draw_series(LineSeries::new(
             (sample_8khz_offset..sample_8khz_end_offset)
-                .step_by(1)
                 .map(|x| {
                     (
                         ((x as f32 * scaling_factor) as f64 / model.bitrate as f64),
@@ -260,7 +259,6 @@ fn draw_frame(model: &Model) {
     chart
         .draw_series(LineSeries::new(
             (sample_offset..sample_end_offset)
-                .step_by(1)
                 .map(|x| ((x as f64 / model.bitrate as f64), model.pcm_i16[x] as f64)),
             original_pcm_style,
         ))
@@ -278,7 +276,6 @@ fn draw_frame(model: &Model) {
     chart
         .draw_series(LineSeries::new(
             (sample_8khz_offset..sample_8khz_end_offset)
-                .step_by(1)
                 .map(|x| {
                     (
                         (scaling_factor as f64 * x as f64 / model.bitrate as f64),

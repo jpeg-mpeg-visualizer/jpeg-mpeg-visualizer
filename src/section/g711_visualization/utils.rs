@@ -29,7 +29,7 @@ pub(super) async fn load_audio(file_blob: gloo_file::Blob) -> (Vec<i16>, f32, u3
         .unwrap();
 
     let mut options_44khz = AudioContextOptions::new();
-    options_44khz.sample_rate(44000_f32);
+    options_44khz.sample_rate(44100_f32);
 
     let context: AudioContext = AudioContext::new_with_context_options(&options_44khz).unwrap();
     let buffer_original: AudioBuffer =
