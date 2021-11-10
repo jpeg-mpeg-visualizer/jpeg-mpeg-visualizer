@@ -46,6 +46,8 @@ pub fn init(url: Url) -> Option<Model> {
         plot_map.insert(plot_name, ElRef::<HtmlCanvasElement>::default());
     }
 
+    let subsampling_pack = SubsamplingPack {j: 4, a: 4, b: 4};
+
     Some(Model {
         file_chooser_zone_active: false,
         base_url,
@@ -58,6 +60,7 @@ pub fn init(url: Url) -> Option<Model> {
         overlay_map,
         preview_overlay_map,
         quality: 50,
+        subsampling_pack,
     })
 }
 
@@ -162,6 +165,7 @@ fn draw_block_choice_indicators(
 fn draw_ycbcr(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     ycbcr: &image::YCbCrImage,
+    subsampling_pack: &SubsamplingPack,
 ) {
     let ys = ycbcr.to_ys_channel();
     let cbs = ycbcr.to_cbs_channel();
@@ -182,6 +186,7 @@ fn draw_ycbcr(
 
     let cbs_image = cbs
         .iter()
+        .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
         .flat_map(|x| {
             let RGB { r, g, b } = image::pixel::YCbCr {
                 y: 128,
@@ -193,18 +198,23 @@ fn draw_ycbcr(
         })
         .collect::<Vec<u8>>();
 
-    let crs_image = crs
-        .iter()
-        .flat_map(|x| {
-            let RGB { r, g, b } = image::pixel::YCbCr {
-                y: 128,
-                cb: 128,
-                cr: *x,
-            }
-            .to_rgb();
-            vec![r, g, b, 255]
-        })
-        .collect::<Vec<u8>>();
+    let crs_image: Vec<u8> = if subsampling_pack.b == 0 {
+        cbs_image.clone()
+    } else {
+        crs
+            .iter()
+            .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
+            .flat_map(|x| {
+                let RGB { r, g, b } = image::pixel::YCbCr {
+                    y: 128,
+                    cb: 128,
+                    cr: *x,
+                }
+                    .to_rgb();
+                vec![r, g, b, 255]
+            })
+            .collect::<Vec<u8>>()
+    };
 
     draw_default(&canvas_map, CanvasName::Ys, ys_image);
     draw_default(&canvas_map, CanvasName::Cbs, cbs_image);
@@ -214,46 +224,53 @@ fn draw_ycbcr(
 fn draw_dct_quantized(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     pack: &mut ImagePack,
+    subsampling_pack: &SubsamplingPack,
     quality: u8,
 ) {
     let ycbcr = &pack.ycbcr;
     let image_window = &pack.image_window;
 
     let ys = ycbcr.to_ys_channel();
-    let cbs = ycbcr.to_cbs_channel();
-    let crs = ycbcr.to_crs_channel();
+    let cbs = ycbcr.to_cbs_channel()
+        .into_iter()
+        .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
+        .collect::<Vec<u8>>();
+    let crs = if subsampling_pack.b == 0 {
+        cbs.clone()
+    } else {
+        ycbcr.to_crs_channel()
+            .into_iter()
+            .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
+            .collect::<Vec<u8>>()
+    };
 
     let scaled_luminance_quant_table =
         quant::scale_quantization_table(&quant::LUMINANCE_QUANTIZATION_TABLE, quality);
     let scaled_chrominance_quant_table =
         quant::scale_quantization_table(&quant::CHROMINANCE_QUANTIZATION_TABLE, quality);
 
-    let ys_block_matrix = block::split_to_block_matrix(&ys);
-    let cbs_block_matrix = block::split_to_block_matrix(&cbs);
-    let crs_block_matrix = block::split_to_block_matrix(&crs);
+    let height_width_ratio = if subsampling_pack.a == 2 { 2 } else { 1 };
+
+    let ys_block_matrix = block::split_to_block_matrix(&ys, 1);
+    let cbs_block_matrix = block::split_to_block_matrix(&cbs, height_width_ratio);
+    let crs_block_matrix = block::split_to_block_matrix(&crs, height_width_ratio);
 
     let ys_quantized = ys_block_matrix.apply_quantization(&scaled_luminance_quant_table);
     let cbs_quantized = cbs_block_matrix.apply_quantization(&scaled_chrominance_quant_table);
     let crs_quantized = crs_block_matrix.apply_quantization(&scaled_chrominance_quant_table);
 
     draw_spatial_channel(
-        &ys_quantized.blocks,
-        ys_block_matrix.width,
-        ys_block_matrix.height,
+        &ys_quantized,
         canvas_map,
         CanvasName::YsQuant,
     );
     draw_spatial_channel(
-        &cbs_quantized.blocks,
-        cbs_block_matrix.width,
-        cbs_block_matrix.height,
+        &cbs_quantized,
         canvas_map,
         CanvasName::CbsQuant,
     );
     draw_spatial_channel(
-        &crs_quantized.blocks,
-        crs_block_matrix.width,
-        crs_block_matrix.height,
+        &crs_quantized,
         canvas_map,
         CanvasName::CrsQuant,
     );
@@ -267,6 +284,7 @@ fn draw_dct_quantized(
         &pack.plot_data.get(&PlotName::YsQuant3d).unwrap(),
         &pack.plot_data.get(&PlotName::CbsQuant3d).unwrap(),
         &pack.plot_data.get(&PlotName::CrsQuant3d).unwrap(),
+        &subsampling_pack,
         image_window,
         quality,
     );
@@ -376,17 +394,18 @@ fn draw_dct_quantized_plot(
 
 #[allow(clippy::ptr_arg)]
 fn draw_spatial_channel(
-    data: &Vec<Block>,
-    width: usize,
-    height: usize,
+    quantized_block: &BlockMatrix,
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     canvas_name: CanvasName,
 ) {
     let mut image_data = vec![0; (BLOCK_SIZE * BLOCK_SIZE * 4) as usize];
 
+    let width = quantized_block.width;
+    let height = quantized_block.height;
+
     for v in 0..width {
         for u in 0..height {
-            let spatial = &data[u + v * width];
+            let spatial = &quantized_block.blocks[u + v * width];
             write_to_image_data(&mut image_data, &spatial.0, u, v);
         }
     }
@@ -398,6 +417,7 @@ fn draw_ycbcr_recovered(
     ys_quantized: &BlockMatrix,
     cbs_quantized: &BlockMatrix,
     crs_quantized: &BlockMatrix,
+    subsampling_pack: &SubsamplingPack,
     image_window: &image::RawImageWindow,
     quality: u8,
 ) {
@@ -457,7 +477,7 @@ fn draw_ycbcr_recovered(
     draw_default(&canvas_map, CanvasName::CbsRecovered, cbs_image);
     draw_default(&canvas_map, CanvasName::CrsRecovered, crs_image);
 
-    draw_image_recovered(canvas_map, ys, cbs, crs, image_window);
+    draw_image_recovered(canvas_map, ys, cbs, crs, &subsampling_pack, image_window);
 }
 
 fn draw_image_recovered(
@@ -465,12 +485,26 @@ fn draw_image_recovered(
     ys: Vec<u8>,
     cbs: Vec<u8>,
     crs: Vec<u8>,
+    subsampling_pack: &SubsamplingPack,
     image_window: &image::RawImageWindow,
 ) {
     let output_image = ys
         .iter()
-        .zip(cbs.iter())
-        .zip(crs.iter())
+        .zip(cbs
+            .iter()
+            .map(| x | {
+                std::iter::repeat(x)
+                    .take((subsampling_pack.j / subsampling_pack.a) as usize)
+                    .collect::<Vec<&u8>>()
+            }).flatten()
+        )
+        .zip(crs.iter()
+            .map(| x | {
+                std::iter::repeat(x)
+                    .take((subsampling_pack.j / subsampling_pack.a) as usize)
+                    .collect::<Vec<&u8>>()
+            }).flatten()
+        )
         .flat_map(|((y, cb), cr)| {
             let RGB { r, g, b } = image::pixel::YCbCr {
                 y: *y,
@@ -641,8 +675,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 chosen_block_x: 0.0,
                 chosen_block_y: 0.0,
             };
-            draw_ycbcr(&model.canvas_map, &pack.ycbcr);
-            draw_dct_quantized(&model.canvas_map, &mut pack, 50);
+            draw_ycbcr(&model.canvas_map, &pack.ycbcr, &model.subsampling_pack);
+            draw_dct_quantized(&model.canvas_map, &mut pack, &model.subsampling_pack, 50);
             draw_block_choice_indicators(
                 &model.overlay_map,
                 &model.preview_overlay_map,
@@ -655,7 +689,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::QualityUpdated(quality) => {
             if let State::ImageView(ref mut pack) = model.state {
                 model.quality = quality;
-                draw_dct_quantized(&model.canvas_map, pack, quality);
+                draw_dct_quantized(&model.canvas_map, pack, &model.subsampling_pack, quality);
                 draw_dct_quantized_plots(&pack, &model.plot_map);
             }
         }
@@ -696,8 +730,8 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 );
 
                 draw_input_previews(&model.preview_canvas_map, &pack.image_window);
-                draw_ycbcr(&model.canvas_map, &pack.ycbcr);
-                draw_dct_quantized(&model.canvas_map, pack, model.quality);
+                draw_ycbcr(&model.canvas_map, &pack.ycbcr, &model.subsampling_pack);
+                draw_dct_quantized(&model.canvas_map, pack, &model.subsampling_pack, model.quality);
                 draw_dct_quantized_plots(&pack, &model.plot_map);
             }
         }
@@ -723,6 +757,17 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 );
 
                 draw_dct_quantized_plots(&pack, &model.plot_map);
+            }
+        },
+        Msg::SubsamplingRatioChanged(y_ratio, cb_ratio, cr_ratio) => {
+            if let State::ImageView(ref mut pack) = model.state {
+                model.subsampling_pack.j = y_ratio;
+                model.subsampling_pack.a = cb_ratio;
+                model.subsampling_pack.b = cr_ratio;
+
+                draw_ycbcr(&model.canvas_map, &pack.ycbcr, &model.subsampling_pack);
+                draw_dct_quantized(&model.canvas_map, pack, &model.subsampling_pack, model.quality);
+                //draw_dct_quantized_plots(&pack, &model.plot_map);
             }
         }
     }

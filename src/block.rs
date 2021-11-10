@@ -1,4 +1,6 @@
 use crate::{dct, quant, BLOCK_SIZE};
+use seed::prelude::js_sys::Math::sqrt;
+use seed::util::log;
 
 pub struct Block(pub [[i16; 8]; 8]);
 
@@ -8,19 +10,21 @@ pub struct BlockMatrix {
     pub height: usize,
 }
 
-pub fn split_to_block_matrix(data: &[u8]) -> BlockMatrix {
-    let block_count = data.len() / (8 * BLOCK_SIZE as usize);
+pub fn split_to_block_matrix(data: &[u8], height_width_ratio: usize) -> BlockMatrix {
+    let block_count = data.len() / (8 * 8);
+    let block_count_vert =  sqrt((block_count * height_width_ratio) as f64) as usize;
+    let block_count_horiz = block_count_vert / height_width_ratio;
     let mut blocks: Vec<Block> = Vec::with_capacity(block_count * block_count);
 
-    for v in 0..block_count {
-        for u in 0..block_count {
-            blocks.push(get_block(u, v, &data));
+    for v in 0..block_count_horiz {
+        for u in 0..block_count_vert {
+            blocks.push(get_block(u, v, 8 * block_count_horiz, &data));
         }
     }
     BlockMatrix {
         blocks,
-        height: block_count,
-        width: block_count,
+        height: block_count_vert,
+        width: block_count_horiz,
     }
 }
 
@@ -74,12 +78,12 @@ impl BlockMatrix {
     }
 }
 
-fn get_block(u: usize, v: usize, data: &[u8]) -> Block {
+fn get_block(u: usize, v: usize, width: usize, data: &[u8]) -> Block {
     let mut result = [[0_i16; 8]; 8];
 
     for y in 0..8 {
         for x in 0..8 {
-            result[y][x] = data[(v * 8 + y) * BLOCK_SIZE as usize + (u * 8) + x] as i16;
+            result[y][x] = data[(v * 8 + y) * width as usize + (u * 8) + x] as i16;
         }
     }
 

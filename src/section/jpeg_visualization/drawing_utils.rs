@@ -39,6 +39,11 @@ pub fn draw_scaled_image_with_image_data_with_w_h_and_scale(
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
 
+    log(scale_x);
+    log(scale_y);
+    log(width);
+    log(height);
+
     tmp_canvas.set_width(width);
     tmp_canvas.set_height(height);
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
@@ -59,7 +64,7 @@ pub fn draw_scaled_image_with_w_h_and_scale(
     scale_y: f64,
 ) {
     let image_data =
-        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image), BLOCK_SIZE)
+        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image), width)
             .unwrap();
     draw_scaled_image_with_image_data_with_w_h_and_scale(
         &canvas,
@@ -78,8 +83,8 @@ pub fn draw_scaled_image_default_with_image_data(
     draw_scaled_image_with_image_data_with_w_h_and_scale(
         &canvas,
         &image_data,
-        BLOCK_SIZE,
-        BLOCK_SIZE,
+        canvas.get().unwrap().width() / ZOOM,
+        canvas.get().unwrap().height() / ZOOM,
         ZOOM as f64,
         ZOOM as f64,
     );
@@ -87,7 +92,7 @@ pub fn draw_scaled_image_default_with_image_data(
 
 pub fn draw_scaled_image_default(canvas: &ElRef<HtmlCanvasElement>, image: &Vec<u8>) {
     let image_data =
-        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image), BLOCK_SIZE)
+        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image), canvas.get().unwrap().width() / ZOOM)
             .unwrap();
     draw_scaled_image_default_with_image_data(&canvas, &image_data);
 }

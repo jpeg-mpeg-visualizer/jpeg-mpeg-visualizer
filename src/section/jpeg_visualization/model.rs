@@ -17,6 +17,12 @@ pub struct ImagePack {
     pub chosen_block_y: f64,
 }
 
+pub struct SubsamplingPack {
+    pub j: i8,
+    pub a: i8,
+    pub b: i8,
+}
+
 pub enum State {
     FileChooser,
     PreImageView,
@@ -36,6 +42,7 @@ pub enum Msg {
     QualityUpdated(u8),
     PreviewCanvasClicked(i32, i32),
     BlockChosen(i32, i32, i32, i32),
+    SubsamplingRatioChanged(i8, i8, i8),
 }
 
 // ------ ------
@@ -93,4 +100,5 @@ pub struct Model {
     pub preview_overlay_map: HashMap<PreviewCanvasName, ElRef<HtmlImageElement>>,
 
     pub quality: u8,
+    pub subsampling_pack: SubsamplingPack,
 }
