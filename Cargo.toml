@@ -42,6 +42,7 @@ features = [
     "HtmlAudioElement",
     "HtmlMediaElement",
     "AudioContextOptions",
+    "AudioBufferSourceOptions",
     "OfflineAudioContext",
     "HtmlButtonElement",
     "OffscreenCanvas",

@@ -1,5 +1,5 @@
 use seed::prelude::*;
-use seed::{button, canvas, div, style, unit, C, IF};
+use seed::{attrs, button, canvas, div, option, select, style, unit, C, IF};
 use web_sys::MouseEvent;
 
 use super::model::{Model, Msg};
@@ -16,6 +16,14 @@ fn audio_time_to_str(time: &f64) -> String {
 
 #[rustfmt::skip]
 fn audio_player(model: &Model) -> Node<GMsg>{
+    let speed: Vec<&str> = vec![
+        "1.0",
+        "0.75",
+        "0.5",
+        "0.25",
+        "0.1"
+    ];
+
     div![
         C!["audio-player"],
         el_ref(&model.player_wrapper),
@@ -66,6 +74,16 @@ fn audio_player(model: &Model) -> Node<GMsg>{
             ],
             div![
                 C!["playback-controls"],
+                select![
+                    attrs!{At::Name => "speed"},
+                    speed.iter().map(|speed_value| {
+                        option![
+                            attrs!{At::Value => speed_value},
+                            speed_value
+                        ]
+                    }),
+                    input_ev(Ev::Change, |val| wrap(Msg::SpeedChanged(val)))
+                ],
                 button![
                     C!["compression-button"],
                     el_ref(&model.change_compression),
