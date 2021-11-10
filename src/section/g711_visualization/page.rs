@@ -3,7 +3,11 @@ use plotters_canvas::CanvasBackend;
 use seed::prelude::*;
 use seed::struct_urls;
 use seed::virtual_dom::ElRef;
-use web_sys::{window, AudioContext, HtmlButtonElement, HtmlCanvasElement, HtmlDivElement};
+use std::str::FromStr;
+use web_sys::{
+    window, AudioBufferSourceNode, AudioBufferSourceOptions, AudioContext, HtmlButtonElement,
+    HtmlCanvasElement, HtmlDivElement,
+};
 
 use super::audio_visualizer_template::view_audio_visualizer;
 use super::file_chooser_template::view_file_chooser;
@@ -232,7 +236,7 @@ fn draw_frame(model: &Model) {
         .unwrap()
         .label(compression_name)
         .legend(move |(x, y)| {
-            Rectangle::new([(x - 5, y - 5), (x + 5, y + 5)], &Palette99::pick(3))
+            Rectangle::new([(x - 5, y - 5), (x + 5, y + 5)], &Palette99::pick(2))
         });
 
     compressed_chart
@@ -299,7 +303,11 @@ fn draw_frame(model: &Model) {
 fn update_view(model: &mut Model) {
     if model.player_state.playing() {
         let current_time = model.audio_context.as_ref().unwrap().current_time();
-        let mut new_position = current_time - model.player_state.start_time();
+        let resume_time = model.player_state.resume_time();
+        let start_time = model.player_state.start_time();
+        let current_diff = current_time - resume_time;
+        let mut new_position =
+            (resume_time - start_time) + current_diff * model.player_state.speed();
 
         let duration = model.player_state.duration();
 
@@ -315,7 +323,9 @@ fn update_view(model: &mut Model) {
 
 fn play_audio(model: &mut Model) {
     let context = model.audio_context.as_ref().unwrap();
-    let source_node = context.create_buffer_source().unwrap();
+    let mut options = AudioBufferSourceOptions::new();
+    options.playback_rate(model.player_state.speed() as f32);
+    let source_node = AudioBufferSourceNode::new_with_options(&context, &options).unwrap();
     source_node
         .connect_with_audio_node(model.gain_node.as_ref().unwrap())
         .unwrap();
@@ -337,9 +347,9 @@ fn play_audio(model: &mut Model) {
     let current_time = context.current_time();
     let position = model.player_state.position();
     let start_time = current_time - position;
+    model.player_state.set_resume_time(current_time);
 
     model.player_state.set_start_time(start_time);
-
     source_node
         .start_with_when_and_grain_offset(current_time, position)
         .unwrap();
@@ -354,7 +364,10 @@ fn pause_audio(model: &mut Model) {
     model.audio_source.as_ref().unwrap().stop().unwrap();
 
     let current_time = model.audio_context.as_ref().unwrap().current_time();
-    let position = current_time - model.player_state.start_time();
+    let resume_time = model.player_state.resume_time();
+    let start_time = model.player_state.start_time();
+    let current_diff = current_time - resume_time;
+    let position = (resume_time - start_time) + current_diff * model.player_state.speed();
 
     model.player_state.set_position(position);
     log(&format!(
@@ -376,6 +389,18 @@ fn seek_audio(model: &mut Model, offset: i32) {
         play_audio(model);
     } else {
         model.player_state.set_position(seek_position);
+    }
+}
+
+fn change_playback_speed(model: &mut Model, speed: f64) {
+    if model.player_state.playing() {
+        pause_audio(model);
+
+        model.player_state.set_speed(speed);
+
+        play_audio(model);
+    } else {
+        model.player_state.set_speed(speed);
     }
 }
 
@@ -477,6 +502,10 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 orders.after_next_render(|data| Msg::FrameUpdate(data));
                 draw_frame(model);
             }
+        }
+        Msg::SpeedChanged(speed) => {
+            let speed_value = f64::from_str(&speed).unwrap();
+            change_playback_speed(model, speed_value)
         }
         Msg::Seek(offset) => {
             seek_audio(model, offset);

@@ -15,7 +15,9 @@ pub enum PlayBackState {
 pub struct PlayerState {
     position: f64,
     start_time: f64,
+    resume_time: f64,
     duration: f64,
+    speed: f64,
     playback_state: PlayBackState,
 }
 
@@ -34,7 +36,9 @@ impl Default for PlayerState {
         PlayerState {
             position: 0.0,
             start_time: 0.0,
+            resume_time: 0.0,
             duration: 0.0,
+            speed: 1.0,
             playback_state: PlayBackState::Paused,
         }
     }
@@ -45,7 +49,9 @@ impl PlayerState {
         PlayerState {
             position: 0.0,
             start_time: 0.0,
+            resume_time: 0.0,
             duration,
+            speed: 1.0,
             playback_state: PlayBackState::Paused,
         }
     }
@@ -69,8 +75,16 @@ impl PlayerState {
         self.start_time
     }
 
+    pub fn resume_time(&self) -> f64 {
+        self.resume_time
+    }
+
     pub fn position(&self) -> f64 {
         self.position
+    }
+
+    pub fn speed(&self) -> f64 {
+        self.speed
     }
 
     pub fn duration(&self) -> f64 {
@@ -83,6 +97,14 @@ impl PlayerState {
 
     pub fn set_start_time(&mut self, start_time: f64) {
         self.start_time = start_time;
+    }
+
+    pub fn set_resume_time(&mut self, resume_time: f64) {
+        self.resume_time = resume_time;
+    }
+
+    pub fn set_speed(&mut self, speed: f64) {
+        self.speed = speed;
     }
 }
 
@@ -112,6 +134,7 @@ pub enum Msg {
     SwitchCompression,
     FrameUpdate(RenderInfo),
     Seek(i32),
+    SpeedChanged(String),
 }
 
 // ------ ------
