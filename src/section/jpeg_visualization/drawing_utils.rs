@@ -39,11 +39,6 @@ pub fn draw_scaled_image_with_image_data_with_w_h_and_scale(
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
 
-    log(scale_x);
-    log(scale_y);
-    log(width);
-    log(height);
-
     tmp_canvas.set_width(width);
     tmp_canvas.set_height(height);
     let tmp_ctx = canvas_context_2d(&tmp_canvas);

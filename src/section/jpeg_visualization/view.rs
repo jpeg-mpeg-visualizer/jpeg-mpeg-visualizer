@@ -245,11 +245,9 @@ fn canvas_labeled_div_with_overlay(
 
     match subsampling_pack_option {
         Some(subsampling_pack) => {
-            if subsampling_pack.a == 1 {
-                width = width / 2;
+            width = width * subsampling_pack.a as u32 / subsampling_pack.j as u32;
+            if subsampling_pack.b == 0 {
                 height = height / 2;
-            } else if subsampling_pack.a == 2 {
-                width = width / 2;
             }
         }
         None => {}
@@ -293,7 +291,10 @@ fn canvas_labeled_div_with_overlay(
     ]
 }
 
-fn plot_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>) -> Node<GMsg> {
+fn plot_labeled_div(
+    label: &str,
+    canvas: &ElRef<HtmlCanvasElement>,
+) -> Node<GMsg> {
     let padding = 10;
 
     div![

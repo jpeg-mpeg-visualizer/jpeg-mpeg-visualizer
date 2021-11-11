@@ -10,10 +10,10 @@ pub struct BlockMatrix {
     pub height: usize,
 }
 
-pub fn split_to_block_matrix(data: &[u8], height_width_ratio: usize) -> BlockMatrix {
-    let block_count = data.len() / (8 * 8);
-    let block_count_vert =  sqrt((block_count * height_width_ratio) as f64) as usize;
-    let block_count_horiz = block_count_vert / height_width_ratio;
+pub fn split_to_block_matrix(data: &[u8], height_width_ratio: f64) -> BlockMatrix {
+    let block_count: usize = data.len() / (8 * 8);
+    let block_count_vert: usize =  sqrt((block_count as f64 * height_width_ratio)) as usize;
+    let block_count_horiz: usize = (block_count_vert as f64 / height_width_ratio) as usize;
     let mut blocks: Vec<Block> = Vec::with_capacity(block_count * block_count);
 
     for v in 0..block_count_horiz {

@@ -3,6 +3,8 @@ use seed::*;
 use std::cmp;
 use strum::IntoEnumIterator;
 
+use itertools::Itertools;
+
 use plotters::prelude::*;
 use plotters_canvas::CanvasBackend;
 
@@ -184,37 +186,54 @@ fn draw_ycbcr(
         })
         .collect::<Vec<u8>>();
 
-    let cbs_image = cbs
-        .iter()
-        .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
-        .flat_map(|x| {
-            let RGB { r, g, b } = image::pixel::YCbCr {
-                y: 128,
-                cb: *x,
-                cr: 128,
-            }
-            .to_rgb();
-            vec![r, g, b, 255]
-        })
-        .collect::<Vec<u8>>();
+    let vert_mult: usize = (subsampling_pack.j / subsampling_pack.a) as usize;
+    let horiz_mult: usize = if subsampling_pack.b == 0 { 2_usize } else { 1_usize };
 
-    let crs_image: Vec<u8> = if subsampling_pack.b == 0 {
-        cbs_image.clone()
-    } else {
-        crs
-            .iter()
-            .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
-            .flat_map(|x| {
-                let RGB { r, g, b } = image::pixel::YCbCr {
-                    y: 128,
-                    cb: 128,
-                    cr: *x,
-                }
-                    .to_rgb();
-                vec![r, g, b, 255]
-            })
-            .collect::<Vec<u8>>()
-    };
+    assert_eq!(cbs.len(), crs.len());
+    let mut cbs_image = Vec::<u8>::new();
+    let mut crs_image = Vec::<u8>::new();
+    let mut x = 0;
+    while x < cbs.len() {
+        // force skipping horizontal rows if horiz_mult is more than 1
+        if x % (BLOCK_SIZE as usize * horiz_mult) >= BLOCK_SIZE as usize {
+            x += BLOCK_SIZE as usize * (horiz_mult -1);
+            continue;
+        }
+        let mut cbs_avg: usize = 0;
+        let mut crs_avg: usize = 0;
+        for i in 0..vert_mult {
+            for j in 0..horiz_mult {
+                let curr = x + i + j * BLOCK_SIZE as usize;
+                cbs_avg += cbs[curr] as usize;
+                crs_avg += crs[curr] as usize;
+            }
+        }
+        cbs_avg /= vert_mult * horiz_mult;
+        crs_avg /= vert_mult * horiz_mult;
+
+        let RGB { r, g, b } = image::pixel::YCbCr {
+            y: 128,
+            cb: cbs_avg as u8,
+            cr: 128,
+        }.to_rgb();
+
+        cbs_image.push(r);
+        cbs_image.push(g);
+        cbs_image.push(b);
+        cbs_image.push(255);
+
+        let RGB { r, g, b } = image::pixel::YCbCr {
+            y: 128,
+            cb: 128,
+            cr: crs_avg as u8,
+        }.to_rgb();
+        crs_image.push(r);
+        crs_image.push(g);
+        crs_image.push(b);
+        crs_image.push(255);
+
+        x += vert_mult;
+    }
 
     draw_default(&canvas_map, CanvasName::Ys, ys_image);
     draw_default(&canvas_map, CanvasName::Cbs, cbs_image);
@@ -233,25 +252,27 @@ fn draw_dct_quantized(
     let ys = ycbcr.to_ys_channel();
     let cbs = ycbcr.to_cbs_channel()
         .into_iter()
+        .enumerate()
+        .filter(|(index, x)| subsampling_pack.b != 0 || (*index as u32 / BLOCK_SIZE) % 2 == 0)
+        .map(|(index, x)| x)
         .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
         .collect::<Vec<u8>>();
-    let crs = if subsampling_pack.b == 0 {
-        cbs.clone()
-    } else {
-        ycbcr.to_crs_channel()
-            .into_iter()
-            .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
-            .collect::<Vec<u8>>()
-    };
+    let crs = ycbcr.to_crs_channel()
+        .into_iter()
+        .enumerate()
+        .filter(|(index, x)| subsampling_pack.b != 0 || (*index as u32 / BLOCK_SIZE) % 2 == 0)
+        .map(|(index, x)| x)
+        .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
+        .collect::<Vec<u8>>();
 
     let scaled_luminance_quant_table =
         quant::scale_quantization_table(&quant::LUMINANCE_QUANTIZATION_TABLE, quality);
     let scaled_chrominance_quant_table =
         quant::scale_quantization_table(&quant::CHROMINANCE_QUANTIZATION_TABLE, quality);
 
-    let height_width_ratio = if subsampling_pack.a == 2 { 2 } else { 1 };
+    let height_width_ratio = (subsampling_pack.j / subsampling_pack.a) as f64 / if subsampling_pack.a == 2 { 2_f64 } else { 1_f64 };
 
-    let ys_block_matrix = block::split_to_block_matrix(&ys, 1);
+    let ys_block_matrix = block::split_to_block_matrix(&ys, 1_f64);
     let cbs_block_matrix = block::split_to_block_matrix(&cbs, height_width_ratio);
     let crs_block_matrix = block::split_to_block_matrix(&crs, height_width_ratio);
 
@@ -338,14 +359,15 @@ fn draw_dct_quantized_plot(
 
     area.fill(&RGBColor(113, 113, 114)).unwrap();
 
-    let key_points = vec![0, 8, 16, 24, 32, 40, 48, 56, 64];
+    let key_points_x = (0..width + 1).map(|x| x as i32 * 8).collect::<Vec<i32>>();
+    let key_points_z = (0..height + 1).map(|x| x as i32 * 8).collect::<Vec<i32>>();
 
     let mut chart = ChartBuilder::on(&area)
         .margin(20)
         .build_cartesian_3d(
-            (0i32..(width * (8usize)) as i32).with_key_points(key_points.clone()),
+            (0i32..(width * (8usize)) as i32).with_key_points(key_points_x),
             0i32..255i32,
-            (0i32..(height * (8usize)) as i32).with_key_points(key_points),
+            (0i32..(height * (8usize)) as i32).with_key_points(key_points_z),
         )
         .unwrap();
 
@@ -488,7 +510,8 @@ fn draw_image_recovered(
     subsampling_pack: &SubsamplingPack,
     image_window: &image::RawImageWindow,
 ) {
-    let output_image = ys
+    // FIXME: use iterators
+    /*let output_image = ys
         .iter()
         .zip(cbs
             .iter()
@@ -497,6 +520,16 @@ fn draw_image_recovered(
                     .take((subsampling_pack.j / subsampling_pack.a) as usize)
                     .collect::<Vec<&u8>>()
             }).flatten()
+            .chunks(BLOCK_SIZE as usize)
+            .into_iter()
+            .flat_map(|chunk| {
+
+            })
+            .map(|x| {
+                std::iter::repeat(x)
+                    .take(if subsampling_pack.b == 0 { 2 } else { 0 })
+                    .collect::<Vec<&u8>>()
+            })
         )
         .zip(crs.iter()
             .map(| x | {
@@ -504,6 +537,13 @@ fn draw_image_recovered(
                     .take((subsampling_pack.j / subsampling_pack.a) as usize)
                     .collect::<Vec<&u8>>()
             }).flatten()
+            .chunks(BLOCK_SIZE as usize)
+            .into_iter()
+            .map(|x| {
+                std::iter::repeat(x)
+                    .take(if subsampling_pack.b == 0 { 2 } else { 0 })
+                    .collect::<Vec<&u8>>()
+            })
         )
         .flat_map(|((y, cb), cr)| {
             let RGB { r, g, b } = image::pixel::YCbCr {
@@ -514,7 +554,24 @@ fn draw_image_recovered(
             .to_rgb();
             vec![r, g, b, 255]
         })
-        .collect::<Vec<u8>>();
+        .collect::<Vec<u8>>();*/
+    let horiz_mult: usize = (subsampling_pack.j / subsampling_pack.a) as usize;
+    let vert_mult: usize = if subsampling_pack.b == 0 { 2_usize } else { 1_usize };
+
+    let mut output_image = Vec::<u8>::new();
+    for i in 0..ys.len() {
+        let curr_cb_cr: usize = (i/ (BLOCK_SIZE as usize * horiz_mult)) * (BLOCK_SIZE as usize / vert_mult) + (i / vert_mult) % (BLOCK_SIZE as usize / vert_mult);
+        let RGB { r, g, b } = image::pixel::YCbCr {
+            y: ys[i],
+            cb: cbs[curr_cb_cr],
+            cr: crs[curr_cb_cr],
+        }.to_rgb();
+        output_image.push(r);
+        output_image.push(g);
+        output_image.push(b);
+        output_image.push(255);
+    }
+
     let input_image = image_window.to_rgb_image().to_image();
     let image_diff = get_image_diff(&output_image, &input_image);
     draw_default(&canvas_map, CanvasName::ImageRecovered, output_image);
@@ -765,9 +822,14 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 model.subsampling_pack.a = cb_ratio;
                 model.subsampling_pack.b = cr_ratio;
 
+                // TODO: Problem here is - after changing model.subsamlping_pack values, it takes time for canvases to be rescaled, so the drawing doesn't take place
+                //      Some kind of on_init callback should be called here to redraw all that stuff
+
+                turn_antialiasing_off(&model.canvas_map, &model.preview_canvas_map);
+
                 draw_ycbcr(&model.canvas_map, &pack.ycbcr, &model.subsampling_pack);
                 draw_dct_quantized(&model.canvas_map, pack, &model.subsampling_pack, model.quality);
-                //draw_dct_quantized_plots(&pack, &model.plot_map);
+                draw_dct_quantized_plots(&pack, &model.plot_map);
             }
         }
     }
