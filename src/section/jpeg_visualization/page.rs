@@ -420,15 +420,15 @@ fn draw_spatial_channel(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     canvas_name: CanvasName,
 ) {
-    let mut image_data = vec![0; (BLOCK_SIZE * BLOCK_SIZE * 4) as usize];
-
     let width = quantized_block.width;
     let height = quantized_block.height;
+
+    let mut image_data = vec![0; width * height * 8 * 8 * 4];
 
     for v in 0..width {
         for u in 0..height {
             let spatial = &quantized_block.blocks[u + v * width];
-            write_to_image_data(&mut image_data, &spatial.0, u, v);
+            write_to_image_data(&mut image_data, &spatial.0, u, v, width);
         }
     }
     draw_default(&canvas_map, canvas_name, image_data);
@@ -510,51 +510,6 @@ fn draw_image_recovered(
     subsampling_pack: &SubsamplingPack,
     image_window: &image::RawImageWindow,
 ) {
-    // FIXME: use iterators
-    /*let output_image = ys
-        .iter()
-        .zip(cbs
-            .iter()
-            .map(| x | {
-                std::iter::repeat(x)
-                    .take((subsampling_pack.j / subsampling_pack.a) as usize)
-                    .collect::<Vec<&u8>>()
-            }).flatten()
-            .chunks(BLOCK_SIZE as usize)
-            .into_iter()
-            .flat_map(|chunk| {
-
-            })
-            .map(|x| {
-                std::iter::repeat(x)
-                    .take(if subsampling_pack.b == 0 { 2 } else { 0 })
-                    .collect::<Vec<&u8>>()
-            })
-        )
-        .zip(crs.iter()
-            .map(| x | {
-                std::iter::repeat(x)
-                    .take((subsampling_pack.j / subsampling_pack.a) as usize)
-                    .collect::<Vec<&u8>>()
-            }).flatten()
-            .chunks(BLOCK_SIZE as usize)
-            .into_iter()
-            .map(|x| {
-                std::iter::repeat(x)
-                    .take(if subsampling_pack.b == 0 { 2 } else { 0 })
-                    .collect::<Vec<&u8>>()
-            })
-        )
-        .flat_map(|((y, cb), cr)| {
-            let RGB { r, g, b } = image::pixel::YCbCr {
-                y: *y,
-                cb: *cb,
-                cr: *cr,
-            }
-            .to_rgb();
-            vec![r, g, b, 255]
-        })
-        .collect::<Vec<u8>>();*/
     let horiz_mult: usize = (subsampling_pack.j / subsampling_pack.a) as usize;
     let vert_mult: usize = if subsampling_pack.b == 0 { 2_usize } else { 1_usize };
 
@@ -589,10 +544,10 @@ fn draw_default(
     draw_scaled_image_default(&canvas, &image_data);
 }
 
-fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[i16; 8]; 8], u: usize, v: usize) {
+fn write_to_image_data(image_data: &mut Vec<u8>, spatial: &[[i16; 8]; 8], u: usize, v: usize, vert_block_count: usize) {
     for y in 0..8 {
         for x in 0..8 {
-            let offset = ((v * 8 + y) * BLOCK_SIZE as usize + (u * 8) + x) * 4;
+            let offset = ((v * 8 + y) * (vert_block_count * 8) as usize + (u * 8) + x) * 4;
             image_data[offset] = 255 - spatial[y][x].abs().clamp(0, 255) as u8;
             image_data[offset + 1] = 255 - spatial[y][x].abs().clamp(0, 255) as u8;
             image_data[offset + 2] = 255 - spatial[y][x].abs().clamp(0, 255) as u8;
@@ -818,6 +773,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         },
         Msg::SubsamplingRatioChanged(y_ratio, cb_ratio, cr_ratio) => {
             if let State::ImageView(ref mut pack) = model.state {
+
                 model.subsampling_pack.j = y_ratio;
                 model.subsampling_pack.a = cb_ratio;
                 model.subsampling_pack.b = cr_ratio;
