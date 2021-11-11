@@ -23,6 +23,14 @@ pub struct Model {
     pub selected_frame: usize,
     pub selected_explaination_tab: ExplainationTab,
     pub control_state: ControlState,
+    pub selected_macroblock: Option<usize>,
+    pub canvas_y1: ElRef<HtmlCanvasElement>,
+    pub canvas_y2: ElRef<HtmlCanvasElement>,
+    pub canvas_y3: ElRef<HtmlCanvasElement>,
+    pub canvas_y4: ElRef<HtmlCanvasElement>,
+    pub canvas_cb: ElRef<HtmlCanvasElement>,
+    pub canvas_cr: ElRef<HtmlCanvasElement>,
+    pub selected_block: Option<usize>,
 }
 
 pub enum Msg {
@@ -34,6 +42,8 @@ pub enum Msg {
     FrameChanged(usize),
     ExplainationTabChanged(ExplainationTab),
     ToggleControl(MacroblockType),
+    CanvasClicked(usize, usize),
+    BlockSelected(usize),
 }
 
 #[derive(Clone, Copy, PartialEq, EnumIter)]

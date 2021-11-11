@@ -529,11 +529,20 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     align-items: start;
 }
 
+.frame-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.frame-sidebar.-hidden {
+    display: none;
+}
+
 .frame-sidebar > * {
-    min-width: 200px;
+    min-width: 258px;
     padding: 1rem 1em;
     background: white;
-    margin-bottom: 2rem;
     font-size: initial;
 }
 
@@ -545,10 +554,78 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     margin-bottom: 16px;
 }
 
+.macroblock-details {
+    background-color: white;
+    padding: 1rem;
+    font-size: 1rem;
+}
+
+.macroblock-details.-hidden {
+    display: none
+}
+
+.macroblock-details > h3 {
+    margin: 0
+}
+
+.block-container {
+    margin-bottom: 2px;
+}
+
+.block-container > .buttonlist {
+    display: flex;
+    gap: 2px;
+}
+
+.block-container > .buttonlist > button {
+    background-color: cadetblue;
+    padding: 0.3rem 0.6rem;
+    border: none;
+    color:white;
+}
+
+.block-container > .buttonlist > button:disabled {
+    opacity: 40%;
+}
+
+.block-container > .buttonlist > button.-selected:not(:disabled) {
+    background-color: forestgreen;
+}
+
+.block-content {
+    table-layout: fixed;
+    border-collapse: collapse;
+    font-family: monospace;
+    font-size: 0.8rem;
+    text-align: right;
+}
+
+.block-content > tr > td {
+    border: 1px solid black;
+    width: 3ch;
+}
+
+.block-canvas-list {
+    display: flex;
+    gap: 1rem;
+    align-items: end;
+    margin-top: 1rem;
+}
+
+.block-canvas-list > .block {
+    text-align: center;
+}
+
+.block-canvas-list > .block > .ys {
+    display: grid;
+    grid-template: 1fr 1fr / 1fr 1fr;
+    gap: 2px;
+}
+
 .frame-type-explaination {
-    margin-top: 5rem;
     display: flex;
     flex-direction: column;
+    margin-top: 3rem;
 }
 
 .frame-type-explaination > .tabs {

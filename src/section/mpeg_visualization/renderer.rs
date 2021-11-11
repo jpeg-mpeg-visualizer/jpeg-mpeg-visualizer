@@ -4,12 +4,21 @@ use seed::*;
 use wasm_bindgen::Clamped;
 use web_sys::{HtmlCanvasElement, ImageData};
 
-use crate::image::pixel::RGB;
+use crate::{
+    image::pixel::{self, RGB},
+    section::jpeg_visualization::drawing_utils::draw_scaled_image_with_image_data_with_w_h_and_scale,
+};
 
 use super::{model::ControlState, mpeg1::DecodedFrame};
 
 pub struct Renderer {
     canvas: ElRef<HtmlCanvasElement>,
+    canvas_y1: ElRef<HtmlCanvasElement>,
+    canvas_y2: ElRef<HtmlCanvasElement>,
+    canvas_y3: ElRef<HtmlCanvasElement>,
+    canvas_y4: ElRef<HtmlCanvasElement>,
+    canvas_cb: ElRef<HtmlCanvasElement>,
+    canvas_cr: ElRef<HtmlCanvasElement>,
     width: u16,
     height: u16,
     rgb_data: Vec<u8>,
@@ -19,9 +28,23 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    pub fn new(canvas: &ElRef<HtmlCanvasElement>) -> Self {
+    pub fn new(
+        canvas: &ElRef<HtmlCanvasElement>,
+        canvas_y1: &ElRef<HtmlCanvasElement>,
+        canvas_y2: &ElRef<HtmlCanvasElement>,
+        canvas_y3: &ElRef<HtmlCanvasElement>,
+        canvas_y4: &ElRef<HtmlCanvasElement>,
+        canvas_cb: &ElRef<HtmlCanvasElement>,
+        canvas_cr: &ElRef<HtmlCanvasElement>,
+    ) -> Self {
         Self {
             canvas: canvas.clone(),
+            canvas_y1: canvas_y1.clone(),
+            canvas_y2: canvas_y2.clone(),
+            canvas_y3: canvas_y3.clone(),
+            canvas_y4: canvas_y4.clone(),
+            canvas_cb: canvas_cb.clone(),
+            canvas_cr: canvas_cr.clone(),
             width: 0,
             height: 0,
             rgb_data: Vec::new(),
@@ -158,4 +181,107 @@ impl Renderer {
         self.cb.resize(width as usize * height as usize / 4, 0);
         self.cr.resize(width as usize * height as usize / 4, 0);
     }
+
+    pub fn render_macroblock(&self, frame: &DecodedFrame, macroblock_index: usize) {
+        let mut buffer = [123u8; 64];
+
+        let macroblock_width = (self.width as usize + 15) / 16;
+        let y = (macroblock_index / macroblock_width) * 16;
+        let x = (macroblock_index % macroblock_width) * 16;
+        let chroma_y = y / 2;
+        let chroma_x = x / 2;
+
+        self.get_block(x, y, &mut buffer, &frame.y, macroblock_width);
+        Self::render_channel(&self.canvas_y1, &buffer, ChannelType::Y);
+        self.get_block(x + 8, y, &mut buffer, &frame.y, macroblock_width);
+        Self::render_channel(&self.canvas_y2, &buffer, ChannelType::Y);
+        self.get_block(x, y + 8, &mut buffer, &frame.y, macroblock_width);
+        Self::render_channel(&self.canvas_y3, &buffer, ChannelType::Y);
+        self.get_block(x + 8, y + 8, &mut buffer, &frame.y, macroblock_width);
+        Self::render_channel(&self.canvas_y4, &buffer, ChannelType::Y);
+        self.get_block(
+            chroma_x,
+            chroma_y,
+            &mut buffer,
+            &frame.cb,
+            macroblock_width / 2,
+        );
+        Self::render_channel(&self.canvas_cb, &buffer, ChannelType::Cb);
+        self.get_block(
+            chroma_x,
+            chroma_y,
+            &mut buffer,
+            &frame.cr,
+            macroblock_width / 2,
+        );
+        Self::render_channel(&self.canvas_cr, &buffer, ChannelType::Cr);
+    }
+
+    fn render_channel(
+        destination: &ElRef<HtmlCanvasElement>,
+        data: &[u8; 64],
+        channel_type: ChannelType,
+    ) {
+        let mut buffer = Vec::with_capacity(8 * 8 * 4);
+        for value in data {
+            let RGB { r, g, b } = match channel_type {
+                ChannelType::Y => pixel::YCbCr {
+                    y: *value,
+                    cb: 128,
+                    cr: 128,
+                }
+                .to_rgb(),
+                ChannelType::Cb => pixel::YCbCr {
+                    y: 128,
+                    cb: *value,
+                    cr: 128,
+                }
+                .to_rgb(),
+                ChannelType::Cr => pixel::YCbCr {
+                    y: 128,
+                    cb: 128,
+                    cr: *value,
+                }
+                .to_rgb(),
+            };
+            buffer.push(r);
+            buffer.push(g);
+            buffer.push(b);
+            buffer.push(255);
+        }
+
+        let image_data =
+            ImageData::new_with_u8_clamped_array_and_sh(Clamped(&mut buffer), 8, 8).unwrap();
+        let context = canvas_context_2d(&destination.get().unwrap());
+        context.set_image_smoothing_enabled(false);
+        draw_scaled_image_with_image_data_with_w_h_and_scale(
+            destination,
+            &image_data,
+            8,
+            8,
+            6.0,
+            6.0,
+        );
+    }
+
+    fn get_block(
+        &self,
+        x: usize,
+        y: usize,
+        destination: &mut [u8; 64],
+        source: &[u8],
+        scan: usize,
+    ) {
+        for row in 0..8 {
+            for col in 0..8 {
+                destination[row * 8 + col] = source[(y + row) * scan * 16 + x + col];
+            }
+        }
+    }
+}
+
+enum ChannelType {
+    Y,
+    Cb,
+    Cr,
 }
