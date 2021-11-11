@@ -101,15 +101,19 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
         ],
         div![
             C!["frame-container"],
-            canvas![
-                el_ref(&model.canvas),
-                ev(Ev::Click, move |event| {
-                    let mouse_event: MouseEvent = event.unchecked_into();
-                    wrap(Msg::CanvasClicked(
-                        mouse_event.offset_x() as usize,
-                        mouse_event.offset_y() as usize,
-                    ))
-                })
+            div![
+                C!["canvas-container"],
+                canvas![C!["canvasindicator"], el_ref(&model.canvas_indicator),],
+                canvas![
+                    el_ref(&model.canvas),
+                    ev(Ev::Click, move |event| {
+                        let mouse_event: MouseEvent = event.unchecked_into();
+                        wrap(Msg::CanvasClicked(
+                            mouse_event.offset_x() as usize,
+                            mouse_event.offset_y() as usize,
+                        ))
+                    })
+                ],
             ],
             div![
                 C!["frame-sidebar", IF!(model.frames.is_empty() => "-hidden")],

@@ -29,6 +29,7 @@ pub fn init(_url: Url) -> Option<Model> {
         canvas_cb: ElRef::<_>::default(),
         canvas_cr: ElRef::<_>::default(),
         selected_block: None,
+        canvas_indicator: ElRef::<_>::default(),
     })
 }
 
@@ -68,6 +69,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 &model.canvas_y4,
                 &model.canvas_cb,
                 &model.canvas_cr,
+                &model.canvas_indicator,
             );
             model.renderer = Some(renderer);
 

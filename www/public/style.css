@@ -529,6 +529,11 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     align-items: start;
 }
 
+.frame-container > .canvas-container > .canvasindicator {
+    position: absolute;
+    pointer-events: none;
+}
+
 .frame-sidebar {
     display: flex;
     flex-direction: column;
