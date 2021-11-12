@@ -526,11 +526,10 @@ fn draw_image_recovered(
         output_image.push(255);
     }
 
-    let input_image = image_window.to_rgb_image().to_image();
+    let input_image = image_window.to_image();
     let image_diff = get_image_diff(&output_image, &input_image);
     draw_default(&canvas_map, CanvasName::ImageRecovered, output_image);
 
-    // TODO: Consider optimizing input_image calculation -> instead of to_rgb and then to image, make one method that would do both but in less steps!
     draw_default(&canvas_map, CanvasName::Difference, image_diff);
 }
 
@@ -581,8 +580,7 @@ fn draw_input_previews(
     preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
     image_window: &RawImageWindow,
 ) {
-    // TODO: Consider optimizing input_image calculation -> instead of to_rgb and then to image, make one method that would do both but in less steps!
-    let input_image = &image_window.to_rgb_image().to_image();
+    let input_image = &image_window.to_image();
     for (_canvas_name, canvas) in preview_canvas_map {
         draw_scaled_image_default(&canvas, &input_image);
     }
@@ -678,9 +676,13 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             draw_original_image_preview(&model.original_image_canvas, &raw_image);
 
             let raw_image_rc = Rc::new(raw_image);
-            // TODO: Consider drawing initial rect here (currently it is drawn only after user chooses a block - but that might be what we actually want)
             let image_window =
                 RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
+            draw_input_selection_indicator(
+                &model.original_image_overlay,
+                &image_window,
+                &raw_image_rc,
+            );
             draw_input_previews(&model.preview_canvas_map, &image_window);
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
             let mut pack: ImagePack = ImagePack {

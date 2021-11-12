@@ -14,9 +14,6 @@ pub fn split_to_block_matrix(data: &[u8], height_width_ratio: f64) -> BlockMatri
     let block_count: usize = data.len() / (8 * 8);
     let block_count_vert: usize =  sqrt(block_count as f64 * height_width_ratio) as usize;
     let block_count_horiz: usize = (block_count_vert as f64 / height_width_ratio) as usize;
-    log(block_count);
-    log(block_count_vert);
-    log(block_count_horiz);
     let mut blocks: Vec<Block> = Vec::with_capacity(block_count_vert * block_count_horiz);
 
     for v in 0..block_count_vert {
