@@ -359,13 +359,14 @@ fn draw_dct_quantized_plot(
 
     let key_points_x = (0..width + 1).map(|x| x as i32 * 8).collect::<Vec<i32>>();
     let key_points_z = (0..height + 1).map(|x| x as i32 * 8).collect::<Vec<i32>>();
+    let key_points_y = (0..5).map(|x| x as i32 * 64).collect::<Vec<i32>>();
 
     let mut chart = ChartBuilder::on(&area)
         .margin(20)
         .build_cartesian_3d(
-            (0i32..(width * (8usize)) as i32).with_key_points(key_points_x),
-            0i32..255i32,
-            (0i32..(height * (8usize)) as i32).with_key_points(key_points_z),
+            (0i32..(width * (8_usize)) as i32).with_key_points(key_points_x),
+            (0i32..256i32).with_key_points(key_points_y),
+            (0i32..(height * (8_usize)) as i32).with_key_points(key_points_z),
         )
         .unwrap();
 
