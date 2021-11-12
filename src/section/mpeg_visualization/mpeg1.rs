@@ -629,8 +629,8 @@ impl MPEG1 {
         let width = self.coded_width as usize;
         let scan = width - 16;
 
-        let h = motion_h as isize / 2;
-        let v = motion_v as isize / 2;
+        let h = motion_h as isize >> 1;
+        let v = motion_v as isize >> 1;
 
         let is_motion_h_odd = motion_h & 1 == 1;
         let is_motion_v_odd = motion_v & 1 == 1;
@@ -714,8 +714,8 @@ impl MPEG1 {
         let width = self.mb_width as usize * 8;
         let scan = width - 8;
 
-        let h = motion_h as isize / 4;
-        let v = motion_v as isize / 4;
+        let h = (motion_h as isize / 2) >> 1;
+        let v = (motion_v as isize / 2) >> 1;
 
         let is_motion_h_odd = (motion_h / 2) & 1 == 1;
         let is_motion_v_odd = (motion_v / 2) & 1 == 1;
