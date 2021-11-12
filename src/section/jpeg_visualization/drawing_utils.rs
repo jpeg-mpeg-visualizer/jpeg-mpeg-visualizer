@@ -1,7 +1,7 @@
 use seed::prelude::*;
 use seed::*;
 
-use crate::{BLOCK_SIZE, ZOOM};
+use crate::ZOOM;
 use web_sys::{HtmlCanvasElement, ImageData};
 
 // TODO: Consider having seperate canvas for "scalable" images and another one with w/h set at static context

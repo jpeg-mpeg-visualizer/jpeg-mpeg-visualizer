@@ -3,8 +3,6 @@ use seed::*;
 use std::cmp;
 use strum::IntoEnumIterator;
 
-use itertools::Itertools;
-
 use plotters::prelude::*;
 use plotters_canvas::CanvasBackend;
 
@@ -14,7 +12,7 @@ use super::view::*;
 use crate::image::pixel::RGB;
 use crate::image::RawImageWindow;
 use crate::{
-    block::{self, Block, BlockMatrix},
+    block::{self, BlockMatrix},
     image, quant, Msg as GMsg, BLOCK_SIZE, ZOOM,
 };
 use std::rc::Rc;
@@ -253,15 +251,15 @@ fn draw_dct_quantized(
     let cbs = ycbcr.to_cbs_channel()
         .into_iter()
         .enumerate()
-        .filter(|(index, x)| subsampling_pack.b != 0 || (*index as u32 / BLOCK_SIZE) % 2 == 0)
-        .map(|(index, x)| x)
+        .filter(|(index, _x)| subsampling_pack.b != 0 || (*index as u32 / BLOCK_SIZE) % 2 == 0)
+        .map(|(_index, x)| x)
         .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
         .collect::<Vec<u8>>();
     let crs = ycbcr.to_crs_channel()
         .into_iter()
         .enumerate()
-        .filter(|(index, x)| subsampling_pack.b != 0 || (*index as u32 / BLOCK_SIZE) % 2 == 0)
-        .map(|(index, x)| x)
+        .filter(|(index, _x)| subsampling_pack.b != 0 || (*index as u32 / BLOCK_SIZE) % 2 == 0)
+        .map(|(_index, x)| x)
         .step_by((subsampling_pack.j / subsampling_pack.a) as usize)
         .collect::<Vec<u8>>();
 
@@ -270,7 +268,7 @@ fn draw_dct_quantized(
     let scaled_chrominance_quant_table =
         quant::scale_quantization_table(&quant::CHROMINANCE_QUANTIZATION_TABLE, quality);
 
-    let height_width_ratio = (subsampling_pack.j / subsampling_pack.a) as f64 / if subsampling_pack.a == 2 { 2_f64 } else { 1_f64 };
+    let height_width_ratio = (subsampling_pack.j / subsampling_pack.a) as f64 / if subsampling_pack.b == 0 { 2_f64 } else { 1_f64 };
 
     let ys_block_matrix = block::split_to_block_matrix(&ys, 1_f64);
     let cbs_block_matrix = block::split_to_block_matrix(&cbs, height_width_ratio);
@@ -425,8 +423,8 @@ fn draw_spatial_channel(
 
     let mut image_data = vec![0; width * height * 8 * 8 * 4];
 
-    for v in 0..width {
-        for u in 0..height {
+    for v in 0..height {
+        for u in 0..width {
             let spatial = &quantized_block.blocks[u + v * width];
             write_to_image_data(&mut image_data, &spatial.0, u, v, width);
         }
@@ -560,17 +558,22 @@ fn turn_antialiasing_off(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
 ) {
+    turn_antialiasing_off_for_ordinary(canvas_map);
+    turn_antialiasing_off_for_preview(preview_canvas_map);
+}
+fn turn_antialiasing_off_for_ordinary(canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>) {
     for (_canvas_name, canvas) in canvas_map {
         turn_antialising_off_for_specific_canvas(&canvas);
     }
+}
+fn turn_antialiasing_off_for_preview(preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>) {
     for (_canvas_name, canvas) in preview_canvas_map {
         turn_antialising_off_for_specific_canvas(&canvas);
     }
-
-    fn turn_antialising_off_for_specific_canvas(canvas: &ElRef<HtmlCanvasElement>) {
-        let ctx = canvas_context_2d(&canvas.get().unwrap());
-        ctx.set_image_smoothing_enabled(false);
-    }
+}
+fn turn_antialising_off_for_specific_canvas(canvas: &ElRef<HtmlCanvasElement>) {
+    let ctx = canvas_context_2d(&canvas.get().unwrap());
+    ctx.set_image_smoothing_enabled(false);
 }
 
 fn draw_input_previews(
@@ -772,16 +775,20 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
             }
         },
         Msg::SubsamplingRatioChanged(y_ratio, cb_ratio, cr_ratio) => {
-            if let State::ImageView(ref mut pack) = model.state {
+            if let State::ImageView(_) = model.state {
 
                 model.subsampling_pack.j = y_ratio;
                 model.subsampling_pack.a = cb_ratio;
                 model.subsampling_pack.b = cr_ratio;
 
-                // TODO: Problem here is - after changing model.subsamlping_pack values, it takes time for canvases to be rescaled, so the drawing doesn't take place
-                //      Some kind of on_init callback should be called here to redraw all that stuff
-
-                turn_antialiasing_off(&model.canvas_map, &model.preview_canvas_map);
+                orders.after_next_render(|_| {
+                    Msg::PostSubsamplingRatioChanged()
+                });
+            }
+        },
+        Msg::PostSubsamplingRatioChanged() => {
+            if let State::ImageView(ref mut pack) = model.state {
+                turn_antialiasing_off_for_ordinary(&model.canvas_map);
 
                 draw_ycbcr(&model.canvas_map, &pack.ycbcr, &model.subsampling_pack);
                 draw_dct_quantized(&model.canvas_map, pack, &model.subsampling_pack, model.quality);

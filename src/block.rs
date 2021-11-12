@@ -1,4 +1,4 @@
-use crate::{dct, quant, BLOCK_SIZE};
+use crate::{dct, quant};
 use seed::prelude::js_sys::Math::sqrt;
 use seed::util::log;
 
@@ -12,12 +12,15 @@ pub struct BlockMatrix {
 
 pub fn split_to_block_matrix(data: &[u8], height_width_ratio: f64) -> BlockMatrix {
     let block_count: usize = data.len() / (8 * 8);
-    let block_count_vert: usize =  sqrt((block_count as f64 * height_width_ratio)) as usize;
+    let block_count_vert: usize =  sqrt(block_count as f64 * height_width_ratio) as usize;
     let block_count_horiz: usize = (block_count_vert as f64 / height_width_ratio) as usize;
-    let mut blocks: Vec<Block> = Vec::with_capacity(block_count * block_count);
+    log(block_count);
+    log(block_count_vert);
+    log(block_count_horiz);
+    let mut blocks: Vec<Block> = Vec::with_capacity(block_count_vert * block_count_horiz);
 
-    for v in 0..block_count_horiz {
-        for u in 0..block_count_vert {
+    for v in 0..block_count_vert {
+        for u in 0..block_count_horiz {
             blocks.push(get_block(u, v, 8 * block_count_horiz, &data));
         }
     }
