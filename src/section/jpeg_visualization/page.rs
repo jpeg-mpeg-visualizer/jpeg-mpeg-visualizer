@@ -514,7 +514,7 @@ fn draw_image_recovered(
 
     let mut output_image = Vec::<u8>::new();
     for i in 0..ys.len() {
-        let curr_cb_cr: usize = (i/ (BLOCK_SIZE as usize * horiz_mult)) * (BLOCK_SIZE as usize / vert_mult) + (i / vert_mult) % (BLOCK_SIZE as usize / vert_mult);
+        let curr_cb_cr: usize = subsampled_index_for_recovery(i, horiz_mult, vert_mult);
         let RGB { r, g, b } = image::pixel::YCbCr {
             y: ys[i],
             cb: cbs[curr_cb_cr],
@@ -531,6 +531,9 @@ fn draw_image_recovered(
     draw_default(&canvas_map, CanvasName::ImageRecovered, output_image);
 
     draw_default(&canvas_map, CanvasName::Difference, image_diff);
+}
+pub fn subsampled_index_for_recovery(i: usize, horiz_mult: usize, vert_mult: usize) -> usize {
+    return ((i / (BLOCK_SIZE as usize * vert_mult)) * BLOCK_SIZE as usize + i % (BLOCK_SIZE as usize))/horiz_mult;
 }
 
 fn draw_default(
