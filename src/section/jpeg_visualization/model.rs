@@ -43,7 +43,7 @@ pub enum Msg {
     PreviewCanvasClicked(i32, i32),
     BlockChosen(i32, i32, i32, i32),
     SubsamplingRatioChanged(i8, i8, i8),
-   PostSubsamplingRatioChanged(),
+    PostSubsamplingRatioChanged(),
 }
 
 // ------ ------

@@ -235,7 +235,7 @@ fn canvas_labeled_div_with_overlay(
     canvas: &ElRef<HtmlCanvasElement>,
     img: &ElRef<HtmlImageElement>,
     // if canvas should not be subsampled, pass None
-    subsampling_pack_option: Option<&SubsamplingPack>
+    subsampling_pack_option: Option<&SubsamplingPack>,
 ) -> Node<GMsg> {
     let padding = 10;
     let cloned_canvas = canvas.clone();
@@ -291,10 +291,7 @@ fn canvas_labeled_div_with_overlay(
     ]
 }
 
-fn plot_labeled_div(
-    label: &str,
-    canvas: &ElRef<HtmlCanvasElement>,
-) -> Node<GMsg> {
+fn plot_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>) -> Node<GMsg> {
     let padding = 10;
 
     div![
@@ -374,7 +371,7 @@ pub fn view_settings_sidebar(_model: &Model) -> Node<GMsg> {
                     At::Id => "subsampling_ratio_select"
                 },
                 input_ev("change", |value| {
-                    let ratio_iter = value.split(":");
+                    let ratio_iter = value.split(':');
                     let ratio_vec = ratio_iter.collect::<Vec<&str>>();
                     let y_ratio = ratio_vec[0].parse::<i8>().unwrap();
                     let cb_ratio = ratio_vec[1].parse::<i8>().unwrap();

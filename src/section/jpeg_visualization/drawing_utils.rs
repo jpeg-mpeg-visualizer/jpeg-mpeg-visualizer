@@ -86,8 +86,10 @@ pub fn draw_scaled_image_default_with_image_data(
 }
 
 pub fn draw_scaled_image_default(canvas: &ElRef<HtmlCanvasElement>, image: &Vec<u8>) {
-    let image_data =
-        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image), canvas.get().unwrap().width() / ZOOM)
-            .unwrap();
+    let image_data = web_sys::ImageData::new_with_u8_clamped_array(
+        wasm_bindgen::Clamped(&image),
+        canvas.get().unwrap().width() / ZOOM,
+    )
+    .unwrap();
     draw_scaled_image_default_with_image_data(&canvas, &image_data);
 }
