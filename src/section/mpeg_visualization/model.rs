@@ -45,6 +45,7 @@ pub enum Msg {
     ToggleControl(MacroblockType),
     CanvasClicked(usize, usize),
     BlockSelected(usize),
+    MoreFramesClicked,
 }
 
 #[derive(Clone, Copy, PartialEq, EnumIter)]

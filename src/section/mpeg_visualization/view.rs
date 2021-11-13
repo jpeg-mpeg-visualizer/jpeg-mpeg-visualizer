@@ -98,6 +98,13 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                     p![C!["typeletter"], get_frame_type(frame.picture_type, true)]
                 ]
             }),
+            IF!(not(model.frames.is_empty()) => {
+                div![
+                    C!["frame-item", "-more"],
+                    ev(Ev::Click, move |_| wrap(Msg::MoreFramesClicked)),
+                    "more"
+                ]
+            })
         ],
         div![
             C!["frame-container"],

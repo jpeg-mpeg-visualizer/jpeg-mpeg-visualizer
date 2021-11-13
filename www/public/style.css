@@ -507,15 +507,34 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 }
 
 .frames-accordion {
+    --scrollbar-bg: rgb(64.15% 79.27% 100%);
+    --thumb-bg: rgb(41.62% 69.37% 100%);
+    --scrollbar-width: 8px;
     display: flex;
     width: 100%;
     gap: 3px;
     user-select: none;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-bg) var(--thumb-bg);
+}
+
+.frames-accordion::-webkit-scrollbar {
+    width: var(--scrollbar-width);
+}
+
+.frames-accordion::-webkit-scrollbar-track {
+    background: var(--scrollbar-bg);
+}
+
+.frames-accordion::-webkit-scrollbar-thumb {
+    background-color: var(--thumb-bg);
 }
 
 .frame-item {
     font-size: 1.2rem;
     width: 40px;
+    min-width: 34px;
     text-align: center;
     height: 60px;
     clip-path: polygon(0% 0%, 100% 0%, 100% 90%, 50% 100%, 0% 90%);
@@ -533,6 +552,20 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 
 .frame-item.-predictive:not(.-selected) {
     background-color: honeydew;
+}
+
+.frame-item.-more {
+    text-orientation: upright;
+    writing-mode: vertical-lr;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: white;
+    font-weight: bold;
+    width: 2ch;
+    clip-path: none;
 }
 
 .frame-item > p {

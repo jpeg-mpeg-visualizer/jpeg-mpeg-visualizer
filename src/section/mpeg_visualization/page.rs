@@ -73,13 +73,14 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             );
             model.renderer = Some(renderer);
 
-            orders.perform_cmd(async move {
-                let frames = (0..50)
-                    .into_iter()
-                    .map(|_| mpeg1.decode())
-                    .collect::<Vec<_>>();
-                Msg::FramesLoaded(frames)
-            });
+            let mut frames = Vec::with_capacity(50);
+            for _ in 0..50 {
+                frames.push(mpeg1.decode());
+            }
+
+            model.mpeg1 = Some(mpeg1);
+
+            orders.perform_cmd(async move { Msg::FramesLoaded(frames) });
         }
         Msg::FramesLoaded(frames) => {
             model.frames = frames;
@@ -136,6 +137,12 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 Some(i) if i == index => None,
                 _ => Some(index),
             };
+        }
+        Msg::MoreFramesClicked => {
+            if let Some(mpeg1) = model.mpeg1.as_mut() {
+                let frames = (0..50).into_iter().map(|_| mpeg1.decode());
+                model.frames.extend(frames);
+            }
         }
     }
 }
