@@ -23,6 +23,7 @@ use super::drawing_utils::{
 use super::utils::get_image_diff;
 use std::collections::HashMap;
 
+use crate::section::jpeg_visualization::utils::create_tmp_canvas;
 use web_sys::{Blob, HtmlCanvasElement, HtmlImageElement};
 
 pub fn init(url: Url) -> Option<Model> {
@@ -119,15 +120,9 @@ fn draw_block_choice_indicators(
     preview_overlay_map: &HashMap<PreviewCanvasName, ElRef<HtmlImageElement>>,
     start_x: f64,
     start_y: f64,
+    subsampling_pack: &SubsamplingPack,
 ) {
-    let tmp_canvas = web_sys::window()
-        .unwrap()
-        .document()
-        .unwrap()
-        .create_element("canvas")
-        .unwrap()
-        .dyn_into::<web_sys::HtmlCanvasElement>()
-        .unwrap();
+    let tmp_canvas = create_tmp_canvas();
     tmp_canvas.set_width(BLOCK_SIZE * ZOOM);
     tmp_canvas.set_height(BLOCK_SIZE * ZOOM);
 
@@ -146,11 +141,13 @@ fn draw_block_choice_indicators(
 
     let overlay_map_cloned = overlay_map.clone();
     let preview_overlay_map_cloned = preview_overlay_map.clone();
-    let f = Closure::once_into_js(move |blob: &Blob| {
+    let f_not_sumbsampled = Closure::once_into_js(move |blob: &Blob| {
         let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
 
-        for (_canvas_name, overlay_image) in overlay_map_cloned {
-            overlay_image.get().unwrap().set_src(&url);
+        for (canvas_name, overlay_image) in overlay_map_cloned {
+            if !is_canvas_subsampled(&canvas_name) {
+                overlay_image.get().unwrap().set_src(&url);
+            }
         }
         for (_preview_canvas_name, overlay_image) in preview_overlay_map_cloned {
             overlay_image.get().unwrap().set_src(&url);
@@ -158,7 +155,50 @@ fn draw_block_choice_indicators(
         // TODO: Consider checking if all images has loaded and after all are loaded revoke no longer needed url
     });
     tmp_canvas
-        .to_blob(f.as_ref().unchecked_ref::<js_sys::Function>())
+        .to_blob(
+            f_not_sumbsampled
+                .as_ref()
+                .unchecked_ref::<js_sys::Function>(),
+        )
+        .unwrap();
+
+    let tmp_canvas_for_subsampling = create_tmp_canvas();
+
+    let vert_mult: usize = (subsampling_pack.j / subsampling_pack.a) as usize;
+    let horiz_mult: usize = if subsampling_pack.b == 0 {
+        2_usize
+    } else {
+        1_usize
+    };
+
+    tmp_canvas_for_subsampling.set_width(BLOCK_SIZE * ZOOM / vert_mult as u32);
+    tmp_canvas_for_subsampling.set_height(BLOCK_SIZE * ZOOM / vert_mult as u32);
+
+    let tmp_ctx_for_subsampling = canvas_context_2d(&tmp_canvas_for_subsampling);
+
+    tmp_ctx_for_subsampling.begin_path();
+    tmp_ctx_for_subsampling.set_line_width(line_width);
+    tmp_ctx_for_subsampling.stroke_rect(
+        (start_x - (start_x as u32 % (8 * ZOOM * vert_mult as u32)) as f64) / horiz_mult as f64
+            - line_width / 2.0,
+        (start_y - (start_y as u32 % (8 * ZOOM * horiz_mult as u32)) as f64) / vert_mult as f64
+            - line_width / 2.0,
+        8.0 * ZOOM as f64 + line_width / 2.0,
+        8.0 * ZOOM as f64 + line_width / 2.0,
+    );
+    let overlay_map_cloned_for_subsampling = overlay_map.clone();
+    let f_subsampled = Closure::once_into_js(move |blob: &Blob| {
+        let url = web_sys::Url::create_object_url_with_blob(&blob).unwrap();
+
+        for (canvas_name, overlay_image) in overlay_map_cloned_for_subsampling {
+            if is_canvas_subsampled(&canvas_name) {
+                overlay_image.get().unwrap().set_src(&url);
+            }
+        }
+        // TODO: Consider checking if all images has loaded and after all are loaded revoke no longer needed url
+    });
+    tmp_canvas_for_subsampling
+        .to_blob(f_subsampled.as_ref().unchecked_ref::<js_sys::Function>())
         .unwrap();
 }
 
@@ -313,6 +353,7 @@ fn draw_dct_quantized(
 fn draw_dct_quantized_plots(
     pack: &ImagePack,
     plot_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
+    subsampling_pack: &SubsamplingPack,
 ) {
     let selected_x = (pack.chosen_block_x / (ZOOM * 8) as f64) as usize;
     let selected_y = (pack.chosen_block_y / (ZOOM * 8) as f64) as usize;
@@ -324,20 +365,34 @@ fn draw_dct_quantized_plots(
         plot_map,
         PlotName::YsQuant3d,
     );
+    let subsampled_x: usize = get_subsampled_block_index_x(selected_x, &subsampling_pack);
+    let subsampled_y: usize = get_subsampled_block_index_y(selected_y, &subsampling_pack);
     draw_dct_quantized_plot(
         &pack.plot_data.get(&PlotName::CbsQuant3d).unwrap(),
-        selected_x,
-        selected_y,
+        subsampled_x,
+        subsampled_y,
         plot_map,
         PlotName::CbsQuant3d,
     );
     draw_dct_quantized_plot(
         &pack.plot_data.get(&PlotName::CrsQuant3d).unwrap(),
-        selected_x,
-        selected_y,
+        subsampled_x,
+        subsampled_y,
         plot_map,
         PlotName::CrsQuant3d,
     );
+}
+fn get_subsampled_block_index_x(selected_x: usize, subsampling_pack: &SubsamplingPack) -> usize {
+    let horiz_mult: usize = (subsampling_pack.j / subsampling_pack.a) as usize;
+    return selected_x / horiz_mult;
+}
+fn get_subsampled_block_index_y(selected_y: usize, subsampling_pack: &SubsamplingPack) -> usize {
+    let vert_mult: usize = if subsampling_pack.b == 0 {
+        2_usize
+    } else {
+        1_usize
+    };
+    return selected_y / vert_mult;
 }
 
 fn draw_dct_quantized_plot(
@@ -612,14 +667,7 @@ fn draw_input_selection_indicator(
 ) {
     let overlay_image = overlay_image_ref.get().unwrap();
 
-    let tmp_canvas = web_sys::window()
-        .unwrap()
-        .document()
-        .unwrap()
-        .create_element("canvas")
-        .unwrap()
-        .dyn_into::<web_sys::HtmlCanvasElement>()
-        .unwrap();
+    let tmp_canvas = create_tmp_canvas();
 
     tmp_canvas.set_width(overlay_image.width());
     tmp_canvas.set_height(overlay_image.height());
@@ -719,15 +767,16 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 &model.preview_overlay_map,
                 pack.chosen_block_x,
                 pack.chosen_block_y,
+                &model.subsampling_pack,
             );
-            draw_dct_quantized_plots(&pack, &model.plot_map);
+            draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
             model.state = State::ImageView(pack);
         }
         Msg::QualityUpdated(quality) => {
             if let State::ImageView(ref mut pack) = model.state {
                 model.quality = quality;
                 draw_dct_quantized(&model.canvas_map, pack, &model.subsampling_pack, quality);
-                draw_dct_quantized_plots(&pack, &model.plot_map);
+                draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
@@ -774,19 +823,34 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.subsampling_pack,
                     model.quality,
                 );
-                draw_dct_quantized_plots(&pack, &model.plot_map);
+                draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
             }
         }
-        Msg::BlockChosen(x, y, rect_x, rect_y) => {
+        Msg::BlockChosen(x, y, rect_x, rect_y, is_resizable_canvas) => {
             if let State::ImageView(ref mut pack) = model.state {
+                let horiz_mult: usize = if !is_resizable_canvas {
+                    1_usize
+                } else if model.subsampling_pack.b == 0 {
+                    2_usize
+                } else {
+                    1_usize
+                };
+                let vert_mult: usize = if !is_resizable_canvas {
+                    1_usize
+                } else {
+                    (model.subsampling_pack.j / model.subsampling_pack.a) as usize
+                };
+
                 let start_x: f64 = cmp::min(
                     (x - rect_x) - (x - rect_x) % (8 * ZOOM as i32),
-                    ((BLOCK_SIZE - 8) * ZOOM) as i32,
-                ) as f64;
+                    (((BLOCK_SIZE as usize - 8 * horiz_mult) * ZOOM as usize) / horiz_mult) as i32,
+                ) as f64
+                    * horiz_mult as f64;
                 let start_y: f64 = cmp::min(
                     (y - rect_y) - (y - rect_y) % (8 * ZOOM as i32),
-                    ((BLOCK_SIZE - 8) * ZOOM) as i32,
-                ) as f64;
+                    (((BLOCK_SIZE as usize - 8 * vert_mult) * ZOOM as usize) / vert_mult) as i32,
+                ) as f64
+                    * vert_mult as f64;
 
                 pack.chosen_block_x = start_x;
                 pack.chosen_block_y = start_y;
@@ -796,9 +860,10 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.preview_overlay_map,
                     start_x,
                     start_y,
+                    &model.subsampling_pack,
                 );
 
-                draw_dct_quantized_plots(&pack, &model.plot_map);
+                draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
             }
         }
         Msg::SubsamplingRatioChanged(y_ratio, cb_ratio, cr_ratio) => {
@@ -821,7 +886,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.subsampling_pack,
                     model.quality,
                 );
-                draw_dct_quantized_plots(&pack, &model.plot_map);
+                draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
             }
         }
     }

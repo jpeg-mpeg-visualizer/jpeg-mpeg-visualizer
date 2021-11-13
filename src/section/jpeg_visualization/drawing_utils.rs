@@ -1,6 +1,7 @@
 use seed::prelude::*;
 use seed::*;
 
+use crate::section::jpeg_visualization::utils::create_tmp_canvas;
 use crate::ZOOM;
 use web_sys::{HtmlCanvasElement, ImageData};
 
@@ -30,14 +31,7 @@ pub fn draw_scaled_image_with_image_data_with_w_h_and_scale(
 ) {
     let ctx = canvas_context_2d(&canvas.get().unwrap());
 
-    let tmp_canvas = web_sys::window()
-        .unwrap()
-        .document()
-        .unwrap()
-        .create_element("canvas")
-        .unwrap()
-        .dyn_into::<web_sys::HtmlCanvasElement>()
-        .unwrap();
+    let tmp_canvas = create_tmp_canvas();
 
     tmp_canvas.set_width(width);
     tmp_canvas.set_height(height);

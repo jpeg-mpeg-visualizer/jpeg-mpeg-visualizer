@@ -238,13 +238,16 @@ fn canvas_labeled_div_with_overlay(
     subsampling_pack_option: Option<&SubsamplingPack>,
 ) -> Node<GMsg> {
     let padding = 10;
-    let cloned_canvas = canvas.clone();
+    let cloned_canvas_ref = canvas.clone();
 
     let mut width: u32 = BLOCK_SIZE * ZOOM;
     let mut height: u32 = BLOCK_SIZE * ZOOM;
 
+    let mut is_resizable_canvas: bool = false;
+
     match subsampling_pack_option {
         Some(subsampling_pack) => {
+            is_resizable_canvas = true;
             width = width * subsampling_pack.a as u32 / subsampling_pack.j as u32;
             if subsampling_pack.b == 0 {
                 height = height / 2;
@@ -268,12 +271,14 @@ fn canvas_labeled_div_with_overlay(
                 ],
                 ev(Ev::Click, move |event: Event| {
                     let mouse_event: MouseEvent = event.unchecked_into();
-                    let canvas_rect = cloned_canvas.get().unwrap().get_bounding_client_rect();
+                    let cloned_canvas = cloned_canvas_ref.get().unwrap();
+                    let canvas_rect = cloned_canvas.get_bounding_client_rect();
                     wrap(Msg::BlockChosen(
                         mouse_event.x(),
                         mouse_event.y(),
                         canvas_rect.left() as i32,
                         canvas_rect.top() as i32,
+                        is_resizable_canvas,
                     ))
                 }),
             ],

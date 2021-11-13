@@ -41,7 +41,7 @@ pub enum Msg {
     ImageLoaded(image::RawImage),
     QualityUpdated(u8),
     PreviewCanvasClicked(i32, i32),
-    BlockChosen(i32, i32, i32, i32),
+    BlockChosen(i32, i32, i32, i32, bool),
     SubsamplingRatioChanged(i8, i8, i8),
     PostSubsamplingRatioChanged(),
 }
@@ -63,6 +63,17 @@ pub enum CanvasName {
     CrsRecovered,
     ImageRecovered,
     Difference,
+}
+pub fn is_canvas_subsampled(canvas_name: &CanvasName) -> bool {
+    return match canvas_name {
+        CanvasName::Cbs
+        | CanvasName::Crs
+        | CanvasName::CbsQuant
+        | CanvasName::CrsQuant
+        | CanvasName::CbsRecovered
+        | CanvasName::CrsRecovered => true,
+        _ => false,
+    };
 }
 
 #[derive(PartialEq, Eq, Hash, EnumIter, Clone, Copy)]
