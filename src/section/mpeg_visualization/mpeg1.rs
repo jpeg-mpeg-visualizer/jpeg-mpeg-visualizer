@@ -21,6 +21,41 @@ pub struct DecodedFrame {
     pub intra_y: Vec<u8>,
     pub intra_cr: Vec<u8>,
     pub intra_cb: Vec<u8>,
+    pub macroblock_info: Vec<MacroblockInfo>,
+}
+
+pub struct MacroblockInfo {
+    pub size: usize,
+    pub encoded_blocks: MacroblockEncodedBlocks,
+    pub kind: MacroblockInfoKind,
+}
+
+impl MacroblockInfo {
+    fn skipped() -> MacroblockInfo {
+        MacroblockInfo {
+            size: 0,
+            encoded_blocks: MacroblockEncodedBlocks::default(),
+            kind: MacroblockInfoKind::Skipped,
+        }
+    }
+}
+
+#[derive(Default)]
+pub struct MacroblockEncodedBlocks {
+    pub blocks: [Option<Box<[i32; 64]>>; 6],
+}
+
+impl MacroblockEncodedBlocks {
+    pub fn set_nth(&mut self, n: usize, value: &[i32; 64]) {
+        self.blocks[n] = Some(Box::new(*value));
+    }
+}
+
+#[derive(Debug)]
+pub enum MacroblockInfoKind {
+    Skipped,
+    Moved { direction: (i32, i32) },
+    Intra,
 }
 
 enum MacroblockDestination {
@@ -58,6 +93,7 @@ pub struct MPEG1 {
     intra_y: Vec<u8>,
     intra_cr: Vec<u8>,
     intra_cb: Vec<u8>,
+    macroblock_info: Vec<MacroblockInfo>,
 
     intra_quant_matrix: [u8; 64],
     non_intra_quant_matrix: [u8; 64],
@@ -112,6 +148,7 @@ impl MPEG1 {
             intra_y: Vec::new(),
             intra_cr: Vec::new(),
             intra_cb: Vec::new(),
+            macroblock_info: Vec::new(),
             intra_quant_matrix: constants::DEFAULT_INTRA_QUANT_MATRIX,
             non_intra_quant_matrix: constants::DEFAULT_NON_INTRA_QUANT_MATRIX,
             slice_beginning: false,
@@ -303,6 +340,7 @@ impl MPEG1 {
             intra_y: std::mem::take(&mut self.intra_y),
             intra_cb: std::mem::take(&mut self.intra_cb),
             intra_cr: std::mem::take(&mut self.intra_cr),
+            macroblock_info: std::mem::take(&mut self.macroblock_info),
         };
 
         self.macroblock_count = 0;
@@ -356,9 +394,15 @@ impl MPEG1 {
                 break;
             };
         }
+
+        for _ in 0..(self.mb_width as i32 - self.macroblock_address % self.mb_width as i32 - 1) {
+            self.macroblock_info.push(MacroblockInfo::skipped());
+        }
     }
 
     fn decode_macroblock(&mut self) {
+        let old_pointer = self.pointer;
+
         let mut increment = 0;
         let mut t = self.read_huffman(&constants::MACROBLOCK_ADDRESS_INCREMENT);
 
@@ -380,6 +424,10 @@ impl MPEG1 {
             // handle any previous macroblocks
             self.slice_beginning = false;
             self.macroblock_address += increment;
+
+            for _ in 0..(increment - 1) {
+                self.macroblock_info.push(MacroblockInfo::skipped());
+            }
         } else {
             if increment > 1 {
                 // Skipped macroblocks reset DC predictors
@@ -403,6 +451,7 @@ impl MPEG1 {
                 self.copy_macroblock(0, 0, MacroblockDestination::Current);
                 self.copy_macroblock(0, 0, MacroblockDestination::Skipped);
                 increment -= 1;
+                self.macroblock_info.push(MacroblockInfo::skipped());
             }
 
             self.macroblock_address += 1;
@@ -431,6 +480,12 @@ impl MPEG1 {
             self.motion_fw_v = 0;
             self.motion_fw_h_prev = 0;
             self.motion_fw_v_prev = 0;
+
+            self.macroblock_info.push(MacroblockInfo {
+                size: 0,
+                encoded_blocks: MacroblockEncodedBlocks::default(),
+                kind: MacroblockInfoKind::Intra,
+            });
         } else {
             // Non-intra macroblocks reset DC predictors
             self.dc_predictor_y = 128;
@@ -448,6 +503,13 @@ impl MPEG1 {
                 self.motion_fw_v,
                 MacroblockDestination::Moved,
             );
+            self.macroblock_info.push(MacroblockInfo {
+                size: 0,
+                encoded_blocks: MacroblockEncodedBlocks::default(),
+                kind: MacroblockInfoKind::Moved {
+                    direction: (self.motion_fw_h, self.motion_fw_v),
+                },
+            });
         }
 
         // Decode blocks
@@ -466,6 +528,8 @@ impl MPEG1 {
                 self.block_count += 1;
             }
         }
+
+        self.macroblock_info[self.macroblock_address as usize].size = self.pointer - old_pointer;
     }
 
     fn decode_motion_vectors(&mut self, macroblock_mot_fw: bool) {
@@ -682,11 +746,17 @@ impl MPEG1 {
                 let value = ((self.block_data[0] + 128) >> 8) as u8;
                 copy_value_to_destination(value, dest_array, dest_index, scan);
                 copy_value_to_destination(value, dest_array_new, dest_index, scan);
+                self.macroblock_info[self.macroblock_address as usize]
+                    .encoded_blocks
+                    .set_nth(block.into(), &[value.into(); 64]);
                 self.block_data[0] = 0;
             } else {
                 IDCT(&mut self.block_data);
                 copy_block_to_destination(&self.block_data, dest_array, dest_index, scan);
                 copy_block_to_destination(&self.block_data, dest_array_new, dest_index, scan);
+                self.macroblock_info[self.macroblock_address as usize]
+                    .encoded_blocks
+                    .set_nth(block.into(), &self.block_data);
                 self.block_data = [0; 64];
             }
         } else {
@@ -694,11 +764,17 @@ impl MPEG1 {
                 let value = (self.block_data[0] + 128) >> 8;
                 add_value_to_destination(value, dest_array, dest_index, scan);
                 add_value_to_destination(value, dest_array_new, dest_index, scan);
+                self.macroblock_info[self.macroblock_address as usize]
+                    .encoded_blocks
+                    .set_nth(block.into(), &[value as i32; 64]);
                 self.block_data[0] = 0;
             } else {
                 IDCT(&mut self.block_data);
                 add_block_to_destination(&self.block_data, dest_array, dest_index, scan);
                 add_block_to_destination(&self.block_data, dest_array_new, dest_index, scan);
+                self.macroblock_info[self.macroblock_address as usize]
+                    .encoded_blocks
+                    .set_nth(block.into(), &self.block_data);
                 self.block_data = [0; 64];
             }
         }

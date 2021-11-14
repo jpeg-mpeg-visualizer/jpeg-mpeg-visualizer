@@ -21,6 +21,14 @@ pub fn init(_url: Url) -> Option<Model> {
             moved: true,
             intra: true,
         },
+        selected_macroblock: None,
+        canvas_y1: ElRef::<_>::default(),
+        canvas_y2: ElRef::<_>::default(),
+        canvas_y3: ElRef::<_>::default(),
+        canvas_y4: ElRef::<_>::default(),
+        canvas_cb: ElRef::<_>::default(),
+        canvas_cr: ElRef::<_>::default(),
+        selected_block: None,
     })
 }
 
@@ -52,7 +60,15 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::VideoBytesLoaded(video_stream) => {
             let mut mpeg1 = super::mpeg1::MPEG1::from_bytes(video_stream);
 
-            let renderer = super::renderer::Renderer::new(&model.canvas);
+            let renderer = super::renderer::Renderer::new(
+                &model.canvas,
+                &model.canvas_y1,
+                &model.canvas_y2,
+                &model.canvas_y3,
+                &model.canvas_y4,
+                &model.canvas_cb,
+                &model.canvas_cr,
+            );
             model.renderer = Some(renderer);
 
             orders.perform_cmd(async move {
@@ -73,17 +89,18 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::FrameChanged(i) => {
             model.selected_frame = i;
-            model
-                .renderer
-                .as_mut()
-                .unwrap()
-                .render_frame(&model.frames[i], &model.control_state);
+            let frame = &model.frames[i];
+            let renderer = model.renderer.as_mut().unwrap();
+            renderer.render_frame(frame, &model.control_state);
+            if let Some(macroblock_address) = model.selected_macroblock {
+                renderer.render_macroblock(frame, macroblock_address);
+            }
             model.selected_explaination_tab = if model.frames[i].picture_type == PICTURE_TYPE_INTRA
             {
                 ExplainationTab::Intra
             } else {
                 ExplainationTab::Predictive
-            }
+            };
         }
         Msg::ExplainationTabChanged(new_tab) => {
             model.selected_explaination_tab = new_tab;
@@ -101,6 +118,22 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .as_mut()
                 .unwrap()
                 .render_frame(&model.frames[model.selected_frame], &model.control_state);
+        }
+        Msg::CanvasClicked(mouse_x, mouse_y) => {
+            let mb_width = (model.frames[model.selected_frame].width as usize + 15) / 16;
+            let macroblock_address = (mouse_y / 16) * mb_width + (mouse_x / 16);
+            model.selected_macroblock = Some(macroblock_address);
+            model
+                .renderer
+                .as_mut()
+                .unwrap()
+                .render_macroblock(&model.frames[model.selected_frame], macroblock_address);
+        }
+        Msg::BlockSelected(index) => {
+            model.selected_block = match model.selected_block {
+                Some(i) if i == index => None,
+                _ => Some(index),
+            };
         }
     }
 }
