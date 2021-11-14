@@ -19,6 +19,7 @@ pub struct Renderer {
     canvas_y4: ElRef<HtmlCanvasElement>,
     canvas_cb: ElRef<HtmlCanvasElement>,
     canvas_cr: ElRef<HtmlCanvasElement>,
+    canvas_indicator: ElRef<HtmlCanvasElement>,
     width: u16,
     height: u16,
     rgb_data: Vec<u8>,
@@ -28,6 +29,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         canvas: &ElRef<HtmlCanvasElement>,
         canvas_y1: &ElRef<HtmlCanvasElement>,
@@ -36,6 +38,7 @@ impl Renderer {
         canvas_y4: &ElRef<HtmlCanvasElement>,
         canvas_cb: &ElRef<HtmlCanvasElement>,
         canvas_cr: &ElRef<HtmlCanvasElement>,
+        canvas_indicator: &ElRef<HtmlCanvasElement>,
     ) -> Self {
         Self {
             canvas: canvas.clone(),
@@ -45,6 +48,7 @@ impl Renderer {
             canvas_y4: canvas_y4.clone(),
             canvas_cb: canvas_cb.clone(),
             canvas_cr: canvas_cr.clone(),
+            canvas_indicator: canvas_indicator.clone(),
             width: 0,
             height: 0,
             rgb_data: Vec::new(),
@@ -173,6 +177,10 @@ impl Renderer {
         canvas.set_width(width as u32);
         canvas.set_height(height as u32);
 
+        let canvas_indicator = self.canvas_indicator.get().unwrap();
+        canvas_indicator.set_width(width as u32);
+        canvas_indicator.set_height(height as u32);
+
         self.width = width;
         self.height = height;
         self.rgb_data
@@ -215,6 +223,8 @@ impl Renderer {
             macroblock_width / 2,
         );
         Self::render_channel(&self.canvas_cr, &buffer, ChannelType::Cr);
+
+        self.draw_indicator(x, y);
     }
 
     fn render_channel(
@@ -277,6 +287,21 @@ impl Renderer {
                 destination[row * 8 + col] = source[(y + row) * scan * 16 + x + col];
             }
         }
+    }
+
+    fn draw_indicator(&self, x: usize, y: usize) {
+        let canvas_indicator = self.canvas_indicator.get().unwrap();
+        let context = canvas_context_2d(&canvas_indicator);
+        const LINE_WIDTH: f64 = 4.0;
+
+        context.clear_rect(0.0, 0.0, self.width.into(), self.height.into());
+        context.set_line_width(LINE_WIDTH);
+        context.stroke_rect(
+            x as f64 - LINE_WIDTH / 2.0,
+            y as f64 - LINE_WIDTH / 2.0,
+            16.0 + LINE_WIDTH,
+            16.0 + LINE_WIDTH,
+        );
     }
 }
 
