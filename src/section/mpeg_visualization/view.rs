@@ -4,7 +4,7 @@ use seed::prelude::*;
 use seed::*;
 use strum::IntoEnumIterator;
 
-use super::model::{ExplainationTab, Model, Msg};
+use super::model::{ExplainationTab, MacroblockType, Model, Msg};
 use super::mpeg1::constants::{PICTURE_TYPE_INTRA, PICTURE_TYPE_PREDICTIVE};
 use super::page::wrap;
 
@@ -102,15 +102,48 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
             IF!(not(model.frames.is_empty()) => {
                 let frame = &model.frames[model.selected_frame];
                 div![
-                    C!["frame-info"],
-                    h3![format!("Frame #{}", model.selected_frame + 1)],
-                    p!["type: ", strong![get_frame_type(frame.picture_type, false)]],
-                    p!["width: ", strong![frame.width.to_string()]],
-                    p!["height: ", strong![frame.height.to_string()]],
-                    p!["size: ", strong![format!("{:.2} KB", frame.size as f32 / 1000.0 / 8.0)]],
-                    h4!["Additional information"],
-                    p!["# of macroblocks: ", strong![frame.macroblock_count.to_string()]],
-                    p!["# of blocks: ", strong![frame.block_count.to_string()]]
+                    C!["frame-sidebar"],
+                    div![
+                        C!["frame-info"],
+                        h3![format!("Frame #{}", model.selected_frame + 1)],
+                        p!["type: ", strong![get_frame_type(frame.picture_type, false)]],
+                        p!["width: ", strong![frame.width.to_string()]],
+                        p!["height: ", strong![frame.height.to_string()]],
+                        p!["size: ", strong![format!("{:.2} KB", frame.size as f32 / 1000.0 / 8.0)]],
+                        h4!["Additional information"],
+                        p!["# of macroblocks: ", strong![frame.macroblock_count.to_string()]],
+                        p!["# of blocks: ", strong![frame.block_count.to_string()]]
+                    ],
+                    div![
+                        C!["controls-container"],
+                        h3!["Controls"],
+                        input![
+                            attrs!{At::Type => "checkbox", At::Id => "skipped", At::Checked => model.control_state.skipped.as_at_value()},
+                            ev(Ev::Change, move |_| wrap(Msg::ToggleControl(MacroblockType::Skipped)))
+                        ],
+                        label![
+                            attrs!{At::For => "skipped"},
+                            "Show skipped macroblocks"
+                        ],
+                        br![],
+                        input![
+                            attrs!{At::Type => "checkbox", At::Id => "moved", At::Checked => model.control_state.moved.as_at_value()},
+                            ev(Ev::Change, move |_| wrap(Msg::ToggleControl(MacroblockType::Moved)))
+                        ],
+                        label![
+                            attrs!{At::For => "moved"},
+                            "Show moved macroblocks"
+                        ],
+                        br![],
+                        input![
+                            attrs!{At::Type => "checkbox", At::Id => "intra", At::Checked => model.control_state.intra.as_at_value()},
+                            ev(Ev::Change, move |_| wrap(Msg::ToggleControl(MacroblockType::Intra)))
+                        ],
+                        label![
+                            attrs!{At::For => "intra"},
+                            "Show intra macroblocks"
+                        ],
+                    ]
                 ]
             })
         ],

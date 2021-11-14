@@ -22,6 +22,7 @@ pub struct Model {
     pub frames: Vec<DecodedFrame>,
     pub selected_frame: usize,
     pub selected_explaination_tab: ExplainationTab,
+    pub control_state: ControlState,
 }
 
 pub enum Msg {
@@ -32,6 +33,7 @@ pub enum Msg {
     FramesLoaded(Vec<DecodedFrame>),
     FrameChanged(usize),
     ExplainationTabChanged(ExplainationTab),
+    ToggleControl(MacroblockType),
 }
 
 #[derive(Clone, Copy, PartialEq, EnumIter)]
@@ -49,4 +51,16 @@ impl ToString for ExplainationTab {
             ExplainationTab::Predictive => "Predictive frame".into(),
         }
     }
+}
+
+pub struct ControlState {
+    pub skipped: bool,
+    pub moved: bool,
+    pub intra: bool,
+}
+
+pub enum MacroblockType {
+    Skipped,
+    Moved,
+    Intra,
 }
