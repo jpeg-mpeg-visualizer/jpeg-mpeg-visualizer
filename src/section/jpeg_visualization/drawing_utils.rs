@@ -1,7 +1,8 @@
 use seed::prelude::*;
 use seed::*;
 
-use crate::{BLOCK_SIZE, ZOOM};
+use crate::section::jpeg_visualization::utils::create_tmp_canvas;
+use crate::ZOOM;
 use web_sys::{HtmlCanvasElement, ImageData};
 
 // TODO: Consider having seperate canvas for "scalable" images and another one with w/h set at static context
@@ -30,14 +31,7 @@ pub fn draw_scaled_image_with_image_data_with_w_h_and_scale(
 ) {
     let ctx = canvas_context_2d(&canvas.get().unwrap());
 
-    let tmp_canvas = web_sys::window()
-        .unwrap()
-        .document()
-        .unwrap()
-        .create_element("canvas")
-        .unwrap()
-        .dyn_into::<web_sys::HtmlCanvasElement>()
-        .unwrap();
+    let tmp_canvas = create_tmp_canvas();
 
     tmp_canvas.set_width(width);
     tmp_canvas.set_height(height);
@@ -59,7 +53,7 @@ pub fn draw_scaled_image_with_w_h_and_scale(
     scale_y: f64,
 ) {
     let image_data =
-        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image), BLOCK_SIZE)
+        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image), width)
             .unwrap();
     draw_scaled_image_with_image_data_with_w_h_and_scale(
         &canvas,
@@ -78,16 +72,18 @@ pub fn draw_scaled_image_default_with_image_data(
     draw_scaled_image_with_image_data_with_w_h_and_scale(
         &canvas,
         &image_data,
-        BLOCK_SIZE,
-        BLOCK_SIZE,
+        canvas.get().unwrap().width() / ZOOM,
+        canvas.get().unwrap().height() / ZOOM,
         ZOOM as f64,
         ZOOM as f64,
     );
 }
 
 pub fn draw_scaled_image_default(canvas: &ElRef<HtmlCanvasElement>, image: &Vec<u8>) {
-    let image_data =
-        web_sys::ImageData::new_with_u8_clamped_array(wasm_bindgen::Clamped(&image), BLOCK_SIZE)
-            .unwrap();
+    let image_data = web_sys::ImageData::new_with_u8_clamped_array(
+        wasm_bindgen::Clamped(&image),
+        canvas.get().unwrap().width() / ZOOM,
+    )
+    .unwrap();
     draw_scaled_image_default_with_image_data(&canvas, &image_data);
 }

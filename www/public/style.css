@@ -39,7 +39,7 @@ body {
 
 .navbar ul li a {
     font-weight: bolder;
-    font-size: 2em;
+    font-size: 2.4em;
     color: aliceblue;
 }
 
@@ -132,7 +132,7 @@ body {
     cursor: pointer;
     padding: 1em;
     border-bottom: 1px solid #ddd;
-    font-size: 1.1em;
+    font-size: 1.15em;
     color: #eeeeee;
 }
 
@@ -228,6 +228,11 @@ input.sidebar_activator:checked ~ label span::after {
     display: flex;
     flex-direction: column;
     padding: 1em 6em 1em 1em;
+
+    font-size: 2em;
+}
+.sidebar_settings option, .sidebar_settings select {
+    font-size: 1em;
 }
 
 input.sidebar_activator:checked ~ .sidebar_settings {

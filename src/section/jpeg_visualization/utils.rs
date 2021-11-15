@@ -3,6 +3,7 @@ use wasm_bindgen::JsCast;
 
 use crate::image;
 use std::cmp;
+use web_sys::HtmlCanvasElement;
 
 pub(super) async fn load_image(file_blob: gloo_file::Blob) -> image::RawImage {
     let url_data = gloo_file::futures::read_as_data_url(&file_blob)
@@ -58,4 +59,15 @@ pub fn get_image_diff(img_a: &Vec<u8>, img_b: &Vec<u8>) -> Vec<u8> {
         res.push(255);
     }
     res
+}
+
+pub fn create_tmp_canvas() -> HtmlCanvasElement {
+    return web_sys::window()
+        .unwrap()
+        .document()
+        .unwrap()
+        .create_element("canvas")
+        .unwrap()
+        .dyn_into::<web_sys::HtmlCanvasElement>()
+        .unwrap();
 }

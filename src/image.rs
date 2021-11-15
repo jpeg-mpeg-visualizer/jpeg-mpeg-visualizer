@@ -143,6 +143,14 @@ impl RawImageWindow {
         }
         RGBImage(rgb)
     }
+
+    pub fn to_image(&self) -> Vec<u8> {
+        let mut res = Vec::<u8>::new();
+        for i in 0..(self.width * self.height * 4) as usize {
+            res.push(self[i]);
+        }
+        res
+    }
 }
 
 impl std::ops::Index<usize> for RawImageWindow {
@@ -165,14 +173,6 @@ impl std::ops::Index<usize> for RawImageWindow {
 pub struct RGBImage(pub Vec<pixel::RGB>);
 
 impl RGBImage {
-    pub fn to_image(&self) -> Vec<u8> {
-        self.0
-            .iter()
-            .map(|rgb| rgb.to_flat_data())
-            .flatten()
-            .collect::<Vec<u8>>()
-    }
-
     pub fn to_ycbcr_image(&self) -> YCbCrImage {
         YCbCrImage(
             self.0
