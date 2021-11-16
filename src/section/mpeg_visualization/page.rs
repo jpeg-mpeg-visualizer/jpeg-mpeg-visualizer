@@ -1,10 +1,12 @@
 use super::model::{ControlState, ExplainationTab, MacroblockType, Model, Msg, State};
-use super::mpeg1::{DecodedFrame, MPEG1};
 use super::mpeg1::constants::PICTURE_TYPE_INTRA;
+use super::mpeg1::{DecodedFrame, MPEG1};
 use super::view::{view_file_chooser, view_video_player};
 use crate::Msg as GMsg;
 use gloo_file;
 use seed::prelude::*;
+
+const FRAME_LOAD_COUNT: usize = 50;
 
 pub fn init(_url: Url) -> Option<Model> {
     Some(Model {
@@ -31,6 +33,7 @@ pub fn init(_url: Url) -> Option<Model> {
         canvas_cr: ElRef::<_>::default(),
         selected_block: None,
         canvas_indicator: ElRef::<_>::default(),
+        has_more_frames: true,
     })
 }
 
@@ -75,6 +78,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.renderer = Some(renderer);
 
             let frames = load_more_frames(&mut mpeg1);
+            if frames.len() < FRAME_LOAD_COUNT {
+                model.has_more_frames = false;
+            }
             model.mpeg1 = Some(mpeg1);
 
             orders.perform_cmd(async move { Msg::FramesLoaded(frames) });
@@ -138,6 +144,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::MoreFramesClicked => {
             if let Some(mpeg1) = model.mpeg1.as_mut() {
                 let frames = load_more_frames(mpeg1);
+                if frames.len() < FRAME_LOAD_COUNT {
+                    model.has_more_frames = false;
+                }
                 model.frames.extend(frames);
             }
         }
@@ -145,10 +154,9 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 fn load_more_frames(mpeg1: &mut MPEG1) -> Vec<DecodedFrame> {
-    const FRAME_COUNT: usize = 50;
-    let mut frames = Vec::with_capacity(FRAME_COUNT);
+    let mut frames = Vec::with_capacity(FRAME_LOAD_COUNT);
 
-    for _ in 0..FRAME_COUNT {
+    for _ in 0..FRAME_LOAD_COUNT {
         if let Some(frame) = mpeg1.decode() {
             frames.push(frame);
         } else {
