@@ -436,7 +436,7 @@ fn draw_dct_quantized_plot(
                     let block_x_offset = (x % 8i32) as usize;
                     let block_z_offset = (z % 8i32) as usize;
                     let block = blocks[block_x + block_z * width].0;
-                    let value = (block[block_x_offset][block_z_offset]).abs().clamp(0, 255) as i32;
+                    let value = (block[block_z_offset][block_x_offset]).abs().clamp(0, 255) as i32;
                     let face = if value == 0 {
                         TRANSPARENT
                     } else {
