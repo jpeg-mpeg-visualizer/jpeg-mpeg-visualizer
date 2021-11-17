@@ -2,6 +2,7 @@ use seed::JsFuture;
 use wasm_bindgen::JsCast;
 
 use crate::image;
+use crate::section::jpeg_visualization::model::SubsamplingPack;
 use std::cmp;
 use web_sys::HtmlCanvasElement;
 
@@ -70,4 +71,15 @@ pub fn create_tmp_canvas() -> HtmlCanvasElement {
         .unwrap()
         .dyn_into::<web_sys::HtmlCanvasElement>()
         .unwrap();
+}
+
+pub fn horiz_mult_from_subsampling(subsampling_pack: &SubsamplingPack) -> usize {
+    (subsampling_pack.j / subsampling_pack.a) as usize
+}
+pub fn vert_mult_from_subsampling(subsampling_pack: &SubsamplingPack) -> usize {
+    if subsampling_pack.b == 0 {
+        return 2_usize;
+    } else {
+        return 1_usize;
+    }
 }

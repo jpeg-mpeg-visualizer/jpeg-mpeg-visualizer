@@ -23,7 +23,9 @@ use super::drawing_utils::{
 use super::utils::get_image_diff;
 use std::collections::HashMap;
 
-use crate::section::jpeg_visualization::utils::create_tmp_canvas;
+use crate::section::jpeg_visualization::utils::{
+    create_tmp_canvas, horiz_mult_from_subsampling, vert_mult_from_subsampling,
+};
 use web_sys::{Blob, HtmlCanvasElement, HtmlImageElement};
 
 pub fn init(url: Url) -> Option<Model> {
@@ -164,14 +166,10 @@ fn draw_block_choice_indicators(
 
     let tmp_canvas_for_subsampling = create_tmp_canvas();
 
-    let vert_mult: usize = (subsampling_pack.j / subsampling_pack.a) as usize;
-    let horiz_mult: usize = if subsampling_pack.b == 0 {
-        2_usize
-    } else {
-        1_usize
-    };
+    let horiz_mult: usize = horiz_mult_from_subsampling(&subsampling_pack);
+    let vert_mult: usize = vert_mult_from_subsampling(&subsampling_pack);
 
-    tmp_canvas_for_subsampling.set_width(BLOCK_SIZE * ZOOM / vert_mult as u32);
+    tmp_canvas_for_subsampling.set_width(BLOCK_SIZE * ZOOM / horiz_mult as u32);
     tmp_canvas_for_subsampling.set_height(BLOCK_SIZE * ZOOM / vert_mult as u32);
 
     let tmp_ctx_for_subsampling = canvas_context_2d(&tmp_canvas_for_subsampling);
@@ -179,9 +177,9 @@ fn draw_block_choice_indicators(
     tmp_ctx_for_subsampling.begin_path();
     tmp_ctx_for_subsampling.set_line_width(line_width);
     tmp_ctx_for_subsampling.stroke_rect(
-        (start_x - (start_x as u32 % (8 * ZOOM * vert_mult as u32)) as f64) / horiz_mult as f64
+        (start_x - (start_x as u32 % (8 * ZOOM * horiz_mult as u32)) as f64) / horiz_mult as f64
             - line_width / 2.0,
-        (start_y - (start_y as u32 % (8 * ZOOM * horiz_mult as u32)) as f64) / vert_mult as f64
+        (start_y - (start_y as u32 % (8 * ZOOM * vert_mult as u32)) as f64) / vert_mult as f64
             - line_width / 2.0,
         8.0 * ZOOM as f64 + line_width / 2.0,
         8.0 * ZOOM as f64 + line_width / 2.0,
@@ -224,12 +222,8 @@ fn draw_ycbcr(
         })
         .collect::<Vec<u8>>();
 
-    let vert_mult: usize = (subsampling_pack.j / subsampling_pack.a) as usize;
-    let horiz_mult: usize = if subsampling_pack.b == 0 {
-        2_usize
-    } else {
-        1_usize
-    };
+    let horiz_mult: usize = horiz_mult_from_subsampling(&subsampling_pack);
+    let vert_mult: usize = vert_mult_from_subsampling(&subsampling_pack);
 
     assert_eq!(cbs.len(), crs.len());
     let mut cbs_image = Vec::<u8>::new();
@@ -383,15 +377,11 @@ fn draw_dct_quantized_plots(
     );
 }
 fn get_subsampled_block_index_x(selected_x: usize, subsampling_pack: &SubsamplingPack) -> usize {
-    let horiz_mult: usize = (subsampling_pack.j / subsampling_pack.a) as usize;
+    let horiz_mult: usize = horiz_mult_from_subsampling(&subsampling_pack);
     return selected_x / horiz_mult;
 }
 fn get_subsampled_block_index_y(selected_y: usize, subsampling_pack: &SubsamplingPack) -> usize {
-    let vert_mult: usize = if subsampling_pack.b == 0 {
-        2_usize
-    } else {
-        1_usize
-    };
+    let vert_mult: usize = vert_mult_from_subsampling(&subsampling_pack);
     return selected_y / vert_mult;
 }
 
@@ -565,12 +555,8 @@ fn draw_image_recovered(
     subsampling_pack: &SubsamplingPack,
     image_window: &image::RawImageWindow,
 ) {
-    let horiz_mult: usize = (subsampling_pack.j / subsampling_pack.a) as usize;
-    let vert_mult: usize = if subsampling_pack.b == 0 {
-        2_usize
-    } else {
-        1_usize
-    };
+    let horiz_mult: usize = horiz_mult_from_subsampling(&subsampling_pack);
+    let vert_mult: usize = vert_mult_from_subsampling(&subsampling_pack);
 
     let mut output_image = Vec::<u8>::new();
     for i in 0..ys.len() {
@@ -828,17 +814,15 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         }
         Msg::BlockChosen(x, y, rect_x, rect_y, is_resizable_canvas) => {
             if let State::ImageView(ref mut pack) = model.state {
-                let horiz_mult: usize = if !is_resizable_canvas {
-                    1_usize
-                } else if model.subsampling_pack.b == 0 {
-                    2_usize
-                } else {
-                    1_usize
-                };
                 let vert_mult: usize = if !is_resizable_canvas {
                     1_usize
                 } else {
-                    (model.subsampling_pack.j / model.subsampling_pack.a) as usize
+                    vert_mult_from_subsampling(&model.subsampling_pack)
+                };
+                let horiz_mult: usize = if !is_resizable_canvas {
+                    1_usize
+                } else {
+                    horiz_mult_from_subsampling(&model.subsampling_pack)
                 };
 
                 let start_x: f64 = cmp::min(
@@ -885,6 +869,13 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     pack,
                     &model.subsampling_pack,
                     model.quality,
+                );
+                draw_block_choice_indicators(
+                    &model.overlay_map,
+                    &model.preview_overlay_map,
+                    pack.chosen_block_x,
+                    pack.chosen_block_y,
+                    &model.subsampling_pack,
                 );
                 draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
             }
