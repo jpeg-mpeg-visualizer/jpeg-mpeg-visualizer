@@ -85,9 +85,17 @@ fn audio_player(model: &Model) -> Node<GMsg>{
                     input_ev(Ev::Change, |val| wrap(Msg::SpeedChanged(val)))
                 ],
                 button![
+                    C!["compression-chart-mode-button"],
+                    el_ref(&model.change_compression_chart_mode),
+                    "Switch to Both",
+                    ev(Ev::Click, |_| {
+                        wrap(Msg::SwitchCompressionChartMode)
+                    })
+                ],
+                button![
                     C!["compression-button"],
                     el_ref(&model.change_compression),
-                    "Change to ALaw",
+                    "Switch to ALaw",
                     ev(Ev::Click, |_| {
                         wrap(Msg::SwitchCompression)
                     })

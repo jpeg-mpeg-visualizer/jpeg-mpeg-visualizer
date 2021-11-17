@@ -26,6 +26,11 @@ pub enum PlaybackSource {
     Processed,
 }
 
+pub enum CompressionChartMode {
+    CurrentCompression,
+    Both,
+}
+
 pub enum Compression {
     ULaw,
     ALaw,
@@ -132,6 +137,7 @@ pub enum Msg {
     TogglePlayer,
     SwitchPlayback,
     SwitchCompression,
+    SwitchCompressionChartMode,
     FrameUpdate(RenderInfo),
     Seek(i32),
     SpeedChanged(String),
@@ -161,6 +167,7 @@ pub struct Model {
     pub player_state: PlayerState,
     pub playback_source: PlaybackSource,
     pub compression: Compression,
+    pub compression_plot_mode: CompressionChartMode,
 
     pub original_buffer: Option<AudioBuffer>,
     pub buffer_8khz: Option<AudioBuffer>,
@@ -173,6 +180,7 @@ pub struct Model {
     pub current_time: ElRef<HtmlDivElement>,
     pub player_wrapper: ElRef<HtmlDivElement>,
 
+    pub change_compression_chart_mode: ElRef<HtmlButtonElement>,
     pub change_compression: ElRef<HtmlButtonElement>,
     pub change_playback: ElRef<HtmlButtonElement>,
 
