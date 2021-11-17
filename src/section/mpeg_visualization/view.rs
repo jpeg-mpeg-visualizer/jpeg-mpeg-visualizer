@@ -36,6 +36,7 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
                         At::Type => "file",
                         At::Id => "file",
                         At::Name => "file",
+                        At::Accept => ".ts",
                     },
                     ev(Ev::Change, |event| {
                         let file = event
@@ -98,7 +99,7 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                     p![C!["typeletter"], get_frame_type(frame.picture_type, true)]
                 ]
             }),
-            IF!(not(model.frames.is_empty()) => {
+            IF!(not(model.frames.is_empty()) && model.has_more_frames => {
                 div![
                     C!["frame-item", "-more"],
                     ev(Ev::Click, move |_| wrap(Msg::MoreFramesClicked)),

@@ -170,34 +170,51 @@ impl MPEG1 {
         }
     }
 
-    pub fn decode(&mut self) -> DecodedFrame {
+    pub fn decode(&mut self) -> Option<DecodedFrame> {
         if !self.has_sequence_header {
             self.find_start_code(constants::SEQUENCE_HEADER_CODE);
             self.decode_sequence_header();
         }
 
-        self.find_start_code(constants::PICTURE_START_CODE);
-        self.decode_picture()
+        if self.find_start_code(constants::PICTURE_START_CODE) {
+            Some(self.decode_picture())
+        } else {
+            None
+        }
     }
 
-    fn get_next_start_code(&mut self) -> u32 {
+    fn get_next_start_code(&mut self) -> Option<u32> {
         // byte align the pointer
         self.pointer = ((self.pointer + 7) / 8) * 8;
-        while self.buffer[self.pointer..self.pointer + 24].load_be::<u32>() != 0x00_00_01 {
+        while self.pointer + 32 < self.buffer.len() {
+            let four_bytes = self.buffer[self.pointer..self.pointer + 32].load_be::<u32>();
+            if (four_bytes & 0xFF_FF_FF_00) == 0x00_00_01_00 {
+                return four_bytes.into();
+            }
             self.pointer += 8;
         }
-        self.buffer[self.pointer..self.pointer + 32].load_be::<u32>()
+        None
     }
 
-    fn find_start_code(&mut self, code: u32) {
-        while self.buffer[self.pointer..self.pointer + 32].load_be::<u32>() != code {
-            self.pointer += 8;
+    fn find_start_code(&mut self, code: u32) -> bool {
+        loop {
+            match self.get_next_start_code() {
+                Some(next_code) if next_code == code => return true,
+                None => return false,
+                Some(_) => {
+                    self.pointer += 32;
+                }
+            }
         }
     }
 
-    fn next_bytes_are_start_code(&mut self) -> bool {
+    fn next_bytes_are_start_code(&mut self) -> Option<bool> {
         let aligned_pointer = ((self.pointer + 7) / 8) * 8;
-        self.buffer[aligned_pointer..aligned_pointer + 24].load_be::<u32>() == 0x00_00_01
+        if aligned_pointer + 24 < self.buffer.len() {
+            Some(self.buffer[aligned_pointer..aligned_pointer + 24].load_be::<u32>() == 0x00_00_01)
+        } else {
+            None
+        }
     }
 
     fn init_buffers(&mut self, width: u16, height: u16) {
@@ -307,17 +324,18 @@ impl MPEG1 {
             self.forward_f = 1 << self.forward_r_size;
         }
 
-        let mut start_code: u32 = self.get_next_start_code();
-        while start_code == constants::USER_DATA_START_CODE
-            || start_code == constants::EXTENSION_START_CODE
+        let mut start_code: Option<u32> = self.get_next_start_code();
+        while let Some(constants::USER_DATA_START_CODE | constants::EXTENSION_START_CODE) =
+            start_code
         {
             self.pointer += 32;
             start_code = self.get_next_start_code();
         }
 
-        while let constants::SLICE_FIRST_START_CODE..=constants::SLICE_LAST_START_CODE = start_code
+        while let Some(constants::SLICE_FIRST_START_CODE..=constants::SLICE_LAST_START_CODE) =
+            start_code
         {
-            self.decode_slice((start_code & 0x00_00_00_FF) as u16);
+            self.decode_slice((start_code.unwrap() & 0x00_00_00_FF) as u16);
             start_code = self.get_next_start_code()
         }
 
@@ -390,7 +408,7 @@ impl MPEG1 {
         loop {
             self.decode_macroblock();
             self.macroblock_count += 1;
-            if self.next_bytes_are_start_code() {
+            if self.next_bytes_are_start_code() != Some(false) {
                 break;
             };
         }
@@ -1170,7 +1188,7 @@ pub mod constants {
     pub const PICTURE_START_CODE: u32 = 0x00_00_01_00;
     pub const SLICE_FIRST_START_CODE: u32 = 0x00_00_01_01;
     pub const SLICE_LAST_START_CODE: u32 = 0x00_00_01_AF;
-    pub const USER_DATA_START_CODE: u32 = 0x00_00_01_B5;
+    pub const USER_DATA_START_CODE: u32 = 0x00_00_01_B2;
     pub const SEQUENCE_HEADER_CODE: u32 = 0x00_00_01_B3;
     pub const EXTENSION_START_CODE: u32 = 0x00_00_01_B5;
 

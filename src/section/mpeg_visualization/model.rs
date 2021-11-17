@@ -32,6 +32,7 @@ pub struct Model {
     pub canvas_cr: ElRef<HtmlCanvasElement>,
     pub selected_block: Option<usize>,
     pub canvas_indicator: ElRef<HtmlCanvasElement>,
+    pub has_more_frames: bool,
 }
 
 pub enum Msg {

@@ -475,6 +475,7 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
                         At::Type => "file",
                         At::Id => "file",
                         At::Name => "file",
+                        At::Accept => "image/*",
                     },
                     ev(Ev::Change, |event| {
                         let file = event
