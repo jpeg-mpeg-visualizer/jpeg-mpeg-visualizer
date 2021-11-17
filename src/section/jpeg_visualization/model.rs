@@ -88,6 +88,7 @@ pub enum PreviewCanvasName {
     Original,
     YCbCr,
     YCbCrQuant,
+    YCbCrQuantPlots,
     YCbCrRecovered,
     ForComparison,
 }
@@ -105,6 +106,7 @@ pub struct Model {
     pub canvas_map: HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     pub preview_canvas_map: HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
     pub plot_map: HashMap<PlotName, ElRef<HtmlCanvasElement>>,
+    pub chosen_block_plot_map: HashMap<PlotName, ElRef<HtmlCanvasElement>>,
 
     pub original_image_overlay: ElRef<HtmlImageElement>,
     // overlay_map and preview_overlay_map could be one but lack of inheritance makes it at least difficult
