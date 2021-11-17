@@ -23,7 +23,9 @@ use super::drawing_utils::{
 use super::utils::get_image_diff;
 use std::collections::HashMap;
 
-use crate::section::jpeg_visualization::utils::{create_tmp_canvas, horiz_mult_from_subsampling, vert_mult_from_subsampling};
+use crate::section::jpeg_visualization::utils::{
+    create_tmp_canvas, horiz_mult_from_subsampling, vert_mult_from_subsampling,
+};
 use web_sys::{Blob, HtmlCanvasElement, HtmlImageElement};
 
 pub fn init(url: Url) -> Option<Model> {
