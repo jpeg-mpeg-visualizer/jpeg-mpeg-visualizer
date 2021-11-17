@@ -13,7 +13,7 @@ use crate::image::pixel::RGB;
 use crate::image::RawImageWindow;
 use crate::{
     block::{self, BlockMatrix},
-    image, quant, Msg as GMsg, BLOCK_SIZE, ZOOM,
+    image, quant, Msg as GMsg, BLOCK_SIZE,
 };
 use std::rc::Rc;
 
@@ -63,6 +63,7 @@ pub fn init(url: Url) -> Option<Model> {
         overlay_map,
         preview_overlay_map,
         quality: 50,
+        zoom: 7,
         subsampling_pack,
     })
 }
@@ -123,22 +124,23 @@ fn draw_block_choice_indicators(
     start_x: f64,
     start_y: f64,
     subsampling_pack: &SubsamplingPack,
+    zoom: u32,
 ) {
     let tmp_canvas = create_tmp_canvas();
-    tmp_canvas.set_width(BLOCK_SIZE * ZOOM);
-    tmp_canvas.set_height(BLOCK_SIZE * ZOOM);
+    tmp_canvas.set_width(BLOCK_SIZE * zoom);
+    tmp_canvas.set_height(BLOCK_SIZE * zoom);
 
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
 
     tmp_ctx.begin_path();
     // We need to calculate offset of line_width so that all pixels of the image window are inside stroked rect (as in not covered by the lines)
-    let line_width: f64 = 2.0;
+    let line_width: f64 = (2 * zoom / 8) as f64;
     tmp_ctx.set_line_width(line_width);
     tmp_ctx.stroke_rect(
         start_x - line_width / 2.0,
         start_y - line_width / 2.0,
-        8.0 * ZOOM as f64 + line_width / 2.0,
-        8.0 * ZOOM as f64 + line_width / 2.0,
+        8.0 * zoom as f64 + line_width / 2.0,
+        8.0 * zoom as f64 + line_width / 2.0,
     );
 
     let overlay_map_cloned = overlay_map.clone();
@@ -169,20 +171,20 @@ fn draw_block_choice_indicators(
     let horiz_mult: usize = horiz_mult_from_subsampling(&subsampling_pack);
     let vert_mult: usize = vert_mult_from_subsampling(&subsampling_pack);
 
-    tmp_canvas_for_subsampling.set_width(BLOCK_SIZE * ZOOM / horiz_mult as u32);
-    tmp_canvas_for_subsampling.set_height(BLOCK_SIZE * ZOOM / vert_mult as u32);
+    tmp_canvas_for_subsampling.set_width(BLOCK_SIZE * zoom / horiz_mult as u32);
+    tmp_canvas_for_subsampling.set_height(BLOCK_SIZE * zoom / vert_mult as u32);
 
     let tmp_ctx_for_subsampling = canvas_context_2d(&tmp_canvas_for_subsampling);
 
     tmp_ctx_for_subsampling.begin_path();
     tmp_ctx_for_subsampling.set_line_width(line_width);
     tmp_ctx_for_subsampling.stroke_rect(
-        (start_x - (start_x as u32 % (8 * ZOOM * horiz_mult as u32)) as f64) / horiz_mult as f64
+        (start_x - (start_x as u32 % (8 * zoom * horiz_mult as u32)) as f64) / horiz_mult as f64
             - line_width / 2.0,
-        (start_y - (start_y as u32 % (8 * ZOOM * vert_mult as u32)) as f64) / vert_mult as f64
+        (start_y - (start_y as u32 % (8 * zoom * vert_mult as u32)) as f64) / vert_mult as f64
             - line_width / 2.0,
-        8.0 * ZOOM as f64 + line_width / 2.0,
-        8.0 * ZOOM as f64 + line_width / 2.0,
+        8.0 * zoom as f64 + line_width / 2.0,
+        8.0 * zoom as f64 + line_width / 2.0,
     );
     let overlay_map_cloned_for_subsampling = overlay_map.clone();
     let f_subsampled = Closure::once_into_js(move |blob: &Blob| {
@@ -204,6 +206,7 @@ fn draw_ycbcr(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     ycbcr: &image::YCbCrImage,
     subsampling_pack: &SubsamplingPack,
+    zoom: u32,
 ) {
     let ys = ycbcr.to_ys_channel();
     let cbs = ycbcr.to_cbs_channel();
@@ -273,9 +276,9 @@ fn draw_ycbcr(
         x += vert_mult;
     }
 
-    draw_default(&canvas_map, CanvasName::Ys, ys_image);
-    draw_default(&canvas_map, CanvasName::Cbs, cbs_image);
-    draw_default(&canvas_map, CanvasName::Crs, crs_image);
+    draw_default(&canvas_map, CanvasName::Ys, ys_image, zoom);
+    draw_default(&canvas_map, CanvasName::Cbs, cbs_image, zoom);
+    draw_default(&canvas_map, CanvasName::Crs, crs_image, zoom);
 }
 
 fn draw_dct_quantized(
@@ -283,6 +286,7 @@ fn draw_dct_quantized(
     pack: &mut ImagePack,
     subsampling_pack: &SubsamplingPack,
     quality: u8,
+    zoom: u32,
 ) {
     let ycbcr = &pack.ycbcr;
     let image_window = &pack.image_window;
@@ -325,9 +329,9 @@ fn draw_dct_quantized(
     let cbs_quantized = cbs_block_matrix.apply_quantization(&scaled_chrominance_quant_table);
     let crs_quantized = crs_block_matrix.apply_quantization(&scaled_chrominance_quant_table);
 
-    draw_spatial_channel(&ys_quantized, canvas_map, CanvasName::YsQuant);
-    draw_spatial_channel(&cbs_quantized, canvas_map, CanvasName::CbsQuant);
-    draw_spatial_channel(&crs_quantized, canvas_map, CanvasName::CrsQuant);
+    draw_spatial_channel(&ys_quantized, canvas_map, CanvasName::YsQuant, zoom);
+    draw_spatial_channel(&cbs_quantized, canvas_map, CanvasName::CbsQuant, zoom);
+    draw_spatial_channel(&crs_quantized, canvas_map, CanvasName::CrsQuant, zoom);
 
     pack.plot_data.insert(PlotName::YsQuant3d, ys_quantized);
     pack.plot_data.insert(PlotName::CbsQuant3d, cbs_quantized);
@@ -341,6 +345,7 @@ fn draw_dct_quantized(
         &subsampling_pack,
         image_window,
         quality,
+        zoom,
     );
 }
 
@@ -348,9 +353,10 @@ fn draw_dct_quantized_plots(
     pack: &ImagePack,
     plot_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
     subsampling_pack: &SubsamplingPack,
+    zoom: u32,
 ) {
-    let selected_x = (pack.chosen_block_x / (ZOOM * 8) as f64) as usize;
-    let selected_y = (pack.chosen_block_y / (ZOOM * 8) as f64) as usize;
+    let selected_x = (pack.chosen_block_x / (zoom * 8) as f64) as usize;
+    let selected_y = (pack.chosen_block_y / (zoom * 8) as f64) as usize;
 
     draw_dct_quantized_plot(
         &pack.plot_data.get(&PlotName::YsQuant3d).unwrap(),
@@ -464,6 +470,7 @@ fn draw_spatial_channel(
     quantized_block: &BlockMatrix,
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     canvas_name: CanvasName,
+    zoom: u32,
 ) {
     let width = quantized_block.width;
     let height = quantized_block.height;
@@ -476,9 +483,10 @@ fn draw_spatial_channel(
             write_to_image_data(&mut image_data, &spatial.0, u, v, width);
         }
     }
-    draw_default(&canvas_map, canvas_name, image_data);
+    draw_default(&canvas_map, canvas_name, image_data, zoom);
 }
 
+#[allow(clippy::too_many_arguments)]
 fn draw_ycbcr_recovered(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     ys_quantized: &BlockMatrix,
@@ -487,6 +495,7 @@ fn draw_ycbcr_recovered(
     subsampling_pack: &SubsamplingPack,
     image_window: &image::RawImageWindow,
     quality: u8,
+    zoom: u32,
 ) {
     let scaled_luminance_quant_table =
         quant::scale_quantization_table(&quant::LUMINANCE_QUANTIZATION_TABLE, quality);
@@ -540,11 +549,19 @@ fn draw_ycbcr_recovered(
         })
         .collect::<Vec<u8>>();
 
-    draw_default(&canvas_map, CanvasName::YsRecovered, ys_image);
-    draw_default(&canvas_map, CanvasName::CbsRecovered, cbs_image);
-    draw_default(&canvas_map, CanvasName::CrsRecovered, crs_image);
+    draw_default(&canvas_map, CanvasName::YsRecovered, ys_image, zoom);
+    draw_default(&canvas_map, CanvasName::CbsRecovered, cbs_image, zoom);
+    draw_default(&canvas_map, CanvasName::CrsRecovered, crs_image, zoom);
 
-    draw_image_recovered(canvas_map, ys, cbs, crs, &subsampling_pack, image_window);
+    draw_image_recovered(
+        canvas_map,
+        ys,
+        cbs,
+        crs,
+        &subsampling_pack,
+        image_window,
+        zoom,
+    );
 }
 
 fn draw_image_recovered(
@@ -554,6 +571,7 @@ fn draw_image_recovered(
     crs: Vec<u8>,
     subsampling_pack: &SubsamplingPack,
     image_window: &image::RawImageWindow,
+    zoom: u32,
 ) {
     let horiz_mult: usize = horiz_mult_from_subsampling(&subsampling_pack);
     let vert_mult: usize = vert_mult_from_subsampling(&subsampling_pack);
@@ -575,9 +593,9 @@ fn draw_image_recovered(
 
     let input_image = image_window.to_image();
     let image_diff = get_image_diff(&output_image, &input_image);
-    draw_default(&canvas_map, CanvasName::ImageRecovered, output_image);
+    draw_default(&canvas_map, CanvasName::ImageRecovered, output_image, zoom);
 
-    draw_default(&canvas_map, CanvasName::Difference, image_diff);
+    draw_default(&canvas_map, CanvasName::Difference, image_diff, zoom);
 }
 pub fn subsampled_index_for_recovery(i: usize, horiz_mult: usize, vert_mult: usize) -> usize {
     return ((i / (BLOCK_SIZE as usize * vert_mult)) * BLOCK_SIZE as usize
@@ -589,9 +607,10 @@ fn draw_default(
     canvas_map: &HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
     canvas_name: CanvasName,
     image_data: Vec<u8>,
+    zoom: u32,
 ) {
     let canvas = canvas_map.get(&canvas_name).unwrap();
-    draw_scaled_image_default(&canvas, &image_data);
+    draw_scaled_image_default(&canvas, &image_data, zoom);
 }
 
 fn write_to_image_data(
@@ -639,10 +658,11 @@ fn turn_antialising_off_for_specific_canvas(canvas: &ElRef<HtmlCanvasElement>) {
 fn draw_input_previews(
     preview_canvas_map: &HashMap<PreviewCanvasName, ElRef<HtmlCanvasElement>>,
     image_window: &RawImageWindow,
+    zoom: u32,
 ) {
     let input_image = &image_window.to_image();
     for (_canvas_name, canvas) in preview_canvas_map {
-        draw_scaled_image_default(&canvas, &input_image);
+        draw_scaled_image_default(&canvas, &input_image, zoom);
     }
 }
 
@@ -650,6 +670,7 @@ fn draw_input_selection_indicator(
     overlay_image_ref: &ElRef<HtmlImageElement>,
     image_window: &RawImageWindow,
     image: &image::RawImage,
+    zoom: u32,
 ) {
     let overlay_image = overlay_image_ref.get().unwrap();
 
@@ -661,7 +682,7 @@ fn draw_input_selection_indicator(
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
 
     // We need to calculate offset of line_width so that all pixels of the image window are inside stroked rect (as in not covered by the lines)
-    let line_width: i32 = 4;
+    let line_width: i32 = (4 * zoom / 8) as i32;
     let rect_a =
         (((overlay_image.height() * BLOCK_SIZE) / image.height()) as i32 + line_width) as f64;
     let rect_x = cmp::max(
@@ -706,6 +727,40 @@ impl<'a> Urls<'a> {
 //    Update
 // ------ ------
 
+fn draw_all(model: &mut Model) {
+    if let State::ImageView(ref mut pack) = model.state {
+        turn_antialiasing_off(&model.canvas_map, &model.preview_canvas_map);
+
+        prepare_original_image_preview(
+            &model.original_image_canvas,
+            &model.original_image_overlay,
+            &pack.raw_image,
+        );
+        draw_input_selection_indicator(
+            &model.original_image_overlay,
+            &pack.image_window,
+            &pack.raw_image,
+            model.zoom,
+        );
+        draw_original_image_preview(&model.original_image_canvas, &pack.raw_image);
+
+        draw_input_previews(&model.preview_canvas_map, &pack.image_window, model.zoom);
+        draw_ycbcr(
+            &model.canvas_map,
+            &pack.ycbcr,
+            &model.subsampling_pack,
+            model.zoom,
+        );
+        draw_dct_quantized(
+            &model.canvas_map,
+            pack,
+            &model.subsampling_pack,
+            model.quality,
+            model.zoom,
+        );
+        draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack, model.zoom);
+    }
+}
 pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::FileChooserLoadImage(file) => {
@@ -715,30 +770,18 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 Msg::ImageLoaded(raw_image)
             });
             model.quality = 50;
+            model.zoom = 7;
             model.state = State::PreImageView
         }
         Msg::FileChooserDragStarted => model.file_chooser_zone_active = true,
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
         Msg::ImageLoaded(raw_image) => {
-            turn_antialiasing_off(&model.canvas_map, &model.preview_canvas_map);
-            prepare_original_image_preview(
-                &model.original_image_canvas,
-                &model.original_image_overlay,
-                &raw_image,
-            );
-            draw_original_image_preview(&model.original_image_canvas, &raw_image);
-
             let raw_image_rc = Rc::new(raw_image);
             let image_window =
                 RawImageWindow::new(raw_image_rc.clone(), 0, 0, BLOCK_SIZE, BLOCK_SIZE);
-            draw_input_selection_indicator(
-                &model.original_image_overlay,
-                &image_window,
-                &raw_image_rc,
-            );
-            draw_input_previews(&model.preview_canvas_map, &image_window);
+
             let ycbcr = image_window.to_rgb_image().to_ycbcr_image();
-            let mut pack: ImagePack = ImagePack {
+            let pack: ImagePack = ImagePack {
                 raw_image: raw_image_rc,
                 image_window,
                 ycbcr,
@@ -746,23 +789,33 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 chosen_block_x: 0.0,
                 chosen_block_y: 0.0,
             };
-            draw_ycbcr(&model.canvas_map, &pack.ycbcr, &model.subsampling_pack);
-            draw_dct_quantized(&model.canvas_map, &mut pack, &model.subsampling_pack, 50);
-            draw_block_choice_indicators(
-                &model.overlay_map,
-                &model.preview_overlay_map,
-                pack.chosen_block_x,
-                pack.chosen_block_y,
-                &model.subsampling_pack,
-            );
-            draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
             model.state = State::ImageView(pack);
+
+            draw_all(model);
+        }
+        Msg::ZoomUpdated(zoom) => {
+            model.zoom = zoom;
+            orders.after_next_render(|_| Msg::PostZoomUpdated);
+        }
+        Msg::PostZoomUpdated => {
+            draw_all(model);
         }
         Msg::QualityUpdated(quality) => {
             if let State::ImageView(ref mut pack) = model.state {
                 model.quality = quality;
-                draw_dct_quantized(&model.canvas_map, pack, &model.subsampling_pack, quality);
-                draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
+                draw_dct_quantized(
+                    &model.canvas_map,
+                    pack,
+                    &model.subsampling_pack,
+                    quality,
+                    model.zoom,
+                );
+                draw_dct_quantized_plots(
+                    &pack,
+                    &model.plot_map,
+                    &model.subsampling_pack,
+                    model.zoom,
+                );
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
@@ -775,9 +828,9 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 let canvas_y = canvas_rect.top();
 
                 let image_click_x: i32 = ((x - canvas_x as i32) as u32 * pack.raw_image.height()
-                    / (BLOCK_SIZE * ZOOM)) as i32;
+                    / (BLOCK_SIZE * model.zoom)) as i32;
                 let image_click_y: i32 = ((y - canvas_y as i32) as u32 * pack.raw_image.height()
-                    / (BLOCK_SIZE * ZOOM)) as i32;
+                    / (BLOCK_SIZE * model.zoom)) as i32;
 
                 let image_x: u32 = cmp::min(
                     cmp::max(image_click_x - (BLOCK_SIZE / 2) as i32, 0),
@@ -799,17 +852,29 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.original_image_overlay,
                     &pack.image_window,
                     &pack.raw_image,
+                    model.zoom,
                 );
 
-                draw_input_previews(&model.preview_canvas_map, &pack.image_window);
-                draw_ycbcr(&model.canvas_map, &pack.ycbcr, &model.subsampling_pack);
+                draw_input_previews(&model.preview_canvas_map, &pack.image_window, model.zoom);
+                draw_ycbcr(
+                    &model.canvas_map,
+                    &pack.ycbcr,
+                    &model.subsampling_pack,
+                    model.zoom,
+                );
                 draw_dct_quantized(
                     &model.canvas_map,
                     pack,
                     &model.subsampling_pack,
                     model.quality,
+                    model.zoom,
                 );
-                draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
+                draw_dct_quantized_plots(
+                    &pack,
+                    &model.plot_map,
+                    &model.subsampling_pack,
+                    model.zoom,
+                );
             }
         }
         Msg::BlockChosen(x, y, rect_x, rect_y, is_resizable_canvas) => {
@@ -826,13 +891,15 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 };
 
                 let start_x: f64 = cmp::min(
-                    (x - rect_x) - (x - rect_x) % (8 * ZOOM as i32),
-                    (((BLOCK_SIZE as usize - 8 * horiz_mult) * ZOOM as usize) / horiz_mult) as i32,
+                    (x - rect_x) - (x - rect_x) % (8 * model.zoom as i32),
+                    (((BLOCK_SIZE as usize - 8 * horiz_mult) * model.zoom as usize) / horiz_mult)
+                        as i32,
                 ) as f64
                     * horiz_mult as f64;
                 let start_y: f64 = cmp::min(
-                    (y - rect_y) - (y - rect_y) % (8 * ZOOM as i32),
-                    (((BLOCK_SIZE as usize - 8 * vert_mult) * ZOOM as usize) / vert_mult) as i32,
+                    (y - rect_y) - (y - rect_y) % (8 * model.zoom as i32),
+                    (((BLOCK_SIZE as usize - 8 * vert_mult) * model.zoom as usize) / vert_mult)
+                        as i32,
                 ) as f64
                     * vert_mult as f64;
 
@@ -845,9 +912,15 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     start_x,
                     start_y,
                     &model.subsampling_pack,
+                    model.zoom,
                 );
 
-                draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
+                draw_dct_quantized_plots(
+                    &pack,
+                    &model.plot_map,
+                    &model.subsampling_pack,
+                    model.zoom,
+                );
             }
         }
         Msg::SubsamplingRatioChanged(y_ratio, cb_ratio, cr_ratio) => {
@@ -856,19 +929,25 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 model.subsampling_pack.a = cb_ratio;
                 model.subsampling_pack.b = cr_ratio;
 
-                orders.after_next_render(|_| Msg::PostSubsamplingRatioChanged());
+                orders.after_next_render(|_| Msg::PostSubsamplingRatioChanged);
             }
         }
-        Msg::PostSubsamplingRatioChanged() => {
+        Msg::PostSubsamplingRatioChanged => {
             if let State::ImageView(ref mut pack) = model.state {
                 turn_antialiasing_off_for_ordinary(&model.canvas_map);
 
-                draw_ycbcr(&model.canvas_map, &pack.ycbcr, &model.subsampling_pack);
+                draw_ycbcr(
+                    &model.canvas_map,
+                    &pack.ycbcr,
+                    &model.subsampling_pack,
+                    model.zoom,
+                );
                 draw_dct_quantized(
                     &model.canvas_map,
                     pack,
                     &model.subsampling_pack,
                     model.quality,
+                    model.zoom,
                 );
                 draw_block_choice_indicators(
                     &model.overlay_map,
@@ -876,8 +955,14 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     pack.chosen_block_x,
                     pack.chosen_block_y,
                     &model.subsampling_pack,
+                    model.zoom,
                 );
-                draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack);
+                draw_dct_quantized_plots(
+                    &pack,
+                    &model.plot_map,
+                    &model.subsampling_pack,
+                    model.zoom,
+                );
             }
         }
     }

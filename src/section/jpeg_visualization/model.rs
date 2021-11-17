@@ -40,10 +40,12 @@ pub enum Msg {
     FileChooserDragLeave,
     ImageLoaded(image::RawImage),
     QualityUpdated(u8),
+    ZoomUpdated(u32),
+    PostZoomUpdated,
     PreviewCanvasClicked(i32, i32),
     BlockChosen(i32, i32, i32, i32, bool),
     SubsamplingRatioChanged(i8, i8, i8),
-    PostSubsamplingRatioChanged(),
+    PostSubsamplingRatioChanged,
 }
 
 // ------ ------
@@ -112,5 +114,6 @@ pub struct Model {
     pub preview_overlay_map: HashMap<PreviewCanvasName, ElRef<HtmlImageElement>>,
 
     pub quality: u8,
+    pub zoom: u32,
     pub subsampling_pack: SubsamplingPack,
 }

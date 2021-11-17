@@ -6,7 +6,7 @@ use super::model::{CanvasName, Model, Msg, PreviewCanvasName, State};
 use super::page::wrap;
 use crate::graphic_helpers::drag_n_drop::*;
 use crate::section::jpeg_visualization::model::{PlotName, SubsamplingPack};
-use crate::{Msg as GMsg, BLOCK_SIZE, ZOOM};
+use crate::{Msg as GMsg, BLOCK_SIZE};
 use web_sys::{Event, HtmlCanvasElement, HtmlImageElement};
 
 macro_rules! stop_and_prevent {
@@ -35,8 +35,8 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                     C!["canvas_overlay"],
                     el_ref(&model.original_image_overlay),
                     attrs![
-                        At::Width => px(BLOCK_SIZE * ZOOM),
-                        At::Height => px(BLOCK_SIZE * ZOOM),
+                        At::Width => px(BLOCK_SIZE * model.zoom),
+                        At::Height => px(BLOCK_SIZE * model.zoom),
                         At::Draggable => false,
                     ],
                     ev(Ev::Click, |event| {
@@ -47,8 +47,8 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                 canvas![
                     el_ref(&model.original_image_canvas),
                     attrs![
-                        At::Width => px(BLOCK_SIZE * ZOOM),
-                        At::Height => px(BLOCK_SIZE * ZOOM),
+                        At::Width => px(BLOCK_SIZE * model.zoom),
+                        At::Height => px(BLOCK_SIZE * model.zoom),
                     ],
                 ],
             ],
@@ -62,7 +62,8 @@ pub fn view_image_preview(model: &Model) -> Node<GMsg> {
                     .preview_overlay_map
                     .get(&PreviewCanvasName::Original)
                     .unwrap(),
-                None
+                None,
+                model.zoom,
             ),
         ]
     ]
@@ -83,25 +84,29 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
                     .preview_overlay_map
                     .get(&PreviewCanvasName::YCbCr)
                     .unwrap(),
-                None
+                None,
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 " Y ",
                 &model.canvas_map.get(&CanvasName::Ys).unwrap(),
                 &model.overlay_map.get(&CanvasName::Ys).unwrap(),
-                None
+                None,
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 "CB",
                 &model.canvas_map.get(&CanvasName::Cbs).unwrap(),
                 &model.overlay_map.get(&CanvasName::Cbs).unwrap(),
-                Some(&model.subsampling_pack)
+                Some(&model.subsampling_pack),
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 "CR",
                 &model.canvas_map.get(&CanvasName::Crs).unwrap(),
                 &model.overlay_map.get(&CanvasName::Crs).unwrap(),
-                Some(&model.subsampling_pack)
+                Some(&model.subsampling_pack),
+                model.zoom
             ),
         ]
     ]
@@ -122,37 +127,44 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                     .preview_overlay_map
                     .get(&PreviewCanvasName::YCbCrQuant)
                     .unwrap(),
-                None
+                None,
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 "Y QUANTIZED",
                 &model.canvas_map.get(&CanvasName::YsQuant).unwrap(),
                 &model.overlay_map.get(&CanvasName::YsQuant).unwrap(),
-                None
+                None,
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 "CB QUANTIZED",
                 &model.canvas_map.get(&CanvasName::CbsQuant).unwrap(),
                 &model.overlay_map.get(&CanvasName::CbsQuant).unwrap(),
-                Some(&model.subsampling_pack)
+                Some(&model.subsampling_pack),
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 "CR QUANTIZED",
                 &model.canvas_map.get(&CanvasName::CrsQuant).unwrap(),
                 &model.overlay_map.get(&CanvasName::CrsQuant).unwrap(),
-                Some(&model.subsampling_pack)
+                Some(&model.subsampling_pack),
+                model.zoom
             ),
             plot_labeled_div(
                 "Y QUANTIZED 3D",
                 &model.plot_map.get(&PlotName::YsQuant3d).unwrap(),
+                model.zoom
             ),
             plot_labeled_div(
                 "CB QUANTIZED 3D",
                 &model.plot_map.get(&PlotName::CbsQuant3d).unwrap(),
+                model.zoom
             ),
             plot_labeled_div(
                 "CR QUANTIZED 3D",
                 &model.plot_map.get(&PlotName::CrsQuant3d).unwrap(),
+                model.zoom
             ),
         ]
     ]
@@ -173,25 +185,29 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
                     .preview_overlay_map
                     .get(&PreviewCanvasName::YCbCrRecovered)
                     .unwrap(),
-                None
+                None,
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 "Y RECOVERED",
                 &model.canvas_map.get(&CanvasName::YsRecovered).unwrap(),
                 &model.overlay_map.get(&CanvasName::YsRecovered).unwrap(),
-                None
+                None,
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 "CB RECOVERED",
                 &model.canvas_map.get(&CanvasName::CbsRecovered).unwrap(),
                 &model.overlay_map.get(&CanvasName::CbsRecovered).unwrap(),
-                Some(&model.subsampling_pack)
+                Some(&model.subsampling_pack),
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 "CR RECOVERED",
                 &model.canvas_map.get(&CanvasName::CrsRecovered).unwrap(),
                 &model.overlay_map.get(&CanvasName::CrsRecovered).unwrap(),
-                Some(&model.subsampling_pack)
+                Some(&model.subsampling_pack),
+                model.zoom
             ),
         ]
     ]
@@ -212,19 +228,22 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
                     .preview_overlay_map
                     .get(&PreviewCanvasName::ForComparison)
                     .unwrap(),
-                None
+                None,
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 "OUTPUT",
                 &model.canvas_map.get(&CanvasName::ImageRecovered).unwrap(),
                 &model.overlay_map.get(&CanvasName::ImageRecovered).unwrap(),
-                None
+                None,
+                model.zoom
             ),
             canvas_labeled_div_with_overlay(
                 "DIFFERENCE",
                 &model.canvas_map.get(&CanvasName::Difference).unwrap(),
                 &model.overlay_map.get(&CanvasName::Difference).unwrap(),
-                None
+                None,
+                model.zoom
             ),
         ]
     ]
@@ -236,12 +255,13 @@ fn canvas_labeled_div_with_overlay(
     img: &ElRef<HtmlImageElement>,
     // if canvas should not be subsampled, pass None
     subsampling_pack_option: Option<&SubsamplingPack>,
+    zoom: u32,
 ) -> Node<GMsg> {
     let padding = 10;
     let cloned_canvas_ref = canvas.clone();
 
-    let mut width: u32 = BLOCK_SIZE * ZOOM;
-    let mut height: u32 = BLOCK_SIZE * ZOOM;
+    let mut width: u32 = BLOCK_SIZE * zoom;
+    let mut height: u32 = BLOCK_SIZE * zoom;
 
     let mut is_resizable_canvas: bool = false;
 
@@ -296,7 +316,7 @@ fn canvas_labeled_div_with_overlay(
     ]
 }
 
-fn plot_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>) -> Node<GMsg> {
+fn plot_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>, zoom: u32) -> Node<GMsg> {
     let padding = 10;
 
     div![
@@ -305,12 +325,12 @@ fn plot_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>) -> Node<GMsg
         div![canvas![
             el_ref(&canvas),
             attrs![
-                At::Width => px(BLOCK_SIZE * ZOOM),
-                At::Height => px(BLOCK_SIZE * ZOOM),
+                At::Width => px(BLOCK_SIZE * zoom),
+                At::Height => px(BLOCK_SIZE * zoom),
             ],
         ],],
         style![
-            St::MaxWidth => px(BLOCK_SIZE * ZOOM + padding * 2),
+            St::MaxWidth => px(BLOCK_SIZE * zoom + padding * 2),
         ]
     ]
 }
@@ -335,6 +355,24 @@ pub fn view_settings_sidebar(_model: &Model) -> Node<GMsg> {
         ],
         div![
             C!["sidebar_settings"],
+            label![
+                attrs! {
+                    At::For => "zoom"
+                },
+                "Zoom:"
+            ],
+            input![
+                attrs! {
+                    At::Type => "range",
+                    At::Max => 12,
+                    At::Min => 2,
+                    At::Default => 7,
+                    At::Id => "zoom",
+                },
+                input_ev("change", |value| {
+                    wrap(Msg::ZoomUpdated(value.parse::<u32>().unwrap()))
+                })
+            ],
             label![
                 attrs! {
                     At::For => "subsampling_ratio_select"
@@ -400,7 +438,7 @@ pub fn view_settings_sidebar(_model: &Model) -> Node<GMsg> {
                 input_ev("change", |value| {
                     wrap(Msg::QualityUpdated(value.parse::<u8>().unwrap()))
                 })
-            ]
+            ],
         ]
     ]
 }

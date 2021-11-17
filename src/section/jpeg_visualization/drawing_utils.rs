@@ -2,7 +2,6 @@ use seed::prelude::*;
 use seed::*;
 
 use crate::section::jpeg_visualization::utils::create_tmp_canvas;
-use crate::ZOOM;
 use web_sys::{HtmlCanvasElement, ImageData};
 
 // TODO: Consider having seperate canvas for "scalable" images and another one with w/h set at static context
@@ -68,22 +67,23 @@ pub fn draw_scaled_image_with_w_h_and_scale(
 pub fn draw_scaled_image_default_with_image_data(
     canvas: &ElRef<HtmlCanvasElement>,
     image_data: &ImageData,
+    zoom: u32,
 ) {
     draw_scaled_image_with_image_data_with_w_h_and_scale(
         &canvas,
         &image_data,
-        canvas.get().unwrap().width() / ZOOM,
-        canvas.get().unwrap().height() / ZOOM,
-        ZOOM as f64,
-        ZOOM as f64,
+        canvas.get().unwrap().width() / zoom,
+        canvas.get().unwrap().height() / zoom,
+        zoom as f64,
+        zoom as f64,
     );
 }
 
-pub fn draw_scaled_image_default(canvas: &ElRef<HtmlCanvasElement>, image: &Vec<u8>) {
+pub fn draw_scaled_image_default(canvas: &ElRef<HtmlCanvasElement>, image: &Vec<u8>, zoom: u32) {
     let image_data = web_sys::ImageData::new_with_u8_clamped_array(
         wasm_bindgen::Clamped(&image),
-        canvas.get().unwrap().width() / ZOOM,
+        canvas.get().unwrap().width() / zoom,
     )
     .unwrap();
-    draw_scaled_image_default_with_image_data(&canvas, &image_data);
+    draw_scaled_image_default_with_image_data(&canvas, &image_data, zoom);
 }
