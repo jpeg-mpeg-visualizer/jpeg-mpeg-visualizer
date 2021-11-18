@@ -45,8 +45,10 @@ pub fn init(url: Url) -> Option<Model> {
     }
 
     let mut plot_map = HashMap::<PlotName, ElRef<HtmlCanvasElement>>::new();
+    let mut chosen_block_plot_map = HashMap::<PlotName, ElRef<HtmlCanvasElement>>::new();
     for plot_name in PlotName::iter() {
         plot_map.insert(plot_name, ElRef::<HtmlCanvasElement>::default());
+        chosen_block_plot_map.insert(plot_name, ElRef::<HtmlCanvasElement>::default());
     }
 
     let subsampling_pack = SubsamplingPack { j: 4, a: 4, b: 4 };
@@ -59,6 +61,7 @@ pub fn init(url: Url) -> Option<Model> {
         canvas_map,
         preview_canvas_map,
         plot_map,
+        chosen_block_plot_map,
         original_image_overlay: ElRef::<HtmlImageElement>::default(),
         overlay_map,
         preview_overlay_map,
@@ -352,6 +355,7 @@ fn draw_dct_quantized(
 fn draw_dct_quantized_plots(
     pack: &ImagePack,
     plot_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
+    chosen_block_plot_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
     subsampling_pack: &SubsamplingPack,
     zoom: u32,
 ) {
@@ -363,6 +367,7 @@ fn draw_dct_quantized_plots(
         selected_x,
         selected_y,
         plot_map,
+        chosen_block_plot_map,
         PlotName::YsQuant3d,
     );
     let subsampled_x: usize = get_subsampled_block_index_x(selected_x, &subsampling_pack);
@@ -372,6 +377,7 @@ fn draw_dct_quantized_plots(
         subsampled_x,
         subsampled_y,
         plot_map,
+        chosen_block_plot_map,
         PlotName::CbsQuant3d,
     );
     draw_dct_quantized_plot(
@@ -379,6 +385,7 @@ fn draw_dct_quantized_plots(
         subsampled_x,
         subsampled_y,
         plot_map,
+        chosen_block_plot_map,
         PlotName::CrsQuant3d,
     );
 }
@@ -396,6 +403,7 @@ fn draw_dct_quantized_plot(
     selected_x: usize,
     selected_z: usize,
     canvas_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
+    chosen_block_canvas_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
     canvas_name: PlotName,
 ) {
     let width: usize = data.width;
@@ -442,7 +450,7 @@ fn draw_dct_quantized_plot(
                     let block_x_offset = (x % 8i32) as usize;
                     let block_z_offset = (z % 8i32) as usize;
                     let block = blocks[block_x + block_z * width].0;
-                    let value = (block[block_x_offset][block_z_offset]).abs().clamp(0, 255) as i32;
+                    let value = (block[block_z_offset][block_x_offset]).abs().clamp(0, 255) as i32;
                     let face = if value == 0 {
                         TRANSPARENT
                     } else {
@@ -458,6 +466,66 @@ fn draw_dct_quantized_plot(
                         } else {
                             BLACK.to_rgba()
                         }
+                    };
+                    Cubiod::new([(x, 0, z), (x + 1, value, z + 1)], face.filled(), &edge)
+                }),
+        )
+        .unwrap();
+
+    // Now chart for the chosen block only
+
+    let block = blocks[selected_x + selected_z * width].0;
+    let canvas = chosen_block_canvas_map
+        .get(&canvas_name)
+        .unwrap()
+        .get()
+        .unwrap();
+    let area = CanvasBackend::with_canvas_object(canvas)
+        .unwrap()
+        .into_drawing_area();
+
+    area.fill(&RGBColor(113, 113, 114)).unwrap();
+
+    let key_points_x = (0..9).collect::<Vec<i32>>();
+    let key_points_z = (0..9).collect::<Vec<i32>>();
+    let key_points_y = (0..5).map(|x| x as i32 * 64).collect::<Vec<i32>>();
+
+    let mut chart = ChartBuilder::on(&area)
+        .margin(40)
+        .build_cartesian_3d(
+            (0i32..8i32).with_key_points(key_points_x),
+            (0i32..256i32).with_key_points(key_points_y),
+            (0i32..8i32).with_key_points(key_points_z),
+        )
+        .unwrap();
+
+    chart.with_projection(|mut pb| {
+        pb.pitch = 1.2;
+        pb.yaw = 0.5;
+        pb.scale = 0.7;
+        pb.into_matrix()
+    });
+
+    chart.configure_axes().draw().unwrap();
+
+    chart
+        .draw_series(
+            (0i32..8i32)
+                .map(|x| std::iter::repeat(x).zip(0i32..8i32))
+                .flatten()
+                .map(|(x, z)| {
+                    let value = (block[z as usize][x as usize]).abs().clamp(0, 255) as i32;
+                    let face = if value == 0 {
+                        TRANSPARENT
+                    } else {
+                        HSLColor(240.0 / 360.0 - 240.0 / 360.0 * value as f64 / 5.0, 1.0, 0.7)
+                            .to_rgba()
+                    };
+
+                    let edge = if value == 0 {
+                        TRANSPARENT
+                    } else {
+                        BLACK.to_rgba()
                     };
                     Cubiod::new([(x, 0, z), (x + 1, value, z + 1)], face.filled(), &edge)
                 }),
@@ -758,7 +826,13 @@ fn draw_all(model: &mut Model) {
             model.quality,
             model.zoom,
         );
-        draw_dct_quantized_plots(&pack, &model.plot_map, &model.subsampling_pack, model.zoom);
+        draw_dct_quantized_plot(
+            &pack,
+            &model.plot_map,
+            &model.chosen_block_plot_map,
+            &model.subsampling_pack,
+            model.zoom,
+        );
     }
 }
 pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
@@ -813,6 +887,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 draw_dct_quantized_plots(
                     &pack,
                     &model.plot_map,
+                    &model.chosen_block_plot_map,
                     &model.subsampling_pack,
                     model.zoom,
                 );
@@ -872,6 +947,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 draw_dct_quantized_plots(
                     &pack,
                     &model.plot_map,
+                    &model.chosen_block_plot_map,
                     &model.subsampling_pack,
                     model.zoom,
                 );
@@ -918,6 +994,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 draw_dct_quantized_plots(
                     &pack,
                     &model.plot_map,
+                    &model.chosen_block_plot_map,
                     &model.subsampling_pack,
                     model.zoom,
                 );
@@ -960,6 +1037,7 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 draw_dct_quantized_plots(
                     &pack,
                     &model.plot_map,
+                    &model.chosen_block_plot_map,
                     &model.subsampling_pack,
                     model.zoom,
                 );

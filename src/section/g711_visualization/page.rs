@@ -44,6 +44,7 @@ pub fn init(url: Url) -> Option<Model> {
         player_state: PlayerState::default(),
         playback_source: PlaybackSource::Original,
         compression: Compression::ULaw,
+        compression_plot_mode: CompressionChartMode::CurrentCompression,
 
         original_buffer: None,
         buffer_8khz: None,
@@ -56,6 +57,7 @@ pub fn init(url: Url) -> Option<Model> {
         current_time: ElRef::<HtmlDivElement>::default(),
         player_wrapper: ElRef::<HtmlDivElement>::default(),
 
+        change_compression_chart_mode: ElRef::<HtmlButtonElement>::default(),
         change_compression: ElRef::<HtmlButtonElement>::default(),
         change_playback: ElRef::<HtmlButtonElement>::default(),
 
@@ -207,14 +209,22 @@ fn draw_frame(model: &Model) {
     g711_area.fill(&RGBColor(150, 150, 150)).unwrap();
     pcm_area.fill(&RGBColor(150, 150, 150)).unwrap();
 
-    let (compressed_u8_8khz, compression_name) = match model.compression {
-        Compression::ULaw => (&model.compressed_u8_8khz_ulaw, "ULaw"),
-        Compression::ALaw => (&model.compressed_u8_8khz_alaw, "ALaw"),
+    let (compressed_u8_8khz, compression_name, plot_color_index) = match model.compression {
+        Compression::ULaw => (&model.compressed_u8_8khz_ulaw, "ULaw", 2),
+        Compression::ALaw => (&model.compressed_u8_8khz_alaw, "ALaw", 0),
+    };
+
+    let compression_chart_name = match model.compression_plot_mode {
+        CompressionChartMode::CurrentCompression => compression_name,
+        CompressionChartMode::Both => "ULaw and ALaw",
     };
 
     let mut compressed_chart = ChartBuilder::on(&g711_area)
         .margin(30)
-        .caption(format!("G711-{}", compression_name), ("sans-serif", 30))
+        .caption(
+            format!("G711-{}", compression_chart_name),
+            ("sans-serif", 30),
+        )
         .set_label_area_size(LabelAreaPosition::Left, (8).percent())
         .set_label_area_size(LabelAreaPosition::Bottom, (4).percent())
         .build_cartesian_2d(x_axis.clone(), y_axis_8)
@@ -222,22 +232,64 @@ fn draw_frame(model: &Model) {
 
     compressed_chart.configure_mesh().draw().unwrap();
 
-    let compressed_style = Palette99::pick(2).mix(0.9).stroke_width(8);
-    compressed_chart
-        .draw_series(LineSeries::new(
-            (sample_8khz_offset..sample_8khz_end_offset).map(|x| {
-                (
-                    ((x as f32 * scaling_factor) as f64 / model.bitrate as f64),
-                    ((i8::from_ne_bytes([compressed_u8_8khz[x]]).to_ne_bytes())[0] as f64),
-                )
-            }),
-            compressed_style,
-        ))
-        .unwrap()
-        .label(compression_name)
-        .legend(move |(x, y)| {
-            Rectangle::new([(x - 5, y - 5), (x + 5, y + 5)], &Palette99::pick(2))
-        });
+    let compressed_style = Palette99::pick(plot_color_index).mix(0.9).stroke_width(8);
+
+    match model.compression_plot_mode {
+        CompressionChartMode::CurrentCompression => {
+            compressed_chart
+                .draw_series(LineSeries::new(
+                    (sample_8khz_offset..sample_8khz_end_offset).map(|x| {
+                        (
+                            ((x as f32 * scaling_factor) as f64 / model.bitrate as f64),
+                            ((i8::from_ne_bytes([compressed_u8_8khz[x]]).to_ne_bytes())[0] as f64),
+                        )
+                    }),
+                    compressed_style,
+                ))
+                .unwrap()
+                .label(compression_name)
+                .legend(move |(x, y)| {
+                    Rectangle::new(
+                        [(x - 5, y - 5), (x + 5, y + 5)],
+                        &Palette99::pick(plot_color_index),
+                    )
+                });
+        }
+        CompressionChartMode::Both => {
+            compressed_chart
+                .draw_series(LineSeries::new(
+                    (sample_8khz_offset..sample_8khz_end_offset).map(|x| {
+                        (
+                            ((x as f32 * scaling_factor) as f64 / model.bitrate as f64),
+                            ((i8::from_ne_bytes([model.compressed_u8_8khz_ulaw[x]]).to_ne_bytes())
+                                [0] as f64),
+                        )
+                    }),
+                    Palette99::pick(2).mix(0.9).stroke_width(8),
+                ))
+                .unwrap()
+                .label("ULaw")
+                .legend(move |(x, y)| {
+                    Rectangle::new([(x - 5, y - 5), (x + 5, y + 5)], &Palette99::pick(2))
+                });
+            compressed_chart
+                .draw_series(LineSeries::new(
+                    (sample_8khz_offset..sample_8khz_end_offset).map(|x| {
+                        (
+                            ((x as f32 * scaling_factor) as f64 / model.bitrate as f64),
+                            ((i8::from_ne_bytes([model.compressed_u8_8khz_alaw[x]]).to_ne_bytes())
+                                [0] as f64),
+                        )
+                    }),
+                    Palette99::pick(0).mix(0.9).stroke_width(8),
+                ))
+                .unwrap()
+                .label("Alaw")
+                .legend(move |(x, y)| {
+                    Rectangle::new([(x - 5, y - 5), (x + 5, y + 5)], &Palette99::pick(0))
+                });
+        }
+    };
 
     compressed_chart
         .configure_series_labels()
@@ -404,6 +456,14 @@ fn change_playback_speed(model: &mut Model, speed: f64) {
     }
 }
 
+fn update_compression_chart_mode_button(model: &Model) {
+    let button = model.change_compression_chart_mode.get().unwrap();
+    match model.compression_plot_mode {
+        CompressionChartMode::CurrentCompression => button.set_inner_text("Switch to Both"),
+        CompressionChartMode::Both => button.set_inner_text("Switch to Current Compression"),
+    }
+}
+
 fn update_compression_button(model: &Model) {
     let button = model.change_compression.get().unwrap();
     match model.compression {
@@ -459,6 +519,14 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             init_visualization(model);
         }
 
+        Msg::SwitchCompressionChartMode => {
+            model.compression_plot_mode = match model.compression_plot_mode {
+                CompressionChartMode::CurrentCompression => CompressionChartMode::Both,
+                CompressionChartMode::Both => CompressionChartMode::CurrentCompression,
+            };
+            update_compression_chart_mode_button(model);
+            draw_frame(model);
+        }
         Msg::SwitchCompression => {
             model.compression = match model.compression {
                 Compression::ULaw => Compression::ALaw,
