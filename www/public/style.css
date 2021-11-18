@@ -453,6 +453,10 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     transition-duration: 0.4s;
     cursor: pointer;
 }
+.playback-controls .compression-chart-mode-button {
+    width: 21em;
+    margin-right: 1em;
+}
 
 .playback-controls button:hover {
     background-color: #555555;
