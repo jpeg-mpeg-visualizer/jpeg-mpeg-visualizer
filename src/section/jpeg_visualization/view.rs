@@ -261,7 +261,7 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
 
 fn view_image_recovered(model: &Model) -> Node<GMsg> {
     div![
-        C!["image_view"],
+        C!["image_view image_recov_and_diff"],
         details![
             summary!["Recovered image and comparison"],
             canvas_labeled_div_with_overlay(
@@ -291,6 +291,37 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
                 None,
                 model.zoom
             ),
+            div![
+                C!["labeled_canvas_wrapper diff_scale_with_label_wrapper"],
+                label![
+                    C!["canvas_label"],
+                    "DIFF SCALE"
+                ],
+                div![
+                    C!["diff_scale_wrapper"],
+                    div![
+                        C!["diff_scale"],
+                        style![
+                            St::Width => px(32),
+                            St::Height => px(BLOCK_SIZE * model.zoom),
+                        ]
+                    ],
+                    div![
+                        C!["diff_scale_labels"],
+                        label![
+                            C!["diff_scale_upper_label"],
+                            "33%"
+                        ],
+                        label![
+                            C!["diff_scale_lower_label"],
+                            "0"
+                        ],
+                        style![
+                            St::Height => px(BLOCK_SIZE * model.zoom),
+                        ]
+                    ]
+                ],
+            ]
         ]
     ]
 }

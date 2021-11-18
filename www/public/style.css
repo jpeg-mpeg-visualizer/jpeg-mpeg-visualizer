@@ -126,6 +126,54 @@ body {
     color: #eeeeee;
 }
 
+.image_recov_and_diff details div:nth-child(4) label:after {
+    content: '?';
+    display: inline-block;
+    font-family: sans-serif;
+    font-weight: bold;
+    text-align: center;
+    width: 1.8ex;
+    height: 1.8ex;
+    line-height: 1.8ex;
+    border-radius: 1.2ex;
+    margin-left: 0.4em;
+    padding: 1px;
+    color: #4e4e4e;
+    background: white;
+    border: 1px solid #ffffff;
+    text-decoration: none;
+}
+.diff_scale_with_label_wrapper {
+    max-width: 10em;
+}
+.diff_scale_wrapper {
+    display: flex;
+    flex-direction: row;
+}
+.diff_scale {
+    display: inline-block;
+    background: linear-gradient(black, white);
+}
+.diff_scale_values {
+    background: linear-gradient(black, white);
+}
+.diff_scale_labels {
+    display: inline-block;
+    height: auto;
+    position: relative;
+    margin-left: 0.3em;
+}
+.diff_scale_labels label {
+    display: block;
+    font-size: 1.5em;
+    color: white;
+}
+.diff_scale_lower_label {
+    position: absolute;
+    bottom: 0;
+}
+
+
 input.sidebar_activator {
     display: none;
 }

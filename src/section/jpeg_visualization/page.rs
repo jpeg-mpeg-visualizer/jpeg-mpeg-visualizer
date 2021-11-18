@@ -833,6 +833,14 @@ fn draw_all(model: &mut Model) {
             &model.subsampling_pack,
             model.zoom,
         );
+        draw_block_choice_indicators(
+            &model.overlay_map,
+            &model.preview_overlay_map,
+            pack.chosen_block_x,
+            pack.chosen_block_y,
+            &model.subsampling_pack,
+            model.zoom,
+        );
     }
 }
 pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
