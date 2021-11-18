@@ -10,7 +10,6 @@ mod image;
 mod quant;
 mod section;
 
-const ZOOM: u32 = 8;
 const BLOCK_SIZE: u32 = 64;
 
 #[wasm_bindgen]
