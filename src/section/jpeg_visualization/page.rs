@@ -826,7 +826,7 @@ fn draw_all(model: &mut Model) {
             model.quality,
             model.zoom,
         );
-        draw_dct_quantized_plot(
+        draw_dct_quantized_plots(
             &pack,
             &model.plot_map,
             &model.chosen_block_plot_map,

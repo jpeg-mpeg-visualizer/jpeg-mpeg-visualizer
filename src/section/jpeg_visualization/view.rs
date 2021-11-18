@@ -185,7 +185,8 @@ pub fn view_dct_quantized_plots(model: &Model) -> Node<GMsg> {
                     .preview_overlay_map
                     .get(&PreviewCanvasName::YCbCrQuantPlots)
                     .unwrap(),
-                None
+                None,
+                model.zoom
             ),
             plot_labeled_div(
                 "Y QUANTIZED 3D CHOSEN BLOCK",
@@ -193,6 +194,7 @@ pub fn view_dct_quantized_plots(model: &Model) -> Node<GMsg> {
                     .chosen_block_plot_map
                     .get(&PlotName::YsQuant3d)
                     .unwrap(),
+                model.zoom
             ),
             plot_labeled_div(
                 "CB QUANTIZED 3D CHOSEN BLOCK",
@@ -200,6 +202,7 @@ pub fn view_dct_quantized_plots(model: &Model) -> Node<GMsg> {
                     .chosen_block_plot_map
                     .get(&PlotName::CbsQuant3d)
                     .unwrap(),
+                model.zoom
             ),
             plot_labeled_div(
                 "CR QUANTIZED 3D CHOSEN BLOCK",
@@ -207,6 +210,7 @@ pub fn view_dct_quantized_plots(model: &Model) -> Node<GMsg> {
                     .chosen_block_plot_map
                     .get(&PlotName::CrsQuant3d)
                     .unwrap(),
+                model.zoom
             ),
         ]
     ]
