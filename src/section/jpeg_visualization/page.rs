@@ -183,9 +183,9 @@ fn draw_block_choice_indicators(
     tmp_ctx_for_subsampling.begin_path();
     tmp_ctx_for_subsampling.set_line_width(line_width);
     tmp_ctx_for_subsampling.stroke_rect(
-        (start_x - (start_x as u32 % (8 * zoom * horiz_mult as u32)) as f64) / horiz_mult as f64
+        (start_x - (start_x as u32 % (8 * horiz_mult as u32)) as f64) * zoom as f64 / horiz_mult as f64
             - line_width / 2.0,
-        (start_y - (start_y as u32 % (8 * zoom * vert_mult as u32)) as f64) / vert_mult as f64
+        (start_y - (start_y as u32 % (8 * vert_mult as u32)) as f64) * zoom as f64 / vert_mult as f64
             - line_width / 2.0,
         8.0 * zoom as f64 + line_width / 2.0,
         8.0 * zoom as f64 + line_width / 2.0,
