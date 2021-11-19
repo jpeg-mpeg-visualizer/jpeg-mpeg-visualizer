@@ -67,6 +67,7 @@ pub fn init(url: Url) -> Option<Model> {
         preview_overlay_map,
         quality: 50,
         zoom: 7,
+        is_diff_info_shown: false,
         subsampling_pack,
     })
 }
@@ -357,7 +358,6 @@ fn draw_dct_quantized_plots(
     plot_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
     chosen_block_plot_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
     subsampling_pack: &SubsamplingPack,
-    zoom: u32,
 ) {
     let selected_x = pack.chosen_block_x as usize / 8;
     let selected_y = pack.chosen_block_y as usize / 8;
@@ -830,7 +830,6 @@ fn draw_all(model: &mut Model) {
             &model.plot_map,
             &model.chosen_block_plot_map,
             &model.subsampling_pack,
-            model.zoom,
         );
         draw_block_choice_indicators(
             &model.overlay_map,
@@ -874,11 +873,12 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
             draw_all(model);
         }
+        Msg::DiffInfoDisplayChanged => {
+            model.is_diff_info_shown = !model.is_diff_info_shown;
+        }
         Msg::ZoomUpdated(zoom) => {
-            if let State::ImageView(ref mut pack) = model.state {
-                model.zoom = zoom;
-                orders.after_next_render(|_| Msg::PostZoomUpdated);
-            }
+            model.zoom = zoom;
+            orders.after_next_render(|_| Msg::PostZoomUpdated);
         }
         Msg::PostZoomUpdated => {
             draw_all(model);
@@ -898,7 +898,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.plot_map,
                     &model.chosen_block_plot_map,
                     &model.subsampling_pack,
-                    model.zoom,
                 );
             }
         }
@@ -956,7 +955,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.plot_map,
                     &model.chosen_block_plot_map,
                     &model.subsampling_pack,
-                    model.zoom,
                 );
             }
         }
@@ -1004,7 +1002,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.plot_map,
                     &model.chosen_block_plot_map,
                     &model.subsampling_pack,
-                    model.zoom,
                 );
             }
         }
@@ -1047,7 +1044,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.plot_map,
                     &model.chosen_block_plot_map,
                     &model.subsampling_pack,
-                    model.zoom,
                 );
             }
         }

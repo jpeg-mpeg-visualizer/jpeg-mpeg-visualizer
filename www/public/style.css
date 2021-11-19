@@ -126,29 +126,14 @@ body {
     color: #eeeeee;
 }
 
-.image_recov_and_diff details div:nth-child(4) label:after {
-    content: '?';
-    display: inline-block;
-    font-family: sans-serif;
-    font-weight: bold;
-    text-align: center;
-    width: 1.8ex;
-    height: 1.8ex;
-    line-height: 1.8ex;
-    border-radius: 1.2ex;
-    margin-left: 0.4em;
-    padding: 1px;
-    color: #4e4e4e;
-    background: white;
-    border: 1px solid #ffffff;
-    text-decoration: none;
-}
 .diff_scale_with_label_wrapper {
     max-width: 10em;
 }
 .diff_scale_wrapper {
     display: flex;
     flex-direction: row;
+    justify-content: center;
+    text-align: center;
 }
 .diff_scale {
     display: inline-block;
@@ -523,7 +508,7 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .canvas_label {
     font-size: 1.5em;
     color:white;
-    margin: 5px 0;
+    margin: 0.4em 0;
 }
 .canvas_with_overlay_container {
     margin: 5px;
@@ -543,7 +528,40 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .canvas_overlay[src]{
     opacity: 1;
 }
-
+.label_span_wrapper {
+    position: relative;
+}
+.question_mark_span {
+    display: inline-block;
+    font-family: sans-serif;
+    font-weight: bold;
+    text-align: center;
+    justify-content: center;
+    width: 1.4em;
+    height: 1.4em;
+    font-size: 1.4em;
+    line-height: 1.4em;
+    border-radius: 1.4em;
+    margin-left: 0.4em;
+    padding: 1px;
+    color: #4e4e4e;
+    background: white;
+    border: none;
+    text-decoration: none;
+}
+.question_mark_span:hover {
+    cursor: pointer;
+}
+.info_overlay {
+    position: absolute;
+    background-color: white;
+    border: solid 3px gray;
+    border-radius: 8px;
+    padding: 5px;
+    color: black;
+    top: 30px;
+    z-index: 2;
+}
 
 /* MPEG */
 .mpeg-container {
