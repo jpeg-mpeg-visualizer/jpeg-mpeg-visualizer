@@ -261,7 +261,7 @@ fn view_ycbcr_recovered(model: &Model) -> Node<GMsg> {
 
 fn view_image_recovered(model: &Model) -> Node<GMsg> {
     div![
-        C!["image_view"],
+        C!["image_view image_recov_and_diff"],
         details![
             summary!["Recovered image and comparison"],
             canvas_labeled_div_with_overlay(
@@ -284,13 +284,71 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
                 None,
                 model.zoom
             ),
-            canvas_labeled_div_with_overlay(
-                "DIFFERENCE",
-                &model.canvas_map.get(&CanvasName::Difference).unwrap(),
-                &model.overlay_map.get(&CanvasName::Difference).unwrap(),
-                None,
-                model.zoom
+            labeled_canvas_wrapper(
+                BLOCK_SIZE * model.zoom,
+                div![
+                    C!["label_span_wrapper"],
+                    label![
+                        C!["canvas_label"],
+                        "DIFFERENCE"
+                    ],
+                    span![
+                        C!["question_mark_span"],
+                        "?",
+                        ev(Ev::Click, move |_| wrap(Msg::DiffInfoDisplayChanged)),
+                    ],
+                    div![
+                        C!["info_overlay"],
+                        "Difference for each pixel is percentage equal to sum of differences of (r,g,b) pixel values divided by max possible value (3 * 255)",
+                        style![
+                            St::Width => px(BLOCK_SIZE * model.zoom * 2 / 3),
+                            St::Left => px(BLOCK_SIZE * model.zoom / 6),
+                            St::FontSize => em(f64::max(1.0, model.zoom as f64 * 0.24)),
+                            St::Display => if model.is_diff_info_shown { "block" } else { "none" },
+                        ]
+                    ],
+                    style![
+                        St::Width => px(BLOCK_SIZE * model.zoom)
+                    ]
+                ],
+                canvas_with_overlay(
+                    &model.canvas_map.get(&CanvasName::Difference).unwrap(),
+                    &model.overlay_map.get(&CanvasName::Difference).unwrap(),
+                    None,
+                    model.zoom
+                ),
             ),
+            div![
+                C!["labeled_canvas_wrapper diff_scale_with_label_wrapper"],
+                label![
+                    C!["canvas_label"],
+                    "DIFF SCALE"
+                ],
+                div![
+                    C!["diff_scale_wrapper"],
+                    div![
+                        C!["diff_scale"],
+                        style![
+                            St::Width => px(32),
+                            St::Height => px(BLOCK_SIZE * model.zoom),
+                        ]
+                    ],
+                    div![
+                        C!["diff_scale_labels"],
+                        label![
+                            C!["diff_scale_upper_label"],
+                            "33%"
+                        ],
+                        label![
+                            C!["diff_scale_lower_label"],
+                            "0%"
+                        ],
+                        style![
+                            St::Height => px(BLOCK_SIZE * model.zoom),
+                        ]
+                    ]
+                ],
+            ]
         ]
     ]
 }
@@ -303,9 +361,6 @@ fn canvas_labeled_div_with_overlay(
     subsampling_pack_option: Option<&SubsamplingPack>,
     zoom: u32,
 ) -> Node<GMsg> {
-    let padding = 10;
-    let cloned_canvas_ref = canvas.clone();
-
     let mut width: u32 = BLOCK_SIZE * zoom;
     let mut height: u32 = BLOCK_SIZE * zoom;
 
@@ -322,44 +377,99 @@ fn canvas_labeled_div_with_overlay(
         None => {}
     }
 
+    labeled_canvas_wrapper(
+        BLOCK_SIZE * zoom,
+        div![
+            label![C!["canvas_label"], &label],
+            style![
+                St::Width => px(BLOCK_SIZE * zoom),
+            ]
+        ],
+        canvas_with_overlay_with_w_h(canvas, img, width, height, is_resizable_canvas),
+    )
+}
+fn labeled_canvas_wrapper(
+    width: u32,
+    label_element: Node<GMsg>,
+    content_element: Node<GMsg>,
+) -> Node<GMsg> {
+    let padding = 10;
+
     div![
         C!["labeled_canvas_wrapper"],
-        label![C!["canvas_label"], &label],
-        div![
-            C!["canvas_with_overlay_container"],
-            img![
-                C!["canvas_overlay"],
-                el_ref(&img),
-                attrs![
-                    At::Width => px(width),
-                    At::Height => px(height),
-                    At::Draggable => false,
-                ],
-                ev(Ev::Click, move |event: Event| {
-                    let mouse_event: MouseEvent = event.unchecked_into();
-                    let cloned_canvas = cloned_canvas_ref.get().unwrap();
-                    let canvas_rect = cloned_canvas.get_bounding_client_rect();
-                    wrap(Msg::BlockChosen(
-                        mouse_event.x(),
-                        mouse_event.y(),
-                        canvas_rect.left() as i32,
-                        canvas_rect.top() as i32,
-                        is_resizable_canvas,
-                    ))
-                }),
-            ],
-            canvas![
-                el_ref(&canvas),
-                attrs![
-                    At::Width => px(width),
-                    At::Height => px(height),
-                ],
-            ],
-        ],
+        label_element,
+        content_element,
         style![
             St::MaxWidth => px(width + padding * 2),
         ]
     ]
+}
+
+fn canvas_with_overlay_with_w_h(
+    canvas: &ElRef<HtmlCanvasElement>,
+    img: &ElRef<HtmlImageElement>,
+    width: u32,
+    height: u32,
+    is_resizable_canvas: bool,
+) -> Node<GMsg> {
+    let cloned_canvas_ref = canvas.clone();
+
+    div![
+        C!["canvas_with_overlay_container"],
+        img![
+            C!["canvas_overlay"],
+            el_ref(&img),
+            attrs![
+                At::Width => px(width),
+                At::Height => px(height),
+                At::Draggable => false,
+            ],
+            ev(Ev::Click, move |event: Event| {
+                let mouse_event: MouseEvent = event.unchecked_into();
+                let cloned_canvas = cloned_canvas_ref.get().unwrap();
+                let canvas_rect = cloned_canvas.get_bounding_client_rect();
+                wrap(Msg::BlockChosen(
+                    mouse_event.x(),
+                    mouse_event.y(),
+                    canvas_rect.left() as i32,
+                    canvas_rect.top() as i32,
+                    is_resizable_canvas,
+                ))
+            }),
+        ],
+        canvas![
+            el_ref(&canvas),
+            attrs![
+                At::Width => px(width),
+                At::Height => px(height),
+            ],
+        ],
+    ]
+}
+fn canvas_with_overlay(
+    canvas: &ElRef<HtmlCanvasElement>,
+    img: &ElRef<HtmlImageElement>,
+    // if canvas should not be subsampled, pass None
+    subsampling_pack_option: Option<&SubsamplingPack>,
+    zoom: u32,
+) -> Node<GMsg> {
+    let mut width: u32 = BLOCK_SIZE * zoom;
+    let mut height: u32 = BLOCK_SIZE * zoom;
+
+    let mut is_resizable_canvas: bool = false;
+
+    match subsampling_pack_option {
+        Some(subsampling_pack) => {
+            is_resizable_canvas = true;
+            width = width * subsampling_pack.a as u32 / subsampling_pack.j as u32;
+            if subsampling_pack.b == 0 {
+                height = height / 2;
+            }
+        }
+        None => {}
+    }
+
+    canvas_with_overlay_with_w_h(canvas, img, width, height, is_resizable_canvas)
 }
 
 fn plot_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>, zoom: u32) -> Node<GMsg> {

@@ -67,6 +67,7 @@ pub fn init(url: Url) -> Option<Model> {
         preview_overlay_map,
         quality: 50,
         zoom: 7,
+        is_diff_info_shown: false,
         subsampling_pack,
     })
 }
@@ -140,8 +141,8 @@ fn draw_block_choice_indicators(
     let line_width: f64 = (2 * zoom / 8) as f64;
     tmp_ctx.set_line_width(line_width);
     tmp_ctx.stroke_rect(
-        start_x - line_width / 2.0,
-        start_y - line_width / 2.0,
+        start_x * zoom as f64 - line_width / 2.0,
+        start_y * zoom as f64 - line_width / 2.0,
         8.0 * zoom as f64 + line_width / 2.0,
         8.0 * zoom as f64 + line_width / 2.0,
     );
@@ -182,9 +183,11 @@ fn draw_block_choice_indicators(
     tmp_ctx_for_subsampling.begin_path();
     tmp_ctx_for_subsampling.set_line_width(line_width);
     tmp_ctx_for_subsampling.stroke_rect(
-        (start_x - (start_x as u32 % (8 * zoom * horiz_mult as u32)) as f64) / horiz_mult as f64
+        (start_x - (start_x as u32 % (8 * horiz_mult as u32)) as f64) * zoom as f64
+            / horiz_mult as f64
             - line_width / 2.0,
-        (start_y - (start_y as u32 % (8 * zoom * vert_mult as u32)) as f64) / vert_mult as f64
+        (start_y - (start_y as u32 % (8 * vert_mult as u32)) as f64) * zoom as f64
+            / vert_mult as f64
             - line_width / 2.0,
         8.0 * zoom as f64 + line_width / 2.0,
         8.0 * zoom as f64 + line_width / 2.0,
@@ -357,10 +360,9 @@ fn draw_dct_quantized_plots(
     plot_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
     chosen_block_plot_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
     subsampling_pack: &SubsamplingPack,
-    zoom: u32,
 ) {
-    let selected_x = (pack.chosen_block_x / (zoom * 8) as f64) as usize;
-    let selected_y = (pack.chosen_block_y / (zoom * 8) as f64) as usize;
+    let selected_x = pack.chosen_block_x as usize / 8;
+    let selected_y = pack.chosen_block_y as usize / 8;
 
     draw_dct_quantized_plot(
         &pack.plot_data.get(&PlotName::YsQuant3d).unwrap(),
@@ -473,7 +475,6 @@ fn draw_dct_quantized_plot(
         .unwrap();
 
     // Now chart for the chosen block only
-
     let block = blocks[selected_x + selected_z * width].0;
     let canvas = chosen_block_canvas_map
         .get(&canvas_name)
@@ -831,6 +832,13 @@ fn draw_all(model: &mut Model) {
             &model.plot_map,
             &model.chosen_block_plot_map,
             &model.subsampling_pack,
+        );
+        draw_block_choice_indicators(
+            &model.overlay_map,
+            &model.preview_overlay_map,
+            pack.chosen_block_x,
+            pack.chosen_block_y,
+            &model.subsampling_pack,
             model.zoom,
         );
     }
@@ -867,6 +875,9 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
             draw_all(model);
         }
+        Msg::DiffInfoDisplayChanged => {
+            model.is_diff_info_shown = !model.is_diff_info_shown;
+        }
         Msg::ZoomUpdated(zoom) => {
             model.zoom = zoom;
             orders.after_next_render(|_| Msg::PostZoomUpdated);
@@ -889,7 +900,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.plot_map,
                     &model.chosen_block_plot_map,
                     &model.subsampling_pack,
-                    model.zoom,
                 );
             }
         }
@@ -918,8 +928,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
                 pack.image_window.start_x = image_x;
                 pack.image_window.start_y = image_y;
-                pack.chosen_block_x = -1.0;
-                pack.chosen_block_y = -1.0;
 
                 pack.ycbcr = pack.image_window.to_rgb_image().to_ycbcr_image();
 
@@ -949,7 +957,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.plot_map,
                     &model.chosen_block_plot_map,
                     &model.subsampling_pack,
-                    model.zoom,
                 );
             }
         }
@@ -979,14 +986,15 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                 ) as f64
                     * vert_mult as f64;
 
-                pack.chosen_block_x = start_x;
-                pack.chosen_block_y = start_y;
+                // chosen_block_x_y are coords if zoom was equal 1
+                pack.chosen_block_x = start_x / model.zoom as f64;
+                pack.chosen_block_y = start_y / model.zoom as f64;
 
                 draw_block_choice_indicators(
                     &model.overlay_map,
                     &model.preview_overlay_map,
-                    start_x,
-                    start_y,
+                    pack.chosen_block_x,
+                    pack.chosen_block_y,
                     &model.subsampling_pack,
                     model.zoom,
                 );
@@ -996,7 +1004,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.plot_map,
                     &model.chosen_block_plot_map,
                     &model.subsampling_pack,
-                    model.zoom,
                 );
             }
         }
@@ -1039,7 +1046,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.plot_map,
                     &model.chosen_block_plot_map,
                     &model.subsampling_pack,
-                    model.zoom,
                 );
             }
         }

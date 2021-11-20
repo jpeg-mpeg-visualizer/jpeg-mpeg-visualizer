@@ -46,6 +46,7 @@ pub enum Msg {
     BlockChosen(i32, i32, i32, i32, bool),
     SubsamplingRatioChanged(i8, i8, i8),
     PostSubsamplingRatioChanged,
+    DiffInfoDisplayChanged,
 }
 
 // ------ ------
@@ -117,5 +118,6 @@ pub struct Model {
 
     pub quality: u8,
     pub zoom: u32,
+    pub is_diff_info_shown: bool,
     pub subsampling_pack: SubsamplingPack,
 }
