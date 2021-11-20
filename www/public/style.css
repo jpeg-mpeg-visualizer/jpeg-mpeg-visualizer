@@ -500,6 +500,17 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     margin-left: 1em;
 }
 
+.canvas_column_wrapper {
+    display: inline-block;
+}
+
+.row_of_columns {
+    display: table;
+}
+.row_of_columns > div {
+    vertical-align: top;
+}
+
 .labeled_canvas_wrapper {
     display: inline-block;
     text-align: center;
@@ -512,11 +523,9 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 }
 .canvas_with_overlay_container {
     margin: 5px;
-}
-
-.canvas_with_overlay_container {
     display: inline-block;
 }
+
 .canvas_overlay {
     position: absolute;
     display: block;

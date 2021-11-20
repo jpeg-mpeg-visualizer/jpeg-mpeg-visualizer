@@ -91,7 +91,6 @@ pub enum PreviewCanvasName {
     Original,
     YCbCr,
     YCbCrQuant,
-    YCbCrQuantPlots,
     YCbCrRecovered,
     ForComparison,
 }
