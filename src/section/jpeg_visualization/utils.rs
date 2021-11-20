@@ -52,7 +52,6 @@ pub fn get_image_diff(img_a: &Vec<u8>, img_b: &Vec<u8>) -> Vec<u8> {
         let b_a = img_a[i + 2] as i16;
         let b_b = img_b[i + 2] as i16;
         let diff: i16 = (r_a - r_b).abs() + (g_a - g_b).abs() + (b_a - b_b).abs();
-        // theoretically diff can reach value of 255*3 but even 255 would be huge diff so I'll go with diff * 3 to be able to see those smaller diffs
         let val: u8 = 255 - cmp::min(diff, 255) as u8;
         res.push(val);
         res.push(val);
