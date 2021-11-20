@@ -130,6 +130,9 @@ fn draw_block_choice_indicators(
     subsampling_pack: &SubsamplingPack,
     zoom: u32,
 ) {
+    let horiz_mult: usize = horiz_mult_from_subsampling(&subsampling_pack);
+    let vert_mult: usize = vert_mult_from_subsampling(&subsampling_pack);
+
     let tmp_canvas = create_tmp_canvas();
     tmp_canvas.set_width(BLOCK_SIZE * zoom);
     tmp_canvas.set_height(BLOCK_SIZE * zoom);
@@ -138,14 +141,34 @@ fn draw_block_choice_indicators(
 
     tmp_ctx.begin_path();
     // We need to calculate offset of line_width so that all pixels of the image window are inside stroked rect (as in not covered by the lines)
-    let line_width: f64 = (2 * zoom / 8) as f64;
+    let line_width: f64 = 2.6 * zoom as f64 / 8.0;
     tmp_ctx.set_line_width(line_width);
+    let actual_start_x = (start_x - (start_x as usize % (8 * horiz_mult)) as f64) * zoom as f64;
+    let actual_start_y = (start_y - (start_y as usize % (8 * vert_mult)) as f64) * zoom as f64;
     tmp_ctx.stroke_rect(
-        start_x * zoom as f64 - line_width / 2.0,
-        start_y * zoom as f64 - line_width / 2.0,
-        8.0 * zoom as f64 + line_width / 2.0,
-        8.0 * zoom as f64 + line_width / 2.0,
+        actual_start_x - line_width / 2.0,
+        actual_start_y - line_width / 2.0,
+        8.0 * zoom as f64 * horiz_mult as f64 + line_width / 2.0,
+        8.0 * zoom as f64 * vert_mult as f64 + line_width / 2.0,
     );
+    tmp_ctx.set_line_width(zoom as f64 / 8.0);
+    for i in 1..horiz_mult {
+        let line_start_x = actual_start_x + 8.0 * i as f64 * zoom as f64;
+        tmp_ctx.move_to(line_start_x, actual_start_y);
+        tmp_ctx.line_to(
+            line_start_x,
+            actual_start_y + 8.0 * zoom as f64 * vert_mult as f64,
+        );
+    }
+    for i in 1..vert_mult {
+        let line_start_y = actual_start_y + 8.0 * i as f64 * zoom as f64;
+        tmp_ctx.move_to(actual_start_x, line_start_y);
+        tmp_ctx.line_to(
+            actual_start_x + 8.0 * zoom as f64 * horiz_mult as f64,
+            line_start_y,
+        );
+    }
+    tmp_ctx.stroke();
 
     let overlay_map_cloned = overlay_map.clone();
     let preview_overlay_map_cloned = preview_overlay_map.clone();
@@ -171,9 +194,6 @@ fn draw_block_choice_indicators(
         .unwrap();
 
     let tmp_canvas_for_subsampling = create_tmp_canvas();
-
-    let horiz_mult: usize = horiz_mult_from_subsampling(&subsampling_pack);
-    let vert_mult: usize = vert_mult_from_subsampling(&subsampling_pack);
 
     tmp_canvas_for_subsampling.set_width(BLOCK_SIZE * zoom / horiz_mult as u32);
     tmp_canvas_for_subsampling.set_height(BLOCK_SIZE * zoom / vert_mult as u32);
@@ -364,6 +384,9 @@ fn draw_dct_quantized_plots(
     let selected_x = pack.chosen_block_x as usize / 8;
     let selected_y = pack.chosen_block_y as usize / 8;
 
+    let horiz_mult: usize = horiz_mult_from_subsampling(&subsampling_pack);
+    let vert_mult: usize = vert_mult_from_subsampling(&subsampling_pack);
+
     draw_dct_quantized_plot(
         &pack.plot_data.get(&PlotName::YsQuant3d).unwrap(),
         selected_x,
@@ -371,9 +394,11 @@ fn draw_dct_quantized_plots(
         plot_map,
         chosen_block_plot_map,
         PlotName::YsQuant3d,
+        horiz_mult,
+        vert_mult,
     );
-    let subsampled_x: usize = get_subsampled_block_index_x(selected_x, &subsampling_pack);
-    let subsampled_y: usize = get_subsampled_block_index_y(selected_y, &subsampling_pack);
+    let subsampled_x: usize = selected_x / horiz_mult;
+    let subsampled_y: usize = selected_y / vert_mult;
     draw_dct_quantized_plot(
         &pack.plot_data.get(&PlotName::CbsQuant3d).unwrap(),
         subsampled_x,
@@ -381,6 +406,8 @@ fn draw_dct_quantized_plots(
         plot_map,
         chosen_block_plot_map,
         PlotName::CbsQuant3d,
+        1,
+        1,
     );
     draw_dct_quantized_plot(
         &pack.plot_data.get(&PlotName::CrsQuant3d).unwrap(),
@@ -389,17 +416,12 @@ fn draw_dct_quantized_plots(
         plot_map,
         chosen_block_plot_map,
         PlotName::CrsQuant3d,
+        1,
+        1,
     );
 }
-fn get_subsampled_block_index_x(selected_x: usize, subsampling_pack: &SubsamplingPack) -> usize {
-    let horiz_mult: usize = horiz_mult_from_subsampling(&subsampling_pack);
-    return selected_x / horiz_mult;
-}
-fn get_subsampled_block_index_y(selected_y: usize, subsampling_pack: &SubsamplingPack) -> usize {
-    let vert_mult: usize = vert_mult_from_subsampling(&subsampling_pack);
-    return selected_y / vert_mult;
-}
 
+#[allow(clippy::too_many_arguments)]
 fn draw_dct_quantized_plot(
     data: &BlockMatrix,
     selected_x: usize,
@@ -407,6 +429,8 @@ fn draw_dct_quantized_plot(
     canvas_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
     chosen_block_canvas_map: &HashMap<PlotName, ElRef<HtmlCanvasElement>>,
     canvas_name: PlotName,
+    horiz_blocks: usize,
+    vert_blocks: usize,
 ) {
     let width: usize = data.width;
     let height: usize = data.height;
@@ -460,7 +484,11 @@ fn draw_dct_quantized_plot(
                             .to_rgba()
                     };
 
-                    let edge = if block_x == selected_x && block_z == selected_z {
+                    let edge = if block_x - (block_x % horiz_blocks)
+                        == (selected_x / horiz_blocks) * horiz_blocks
+                        && block_z - (block_z % vert_blocks)
+                            == (selected_z / vert_blocks) * vert_blocks
+                    {
                         YELLOW.to_rgba()
                     } else {
                         if value == 0 {
@@ -475,7 +503,6 @@ fn draw_dct_quantized_plot(
         .unwrap();
 
     // Now chart for the chosen block only
-    let block = blocks[selected_x + selected_z * width].0;
     let canvas = chosen_block_canvas_map
         .get(&canvas_name)
         .unwrap()
@@ -487,16 +514,20 @@ fn draw_dct_quantized_plot(
 
     area.fill(&RGBColor(113, 113, 114)).unwrap();
 
-    let key_points_x = (0..9).collect::<Vec<i32>>();
-    let key_points_z = (0..9).collect::<Vec<i32>>();
+    let key_points_x = (0..9i32)
+        .map(|x| x * horiz_blocks as i32)
+        .collect::<Vec<i32>>();
+    let key_points_z = (0..9i32)
+        .map(|x| x * vert_blocks as i32)
+        .collect::<Vec<i32>>();
     let key_points_y = (0..5).map(|x| x as i32 * 64).collect::<Vec<i32>>();
 
     let mut chart = ChartBuilder::on(&area)
         .margin(40)
         .build_cartesian_3d(
-            (0i32..8i32).with_key_points(key_points_x),
+            (0i32..(8 * horiz_blocks) as i32).with_key_points(key_points_x),
             (0i32..256i32).with_key_points(key_points_y),
-            (0i32..8i32).with_key_points(key_points_z),
+            (0i32..(8 * vert_blocks) as i32).with_key_points(key_points_z),
         )
         .unwrap();
 
@@ -509,13 +540,21 @@ fn draw_dct_quantized_plot(
 
     chart.configure_axes().draw().unwrap();
 
+    let block_x = selected_x - selected_x % horiz_blocks;
+    let block_z = selected_z - selected_z % horiz_blocks;
+
     chart
         .draw_series(
-            (0i32..8i32)
-                .map(|x| std::iter::repeat(x).zip(0i32..8i32))
+            (0i32..(8 * horiz_blocks) as i32)
+                .map(|x| std::iter::repeat(x).zip(0i32..(8 * vert_blocks) as i32))
                 .flatten()
                 .map(|(x, z)| {
-                    let value = (block[z as usize][x as usize]).abs().clamp(0, 255) as i32;
+                    let block =
+                        blocks[block_x + x as usize / 8 + (block_z + z as usize / 8) * width].0;
+
+                    let value = (block[(z % 8) as usize][(x % 8) as usize])
+                        .abs()
+                        .clamp(0, 255) as i32;
                     let face = if value == 0 {
                         TRANSPARENT
                     } else {
@@ -751,7 +790,7 @@ fn draw_input_selection_indicator(
     let tmp_ctx = canvas_context_2d(&tmp_canvas);
 
     // We need to calculate offset of line_width so that all pixels of the image window are inside stroked rect (as in not covered by the lines)
-    let line_width: i32 = (4 * zoom / 8) as i32;
+    let line_width: i32 = (4.4 * zoom as f64 / 8.0) as i32;
     let rect_a =
         (((overlay_image.height() * BLOCK_SIZE) / image.height()) as i32 + line_width) as f64;
     let rect_x = cmp::max(
