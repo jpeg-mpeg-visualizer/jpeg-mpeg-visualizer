@@ -117,101 +117,100 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
         C!["image_view"],
         details![
             summary!["DCT Quantized"],
-            canvas_labeled_div_with_overlay(
-                "INPUT",
-                &model
-                    .preview_canvas_map
-                    .get(&PreviewCanvasName::YCbCrQuant)
-                    .unwrap(),
-                &model
-                    .preview_overlay_map
-                    .get(&PreviewCanvasName::YCbCrQuant)
-                    .unwrap(),
-                None,
-                model.zoom
-            ),
-            canvas_labeled_div_with_overlay(
-                "Y QUANTIZED",
-                &model.canvas_map.get(&CanvasName::YsQuant).unwrap(),
-                &model.overlay_map.get(&CanvasName::YsQuant).unwrap(),
-                None,
-                model.zoom
-            ),
-            canvas_labeled_div_with_overlay(
-                "CB QUANTIZED",
-                &model.canvas_map.get(&CanvasName::CbsQuant).unwrap(),
-                &model.overlay_map.get(&CanvasName::CbsQuant).unwrap(),
-                Some(&model.subsampling_pack),
-                model.zoom
-            ),
-            canvas_labeled_div_with_overlay(
-                "CR QUANTIZED",
-                &model.canvas_map.get(&CanvasName::CrsQuant).unwrap(),
-                &model.overlay_map.get(&CanvasName::CrsQuant).unwrap(),
-                Some(&model.subsampling_pack),
-                model.zoom
-            ),
-            plot_labeled_div(
-                "Y QUANTIZED 3D",
-                &model.plot_map.get(&PlotName::YsQuant3d).unwrap(),
-                model.zoom
-            ),
-            plot_labeled_div(
-                "CB QUANTIZED 3D",
-                &model.plot_map.get(&PlotName::CbsQuant3d).unwrap(),
-                model.zoom
-            ),
-            plot_labeled_div(
-                "CR QUANTIZED 3D",
-                &model.plot_map.get(&PlotName::CrsQuant3d).unwrap(),
-                model.zoom
-            ),
-        ]
-    ]
-}
-
-pub fn view_dct_quantized_plots(model: &Model) -> Node<GMsg> {
-    div![
-        C!["image_view"],
-        details![
-            summary!["DCT Quantized Plots"],
-            canvas_labeled_div_with_overlay(
-                "INPUT",
-                &model
-                    .preview_canvas_map
-                    .get(&PreviewCanvasName::YCbCrQuantPlots)
-                    .unwrap(),
-                &model
-                    .preview_overlay_map
-                    .get(&PreviewCanvasName::YCbCrQuantPlots)
-                    .unwrap(),
-                None,
-                model.zoom
-            ),
-            plot_labeled_div(
-                "Y QUANTIZED 3D CHOSEN BLOCK",
-                &model
-                    .chosen_block_plot_map
-                    .get(&PlotName::YsQuant3d)
-                    .unwrap(),
-                model.zoom
-            ),
-            plot_labeled_div(
-                "CB QUANTIZED 3D CHOSEN BLOCK",
-                &model
-                    .chosen_block_plot_map
-                    .get(&PlotName::CbsQuant3d)
-                    .unwrap(),
-                model.zoom
-            ),
-            plot_labeled_div(
-                "CR QUANTIZED 3D CHOSEN BLOCK",
-                &model
-                    .chosen_block_plot_map
-                    .get(&PlotName::CrsQuant3d)
-                    .unwrap(),
-                model.zoom
-            ),
+            div![
+                C!["row_of_columns"],
+                canvas_labeled_div_with_overlay(
+                    "INPUT",
+                    &model
+                        .preview_canvas_map
+                        .get(&PreviewCanvasName::YCbCrQuant)
+                        .unwrap(),
+                    &model
+                        .preview_overlay_map
+                        .get(&PreviewCanvasName::YCbCrQuant)
+                        .unwrap(),
+                    None,
+                    model.zoom
+                ),
+                div![
+                    C!["canvas_column_wrapper"],
+                    canvas_labeled_div_with_overlay(
+                        "Y QUANTIZED",
+                        &model.canvas_map.get(&CanvasName::YsQuant).unwrap(),
+                        &model.overlay_map.get(&CanvasName::YsQuant).unwrap(),
+                        None,
+                        model.zoom
+                    ),
+                    plot_labeled_div(
+                        "Y QUANTIZED 3D",
+                        &model.plot_map.get(&PlotName::YsQuant3d).unwrap(),
+                        model.zoom
+                    ),
+                    plot_labeled_div(
+                        "Y QUANTIZED 3D CHOSEN BLOCK",
+                        &model
+                            .chosen_block_plot_map
+                            .get(&PlotName::YsQuant3d)
+                            .unwrap(),
+                        model.zoom
+                    ),
+                    style![
+                        St::MaxWidth => px(BLOCK_SIZE * model.zoom + 20)
+                    ]
+                ],
+                div![
+                    C!["canvas_column_wrapper"],
+                    canvas_labeled_div_with_overlay(
+                        "CB QUANTIZED",
+                        &model.canvas_map.get(&CanvasName::CbsQuant).unwrap(),
+                        &model.overlay_map.get(&CanvasName::CbsQuant).unwrap(),
+                        Some(&model.subsampling_pack),
+                        model.zoom
+                    ),
+                    plot_labeled_div(
+                        "CB QUANTIZED 3D",
+                        &model.plot_map.get(&PlotName::CbsQuant3d).unwrap(),
+                        model.zoom
+                    ),
+                    plot_labeled_div(
+                        "CB QUANTIZED 3D CHOSEN BLOCK",
+                        &model
+                            .chosen_block_plot_map
+                            .get(&PlotName::CbsQuant3d)
+                            .unwrap(),
+                        model.zoom
+                    ),
+                    style![
+                        St::MaxWidth => px(BLOCK_SIZE * model.zoom + 20)
+                    ]
+                ],
+                div![
+                    C!["canvas_column_wrapper"],
+                    canvas_labeled_div_with_overlay(
+                        "CR QUANTIZED",
+                        &model.canvas_map.get(&CanvasName::CrsQuant).unwrap(),
+                        &model.overlay_map.get(&CanvasName::CrsQuant).unwrap(),
+                        Some(&model.subsampling_pack),
+                        model.zoom
+                    ),
+                    plot_labeled_div(
+                        "CR QUANTIZED 3D",
+                        &model.plot_map.get(&PlotName::CrsQuant3d).unwrap(),
+                        model.zoom
+                    ),
+                    plot_labeled_div(
+                        "CR QUANTIZED 3D CHOSEN BLOCK",
+                        &model
+                            .chosen_block_plot_map
+                            .get(&PlotName::CrsQuant3d)
+                            .unwrap(),
+                        model.zoom
+                    ),
+                    style![
+                        St::MaxWidth => px(BLOCK_SIZE * model.zoom + 20)
+                    ]
+                ],
+            ],
         ]
     ]
 }
@@ -605,7 +604,6 @@ pub fn view_jpeg_visualization(model: &Model) -> Node<GMsg> {
         view_image_preview(&model),
         view_ycbcr(&model),
         view_dct_quantized(&model),
-        view_dct_quantized_plots(&model),
         view_ycbcr_recovered(&model),
         view_image_recovered(&model)
     ]
