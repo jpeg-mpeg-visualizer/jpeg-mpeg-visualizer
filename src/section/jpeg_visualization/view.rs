@@ -400,6 +400,8 @@ fn labeled_canvas_wrapper(
         content_element,
         style![
             St::MaxWidth => px(width + padding * 2),
+            // TODO: Instead of that put dct divs into a table
+            St::MinHeight => px(width),
         ]
     ]
 }
