@@ -1,9 +1,14 @@
+use std::rc::Rc;
+
 use seed::prelude::RenderInfo;
 use seed::prelude::*;
+use strum_macros::EnumIter;
 use web_sys::{
     AudioBuffer, AudioBufferSourceNode, AudioContext, GainNode, HtmlButtonElement,
     HtmlCanvasElement, HtmlDivElement,
 };
+
+use super::spectrogram::Spectrogram;
 
 #[derive(Clone)]
 pub enum PlayBackState {
@@ -32,6 +37,13 @@ pub enum CompressionChartMode {
 }
 
 pub enum Compression {
+    ULaw,
+    ALaw,
+}
+
+#[derive(Copy, Clone, EnumIter, PartialEq)]
+pub enum ChoosenSpectrogram {
+    Original,
     ULaw,
     ALaw,
 }
@@ -141,6 +153,8 @@ pub enum Msg {
     FrameUpdate(RenderInfo),
     Seek(i32),
     SpeedChanged(String),
+    SpectogramRequested(ChoosenSpectrogram),
+    UpsampledDecompressedAudio(Vec<i16>, Vec<i16>),
 }
 
 // ------ ------
@@ -171,11 +185,12 @@ pub struct Model {
 
     pub original_buffer: Option<AudioBuffer>,
     pub buffer_8khz: Option<AudioBuffer>,
-    pub decompressed_buffer_ulaw: Option<AudioBuffer>,
-    pub decompressed_buffer_alaw: Option<AudioBuffer>,
+    pub decompressed_buffer_ulaw: Rc<Option<AudioBuffer>>,
+    pub decompressed_buffer_alaw: Rc<Option<AudioBuffer>>,
 
     pub pcm_preview: ElRef<HtmlCanvasElement>,
     pub compressed_audio_preview: ElRef<HtmlCanvasElement>,
+    pub spectrogram_canvas: ElRef<HtmlCanvasElement>,
     pub progress_bar: ElRef<HtmlDivElement>,
     pub current_time: ElRef<HtmlDivElement>,
     pub player_wrapper: ElRef<HtmlDivElement>,
@@ -187,4 +202,11 @@ pub struct Model {
     pub audio_context: Option<AudioContext>,
     pub gain_node: Option<GainNode>,
     pub audio_source: Option<AudioBufferSourceNode>,
+
+    pub pcm_i16_ulaw: Vec<i16>,
+    pub pcm_i16_alaw: Vec<i16>,
+    pub choosen_spectrogram: Option<ChoosenSpectrogram>,
+    pub cached_spectrogram_original: Option<Spectrogram>,
+    pub cached_spectrogram_ulaw: Option<Spectrogram>,
+    pub cached_spectrogram_alaw: Option<Spectrogram>,
 }

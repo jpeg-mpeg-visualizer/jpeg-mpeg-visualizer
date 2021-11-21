@@ -17,6 +17,8 @@ gloo-events = "0.1.1"
 bitvec = "0.22.3"
 strum = "0.22.0"
 strum_macros = "0.22"
+rustfft = "6.0.1"
+colorous = "1.0.5"
 
 #plots support
 plotters = "0.3.1"

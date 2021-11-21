@@ -3,6 +3,8 @@ use plotters_canvas::CanvasBackend;
 use seed::prelude::*;
 use seed::struct_urls;
 use seed::virtual_dom::ElRef;
+use std::ops::Deref;
+use std::rc::Rc;
 use std::str::FromStr;
 use web_sys::{
     window, AudioBufferSourceNode, AudioBufferSourceOptions, AudioContext, HtmlButtonElement,
@@ -13,7 +15,9 @@ use super::audio_visualizer_template::view_audio_visualizer;
 use super::file_chooser_template::view_file_chooser;
 use super::loading_spinner_template::view_loading_spinner;
 use super::model::*;
+use super::spectrogram::Spectrogram;
 use super::utils;
+use super::utils::get_upsampled_pcm;
 use crate::codec::g711::{alaw, ulaw, SoundDecoder, SoundEncoder};
 use crate::section::g711_visualization::model::State::LoadingSpinnerView;
 use crate::Msg as GMsg;
@@ -48,11 +52,12 @@ pub fn init(url: Url) -> Option<Model> {
 
         original_buffer: None,
         buffer_8khz: None,
-        decompressed_buffer_ulaw: None,
-        decompressed_buffer_alaw: None,
+        decompressed_buffer_ulaw: Rc::new(None),
+        decompressed_buffer_alaw: Rc::new(None),
 
         pcm_preview: ElRef::<HtmlCanvasElement>::default(),
         compressed_audio_preview: ElRef::<HtmlCanvasElement>::default(),
+        spectrogram_canvas: ElRef::<HtmlCanvasElement>::default(),
         progress_bar: ElRef::<HtmlDivElement>::default(),
         current_time: ElRef::<HtmlDivElement>::default(),
         player_wrapper: ElRef::<HtmlDivElement>::default(),
@@ -64,6 +69,13 @@ pub fn init(url: Url) -> Option<Model> {
         gain_node: None,
         audio_context: None,
         audio_source: None,
+
+        pcm_i16_ulaw: Vec::new(),
+        pcm_i16_alaw: Vec::new(),
+        choosen_spectrogram: None,
+        cached_spectrogram_original: None,
+        cached_spectrogram_alaw: None,
+        cached_spectrogram_ulaw: None,
     })
 }
 
@@ -155,8 +167,8 @@ fn init_audio(model: &mut Model) {
         .unwrap();
 
     model.original_buffer = Some(original_buffer);
-    model.decompressed_buffer_ulaw = Some(buffer_8khz_ulaw);
-    model.decompressed_buffer_alaw = Some(buffer_8khz_alaw);
+    model.decompressed_buffer_ulaw = Rc::new(Some(buffer_8khz_ulaw));
+    model.decompressed_buffer_alaw = Rc::new(Some(buffer_8khz_alaw));
 
     model.audio_context = Some(context);
     model.gain_node = Some(gain_node);
@@ -388,10 +400,14 @@ fn play_audio(model: &mut Model) {
         }
         PlaybackSource::Processed => match model.compression {
             Compression::ULaw => {
-                source_node.set_buffer(Some(model.decompressed_buffer_ulaw.as_ref().unwrap()));
+                source_node.set_buffer(Some(
+                    model.decompressed_buffer_ulaw.deref().as_ref().unwrap(),
+                ));
             }
             Compression::ALaw => {
-                source_node.set_buffer(Some(model.decompressed_buffer_alaw.as_ref().unwrap()));
+                source_node.set_buffer(Some(
+                    model.decompressed_buffer_alaw.deref().as_ref().unwrap(),
+                ));
             }
         },
     }
@@ -504,6 +520,15 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.length_8khz = lenght_8khz;
             model.state = State::PreAudioView;
             init_audio(model);
+
+            let cloned_ulaw_buffer = model.decompressed_buffer_ulaw.clone();
+            let cloned_alaw_buffer = model.decompressed_buffer_alaw.clone();
+            orders.perform_cmd(async {
+                let upsampled_ulaw = get_upsampled_pcm(cloned_ulaw_buffer, 44100.0).await;
+                let upsampled_alaw = get_upsampled_pcm(cloned_alaw_buffer, 44100.0).await;
+                Msg::UpsampledDecompressedAudio(upsampled_ulaw, upsampled_alaw)
+            });
+
             orders.after_next_render(|_| Msg::AudioLoaded);
         }
         Msg::AudioLoaded => {
@@ -578,6 +603,36 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::Seek(offset) => {
             seek_audio(model, offset);
             draw_frame(model);
+        }
+        Msg::SpectogramRequested(choosen_spectrogram) => {
+            model.choosen_spectrogram = Some(choosen_spectrogram);
+            let spectrogram = match choosen_spectrogram {
+                ChoosenSpectrogram::Original => {
+                    let pcm = &model.pcm_i16;
+                    model
+                        .cached_spectrogram_original
+                        .get_or_insert_with(|| Spectrogram::new(pcm))
+                }
+                ChoosenSpectrogram::ULaw => {
+                    let pcm = &model.pcm_i16_ulaw;
+                    model
+                        .cached_spectrogram_ulaw
+                        .get_or_insert_with(|| Spectrogram::new(pcm))
+                }
+                ChoosenSpectrogram::ALaw => {
+                    let pcm = &model.pcm_i16_alaw;
+                    model
+                        .cached_spectrogram_alaw
+                        .get_or_insert_with(|| Spectrogram::new(pcm))
+                }
+            };
+
+            let canvas = model.spectrogram_canvas.get().unwrap();
+            spectrogram.draw_spectrogram(canvas);
+        }
+        Msg::UpsampledDecompressedAudio(ulaw, alaw) => {
+            model.pcm_i16_ulaw = ulaw;
+            model.pcm_i16_alaw = alaw;
         }
     }
 }
