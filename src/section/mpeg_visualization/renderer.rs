@@ -58,7 +58,8 @@ impl Renderer {
         }
     }
 
-    pub fn render_frame(&mut self, frame: &DecodedFrame, control_state: &ControlState) {
+    pub fn render_frame(&mut self, decoded_frame: &DecodedFrame, control_state: &ControlState) {
+        let frame = &decoded_frame.frame;
         let canvas = self.canvas.get().unwrap();
         if (frame.width, frame.height) != (self.width, self.height) {
             self.resize(frame.width, frame.height);
@@ -71,7 +72,7 @@ impl Renderer {
         } = control_state;
 
         let (s_y, s_cb, s_cr) = if *skipped && *moved && *intra {
-            (&frame.y, &frame.cb, &frame.cr)
+            (&frame.current.y, &frame.current.cb, &frame.current.cr)
         } else {
             self.y.clear();
             self.cb.clear();
@@ -85,37 +86,37 @@ impl Renderer {
 
             for i in 0..self.y.len() {
                 if *skipped {
-                    self.y[i] += frame.skipped_y[i];
+                    self.y[i] += frame.skipped.y[i];
                 }
                 if *moved {
-                    self.y[i] += frame.moved_y[i];
+                    self.y[i] += frame.moved.y[i];
                 }
                 if *intra {
-                    self.y[i] += frame.intra_y[i];
+                    self.y[i] += frame.intra.y[i];
                 }
             }
 
             for i in 0..self.cb.len() {
                 if *skipped {
-                    self.cb[i] += frame.skipped_cb[i];
+                    self.cb[i] += frame.skipped.cb[i];
                 }
                 if *moved {
-                    self.cb[i] += frame.moved_cb[i];
+                    self.cb[i] += frame.moved.cb[i];
                 }
                 if *intra {
-                    self.cb[i] += frame.intra_cb[i];
+                    self.cb[i] += frame.intra.cb[i];
                 }
             }
 
             for i in 0..self.cr.len() {
                 if *skipped {
-                    self.cr[i] += frame.skipped_cr[i];
+                    self.cr[i] += frame.skipped.cr[i];
                 }
                 if *moved {
-                    self.cr[i] += frame.moved_cr[i];
+                    self.cr[i] += frame.moved.cr[i];
                 }
                 if *intra {
-                    self.cr[i] += frame.intra_cr[i];
+                    self.cr[i] += frame.intra.cr[i];
                 }
             }
 
@@ -190,8 +191,9 @@ impl Renderer {
         self.cr.resize(width as usize * height as usize / 4, 0);
     }
 
-    pub fn render_macroblock(&self, frame: &DecodedFrame, macroblock_index: usize) {
+    pub fn render_macroblock(&self, decoded_frame: &DecodedFrame, macroblock_index: usize) {
         let mut buffer = [123u8; 64];
+        let frame = &decoded_frame.frame;
 
         let macroblock_width = (self.width as usize + 15) / 16;
         let y = (macroblock_index / macroblock_width) * 16;
@@ -199,19 +201,19 @@ impl Renderer {
         let chroma_y = y / 2;
         let chroma_x = x / 2;
 
-        self.get_block(x, y, &mut buffer, &frame.y, macroblock_width);
+        self.get_block(x, y, &mut buffer, &frame.current.y, macroblock_width);
         Self::render_channel(&self.canvas_y1, &buffer, ChannelType::Y);
-        self.get_block(x + 8, y, &mut buffer, &frame.y, macroblock_width);
+        self.get_block(x + 8, y, &mut buffer, &frame.current.y, macroblock_width);
         Self::render_channel(&self.canvas_y2, &buffer, ChannelType::Y);
-        self.get_block(x, y + 8, &mut buffer, &frame.y, macroblock_width);
+        self.get_block(x, y + 8, &mut buffer, &frame.current.y, macroblock_width);
         Self::render_channel(&self.canvas_y3, &buffer, ChannelType::Y);
-        self.get_block(x + 8, y + 8, &mut buffer, &frame.y, macroblock_width);
+        self.get_block(x + 8, y + 8, &mut buffer, &frame.current.y, macroblock_width);
         Self::render_channel(&self.canvas_y4, &buffer, ChannelType::Y);
         self.get_block(
             chroma_x,
             chroma_y,
             &mut buffer,
-            &frame.cb,
+            &frame.current.cb,
             macroblock_width / 2,
         );
         Self::render_channel(&self.canvas_cb, &buffer, ChannelType::Cb);
@@ -219,7 +221,7 @@ impl Renderer {
             chroma_x,
             chroma_y,
             &mut buffer,
-            &frame.cr,
+            &frame.current.cr,
             macroblock_width / 2,
         );
         Self::render_channel(&self.canvas_cr, &buffer, ChannelType::Cr);

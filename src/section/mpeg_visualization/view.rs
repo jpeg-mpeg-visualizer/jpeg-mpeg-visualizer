@@ -128,16 +128,17 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                 div![
                     C!["frame-info"],
                     IF!(not(model.frames.is_empty()) => {
-                        let frame = &model.frames[model.selected_frame];
+                        let decoded_frame = &model.frames[model.selected_frame];
+                        let frame = &decoded_frame.frame;
                         vec![
                             h3![format!("Frame #{}", model.selected_frame + 1)],
-                            p!["type: ", strong![get_frame_type(frame.picture_type, false)]],
+                            p!["type: ", strong![get_frame_type(decoded_frame.picture_type, false)]],
                             p!["width: ", strong![frame.width.to_string()]],
                             p!["height: ", strong![frame.height.to_string()]],
-                            p!["size: ", strong![format!("{:.2} KB", frame.size as f32 / 1000.0 / 8.0)]],
+                            p!["size: ", strong![format!("{:.2} KB", decoded_frame.size as f32 / 1000.0 / 8.0)]],
                             h4!["Additional information"],
-                            p!["# of macroblocks: ", strong![frame.macroblock_count.to_string()]],
-                            p!["# of blocks: ", strong![frame.block_count.to_string()]],
+                            p!["# of macroblocks: ", strong![decoded_frame.macroblock_count.to_string()]],
+                            p!["# of blocks: ", strong![decoded_frame.block_count.to_string()]],
                         ]
                     })
                 ],
@@ -177,7 +178,7 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                     div![IF!(model.selected_macroblock.is_some() => {
                         let macroblock_address = model.selected_macroblock.unwrap();
                         let selected_frame = &model.frames[model.selected_frame];
-                        let macroblock_width = (selected_frame.width + 15) / 16;
+                        let macroblock_width = (selected_frame.frame.width + 15) / 16;
                         let macroblock_y = macroblock_address / macroblock_width as usize;
                         let macroblock_x = macroblock_address % macroblock_width as usize;
                         let MacroblockInfo {

@@ -126,7 +126,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .render_frame(&model.frames[model.selected_frame], &model.control_state);
         }
         Msg::CanvasClicked(mouse_x, mouse_y) => {
-            let mb_width = (model.frames[model.selected_frame].width as usize + 15) / 16;
+            let mb_width = (model.frames[model.selected_frame].frame.width as usize + 15) / 16;
             let macroblock_address = (mouse_y / 16) * mb_width + (mouse_x / 16);
             model.selected_macroblock = Some(macroblock_address);
             model
