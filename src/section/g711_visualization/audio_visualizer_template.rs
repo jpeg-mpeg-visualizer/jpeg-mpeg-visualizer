@@ -1,8 +1,9 @@
 use seed::prelude::*;
-use seed::{attrs, button, canvas, div, option, select, style, unit, C, IF};
+use seed::{attrs, button, canvas, div, h2, option, select, style, unit, C, IF};
+use strum::IntoEnumIterator;
 use web_sys::MouseEvent;
 
-use super::model::{Model, Msg};
+use super::model::{ChoosenSpectrogram, Model, Msg};
 use super::page::wrap;
 use crate::Msg as GMsg;
 
@@ -133,6 +134,35 @@ pub fn view_audio_visualizer(model: &Model) -> Node<GMsg> {
                 C!["player-wrapper"],
                 audio_player(model)
             ],
+        ],
+        div![
+            C!["audio-spectogram"],
+            div![
+                C!["header"],
+                h2!["Spectrogram"],
+                div![
+                    C!["playback-controls"],
+                    ChoosenSpectrogram::iter().map(|choosen_spectrogram| {
+                        button![
+                            C![IF!(model.choosen_spectrogram == Some(choosen_spectrogram) => "-selected")],
+                            ev(Ev::Click, move |_| wrap(Msg::SpectogramRequested(choosen_spectrogram))),
+                            format_choosen_spectrogram(choosen_spectrogram),
+                        ]
+                    }),
+                ]
+            ],
+            canvas![
+                C![IF!(model.choosen_spectrogram.is_none() => "-hidden")],
+                el_ref(&model.spectrogram_canvas)
+            ]
         ]
     ]
+}
+
+const fn format_choosen_spectrogram(choosen_spectrogram: ChoosenSpectrogram) -> &'static str {
+    match choosen_spectrogram {
+        ChoosenSpectrogram::Original => "Original",
+        ChoosenSpectrogram::ULaw => "ALaw",
+        ChoosenSpectrogram::ALaw => "ULaw",
+    }
 }

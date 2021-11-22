@@ -1,7 +1,10 @@
-use seed::prelude::wasm_bindgen;
+use std::ops::Deref;
+use std::rc::Rc;
+
 use seed::JsFuture;
+use seed::{prelude::wasm_bindgen, wasm_bindgen_futures};
 use wasm_bindgen::JsCast;
-use web_sys::{AudioBuffer, AudioContext, AudioContextOptions};
+use web_sys::{AudioBuffer, AudioContext, AudioContextOptions, OfflineAudioContext};
 
 #[wasm_bindgen]
 extern "C" {
@@ -59,4 +62,30 @@ pub(super) async fn load_audio(file_blob: gloo_file::Blob) -> (Vec<i16>, f32, u3
         sample16i_8khz,
         buffer_8khz.length(),
     )
+}
+
+pub async fn get_upsampled_pcm(
+    buffer: Rc<Option<AudioBuffer>>,
+    target_sample_rate: f32,
+) -> Vec<i16> {
+    let offline_context =
+        OfflineAudioContext::new_with_number_of_channels_and_length_and_sample_rate(
+            1,
+            (buffer.deref().as_ref().unwrap().duration() * target_sample_rate as f64) as u32,
+            target_sample_rate,
+        )
+        .unwrap();
+    let source = offline_context.create_buffer_source().unwrap();
+    source.set_buffer(buffer.deref().as_ref());
+    source
+        .connect_with_audio_node(&offline_context.destination())
+        .unwrap();
+    source.start().unwrap();
+    let resampled = offline_context.start_rendering().unwrap();
+    let resampled = wasm_bindgen_futures::JsFuture::from(resampled)
+        .await
+        .unwrap();
+    let upsampled_buffer = resampled.dyn_into::<AudioBuffer>().unwrap();
+    let channel_data = upsampled_buffer.get_channel_data(0).unwrap();
+    convert32f_to_16i(channel_data)
 }

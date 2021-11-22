@@ -300,8 +300,11 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 }
 
 .audio-visualizer-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
     width: 100%;
-    align-items: flex-start !important;
+    margin-bottom: 2rem;
 }
 
 .audio-visualizer-wrapper .audio-visualizer-box {
@@ -496,6 +499,11 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     color: white;
 }
 
+.playback-controls button.-selected {
+    background-color: forestgreen;
+    color: white;
+}
+
 .playback-controls .playback-button {
     margin-left: 1em;
 }
@@ -571,6 +579,34 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     top: 30px;
     z-index: 2;
 }
+
+/* G711 - spectogram */
+
+.audio-spectogram {
+    width: 80%;    
+}
+
+.audio-spectogram > .header {
+    background-color: white; 
+    display: flex;
+    align-items: center;
+    flex-direction: column;
+}
+
+.audio-spectogram > .header > h2 {
+    font-size: x-large;
+    margin: 20px 0 18px 0;
+}
+
+.audio-spectogram > canvas {
+    width: 100%;
+    height: 500px;
+}
+
+.audio-spectogram > canvas.-hidden {
+    display: none;
+}
+
 
 /* MPEG */
 .mpeg-container {
