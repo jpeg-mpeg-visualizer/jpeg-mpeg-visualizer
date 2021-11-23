@@ -238,6 +238,9 @@ impl MPEG1 {
 
         let mut frame: Option<Rc<RefCell<VideoFrame>>> = None;
         loop {
+            self.stats_current = self.stats_next.clone();
+            self.stats_next.macroblock_info = vec![];
+
             if self.find_start_code(constants::PICTURE_START_CODE) {
                 self.decode_picture();
             } else {
@@ -450,13 +453,10 @@ impl MPEG1 {
             start_code = self.get_next_start_code()
         }
 
-        self.stats_current = self.stats_next.clone();
-
         self.stats_next.picture_type = self.picture_type;
         self.stats_next.block_count = self.block_count;
         self.stats_next.macroblock_count = self.macroblock_count;
         self.stats_next.size = self.pointer - old_pointer;
-        self.stats_next.macroblock_info = vec![];
 
         self.macroblock_count = 0;
         self.block_count = 0;
