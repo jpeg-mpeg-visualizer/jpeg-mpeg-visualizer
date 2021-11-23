@@ -1,4 +1,5 @@
 use std::cell::{RefCell, RefMut};
+use std::ops::Deref;
 use std::rc::Rc;
 use bitvec::prelude::*;
 
@@ -20,16 +21,30 @@ struct VideoMotion {
 #[derive(Clone)]
 pub struct FrameImage {
     pub y: Vec<u8>,
-    pub cr: Vec<u8>,
     pub cb: Vec<u8>,
+    pub cr: Vec<u8>,
+}
+
+impl FrameImage {
+    fn clear(&mut self) {
+        let old_size_y = self.y.len();
+        let old_size_cb = self.y.len();
+        
+        self.y.clear();
+        self.cb.clear();
+        self.cr.clear();
+        self.y.resize(old_size_y, 0);
+        self.cb.resize(old_size_cb, 0);
+        self.cr.resize(old_size_cb, 0);
+    }
 }
 
 impl Default for FrameImage {
     fn default() -> Self {
         FrameImage {
             y: vec![],
-            cr: vec![],
             cb: vec![],
+            cr: vec![],
         }
     }
 }
@@ -235,7 +250,7 @@ impl MPEG1 {
             self.find_start_code(constants::SEQUENCE_HEADER_CODE);
             self.decode_sequence_header();
         }
-
+        
         let mut frame: Option<Rc<RefCell<VideoFrame>>> = None;
         loop {
             self.stats_current = self.stats_next.clone();
@@ -244,7 +259,13 @@ impl MPEG1 {
             if self.find_start_code(constants::PICTURE_START_CODE) {
                 self.decode_picture();
             } else {
-                return None
+                if self.has_reference_frame {
+                    self.has_reference_frame = false;
+                    frame = Some(self.frame_backward.clone());
+                    break;
+                } else {
+                    return None
+                }
             }
 
             if self.picture_type == constants::PICTURE_TYPE_B {
@@ -444,6 +465,13 @@ impl MPEG1 {
         {
             self.pointer += 32;
             start_code = self.get_next_start_code();
+        }
+        
+        {
+            let mut frame_current: RefMut<_> = self.frame_current.deref().borrow_mut();
+            frame_current.moved.clear();
+            frame_current.skipped.clear();
+            frame_current.intra.clear();
         }
 
         while let Some(constants::SLICE_FIRST_START_CODE..=constants::SLICE_LAST_START_CODE) =
