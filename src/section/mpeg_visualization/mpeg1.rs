@@ -1,4 +1,5 @@
 use std::cell::{RefCell, RefMut};
+use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
 use bitvec::prelude::*;
@@ -75,13 +76,9 @@ impl Default for VideoFrame {
 }
 
 pub struct DecodedFrame {
-    pub picture_type: u8,
     pub frame: VideoFrame,
-
-    pub size: usize,
-    pub macroblock_count: usize,
-    pub block_count: usize,
-    pub macroblock_info: Vec<MacroblockInfo>,
+    pub stats: DecodingStats,
+    
 }
 
 #[derive(Clone)]
@@ -127,27 +124,14 @@ enum MacroblockDestination {
 }
 
 
-#[derive(Clone)]
-struct DecodingStats {
+#[derive(Clone, Default)]
+pub struct DecodingStats {
     pub picture_type: u8,
     pub size: usize,
     pub macroblock_count: usize,
     pub block_count: usize,
 
     pub macroblock_info: Vec<MacroblockInfo>,
-}
-
-
-impl Default for DecodingStats {
-    fn default() -> Self {
-        DecodingStats {
-            picture_type: 0,
-            size: 0,
-            macroblock_count: 0,
-            block_count: 0,
-            macroblock_info: Default::default(),
-        }
-    }
 }
 
 pub struct MPEG1 {
@@ -169,8 +153,9 @@ pub struct MPEG1 {
     frame_forward: Rc<RefCell<VideoFrame>>,
     frame_backward: Rc<RefCell<VideoFrame>>,
 
-    stats_next: DecodingStats,
     stats_current: DecodingStats,
+    stats_forward: DecodingStats,
+    stats_backward: DecodingStats,
 
     intra_quant_matrix: [u8; 64],
     non_intra_quant_matrix: [u8; 64],
@@ -213,8 +198,9 @@ impl MPEG1 {
             frame_forward: Rc::<_>::default(),
             frame_backward: Rc::<_>::default(),
 
-            stats_next: Default::default(),
             stats_current: Default::default(),
+            stats_forward: Default::default(),
+            stats_backward: Default::default(),
 
             intra_quant_matrix: constants::DEFAULT_INTRA_QUANT_MATRIX,
             non_intra_quant_matrix: constants::DEFAULT_NON_INTRA_QUANT_MATRIX,
@@ -253,16 +239,15 @@ impl MPEG1 {
         }
         
         let mut frame: Option<Rc<RefCell<VideoFrame>>> = None;
+        let mut stats: DecodingStats = DecodingStats::default();
         loop {
-            self.stats_current = self.stats_next.clone();
-            self.stats_next.macroblock_info = vec![];
-
             if self.find_start_code(constants::PICTURE_START_CODE) {
                 self.decode_picture();
             } else {
                 if self.has_reference_frame {
                     self.has_reference_frame = false;
                     frame = Some(self.frame_backward.clone());
+                    stats = mem::take(&mut self.stats_backward);
                     break;
                 } else {
                     return None
@@ -271,8 +256,10 @@ impl MPEG1 {
 
             if self.picture_type == constants::PICTURE_TYPE_B {
                 frame = Some(self.frame_current.clone());
+                    stats = mem::take(&mut self.stats_current);
             } else if self.has_reference_frame {
                 frame = Some(self.frame_forward.clone());
+                    stats = mem::take(&mut self.stats_forward);
             } else {
                 self.has_reference_frame = true;
             }
@@ -284,12 +271,8 @@ impl MPEG1 {
         }
 
         Some(DecodedFrame {
-            picture_type: self.stats_current.picture_type,
             frame: (*frame.unwrap()).borrow_mut().clone(),
-            size: self.stats_current.size,
-            macroblock_count: self.stats_current.macroblock_count,
-            block_count: self.stats_current.block_count,
-            macroblock_info: self.stats_current.macroblock_info.clone(),
+            stats
         })
     }
 
@@ -454,10 +437,13 @@ impl MPEG1 {
         }
 
         let temp_frame = self.frame_forward.clone();
+        let mut stats_tmp = DecodingStats::default();
 
         if self.picture_type == constants::PICTURE_TYPE_INTRA
             || self.picture_type == constants::PICTURE_TYPE_PREDICTIVE {
             self.frame_forward = self.frame_backward.clone();
+            mem::swap(&mut self.stats_forward, &mut stats_tmp);
+            self.stats_forward = mem::take(&mut self.stats_backward);
         }
 
         let mut start_code: Option<u32> = self.get_next_start_code();
@@ -482,10 +468,10 @@ impl MPEG1 {
             start_code = self.get_next_start_code()
         }
 
-        self.stats_next.picture_type = self.picture_type;
-        self.stats_next.block_count = self.block_count;
-        self.stats_next.macroblock_count = self.macroblock_count;
-        self.stats_next.size = self.pointer - old_pointer;
+        self.stats_current.picture_type = self.picture_type;
+        self.stats_current.block_count = self.block_count;
+        self.stats_current.macroblock_count = self.macroblock_count;
+        self.stats_current.size = self.pointer - old_pointer;
 
         self.macroblock_count = 0;
         self.block_count = 0;
@@ -496,7 +482,9 @@ impl MPEG1 {
         if self.picture_type == constants::PICTURE_TYPE_INTRA
             || self.picture_type == constants::PICTURE_TYPE_PREDICTIVE {
             self.frame_backward = self.frame_current.clone();
+            self.stats_backward = mem::take(&mut self.stats_current);
             self.frame_current = temp_frame.clone();
+            self.stats_current = mem::take(&mut stats_tmp);
         }
     }
 
@@ -537,7 +525,7 @@ impl MPEG1 {
         }
 
         for _ in 0..(self.mb_width as i32 - self.macroblock_address % self.mb_width as i32 - 1) {
-            self.stats_next.macroblock_info.push(MacroblockInfo::skipped());
+            self.stats_current.macroblock_info.push(MacroblockInfo::skipped());
         }
     }
 
@@ -567,7 +555,7 @@ impl MPEG1 {
             self.macroblock_address += increment;
 
             for _ in 0..(increment - 1) {
-                self.stats_next.macroblock_info.push(MacroblockInfo::skipped());
+                self.stats_current.macroblock_info.push(MacroblockInfo::skipped());
             }
         } else {
             if increment > 1 {
@@ -590,7 +578,7 @@ impl MPEG1 {
                 self.predict_macroblock(MacroblockDestination::Current);
                 self.predict_macroblock(MacroblockDestination::Skipped);
                 increment -= 1;
-                self.stats_next.macroblock_info.push(MacroblockInfo::skipped());
+                self.stats_current.macroblock_info.push(MacroblockInfo::skipped());
             }
 
             self.macroblock_address += 1;
@@ -622,7 +610,7 @@ impl MPEG1 {
             self.motion_backward.h = 0;
             self.motion_backward.v = 0;
 
-            self.stats_next.macroblock_info.push(MacroblockInfo {
+            self.stats_current.macroblock_info.push(MacroblockInfo {
                 size: 0,
                 encoded_blocks: MacroblockEncodedBlocks::default(),
                 kind: MacroblockInfoKind::Intra,
@@ -640,7 +628,7 @@ impl MPEG1 {
             self.predict_macroblock(
                 MacroblockDestination::Moved,
             );
-            self.stats_next.macroblock_info.push(MacroblockInfo {
+            self.stats_current.macroblock_info.push(MacroblockInfo {
                 size: 0,
                 encoded_blocks: MacroblockEncodedBlocks::default(),
                 kind: MacroblockInfoKind::Moved {
@@ -666,7 +654,7 @@ impl MPEG1 {
             }
         }
 
-        self.stats_next.macroblock_info[self.macroblock_address as usize].size = self.pointer - old_pointer;
+        self.stats_current.macroblock_info[self.macroblock_address as usize].size = self.pointer - old_pointer;
     }
 
     fn decode_motion_vectors(&mut self) {
@@ -919,7 +907,7 @@ impl MPEG1 {
                 let value = ((self.block_data[0] + 128) >> 8) as u8;
                 copy_value_to_destination(value, &mut dest_array, dest_index, scan);
                 copy_value_to_destination(value, &mut dest_array_new, dest_index, scan);
-                self.stats_next.macroblock_info[self.macroblock_address as usize]
+                self.stats_current.macroblock_info[self.macroblock_address as usize]
                     .encoded_blocks
                     .set_nth(block.into(), &[value.into(); 64]);
                 self.block_data[0] = 0;
@@ -927,7 +915,7 @@ impl MPEG1 {
                 IDCT(&mut self.block_data);
                 copy_block_to_destination(&self.block_data, &mut dest_array, dest_index, scan);
                 copy_block_to_destination(&self.block_data, &mut dest_array_new, dest_index, scan);
-                self.stats_next.macroblock_info[self.macroblock_address as usize]
+                self.stats_current.macroblock_info[self.macroblock_address as usize]
                     .encoded_blocks
                     .set_nth(block.into(), &self.block_data);
                 self.block_data = [0; 64];
@@ -937,7 +925,7 @@ impl MPEG1 {
                 let value = (self.block_data[0] + 128) >> 8;
                 add_value_to_destination(value, &mut dest_array, dest_index, scan);
                 add_value_to_destination(value, &mut dest_array_new, dest_index, scan);
-                self.stats_next.macroblock_info[self.macroblock_address as usize]
+                self.stats_current.macroblock_info[self.macroblock_address as usize]
                     .encoded_blocks
                     .set_nth(block.into(), &[value as i32; 64]);
                 self.block_data[0] = 0;
@@ -945,7 +933,7 @@ impl MPEG1 {
                 IDCT(&mut self.block_data);
                 add_block_to_destination(&self.block_data, &mut dest_array, dest_index, scan);
                 add_block_to_destination(&self.block_data, &mut dest_array_new, dest_index, scan);
-                self.stats_next.macroblock_info[self.macroblock_address as usize]
+                self.stats_current.macroblock_info[self.macroblock_address as usize]
                     .encoded_blocks
                     .set_nth(block.into(), &self.block_data);
                 self.block_data = [0; 64];

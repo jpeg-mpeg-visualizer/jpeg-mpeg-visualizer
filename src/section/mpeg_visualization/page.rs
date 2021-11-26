@@ -101,7 +101,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             if let Some(macroblock_address) = model.selected_macroblock {
                 renderer.render_macroblock(frame, macroblock_address);
             }
-            model.selected_explaination_tab = if model.frames[i].picture_type == PICTURE_TYPE_INTRA
+            model.selected_explaination_tab = if model.frames[i].stats.picture_type == PICTURE_TYPE_INTRA
             {
                 ExplainationTab::Intra
             } else {
