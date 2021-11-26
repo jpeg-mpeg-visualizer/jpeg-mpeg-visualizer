@@ -5,6 +5,7 @@ use seed::prelude::*;
 use seed::*;
 use strum::IntoEnumIterator;
 use web_sys::MouseEvent;
+use crate::section::mpeg_visualization::mpeg1::constants::PICTURE_TYPE_B;
 
 use super::model::{ExplainationTab, MacroblockType, Model, Msg};
 use super::mpeg1::constants::{PICTURE_TYPE_INTRA, PICTURE_TYPE_PREDICTIVE};
@@ -289,6 +290,12 @@ const fn get_frame_type(code: u8, letter: bool) -> &'static str {
             "I"
         } else {
             "Intra"
+        }
+    } else if code == PICTURE_TYPE_B {
+        if letter {
+            "B"
+        } else {
+            "Bidirectional"
         }
     } else {
         if letter {

@@ -119,6 +119,7 @@ pub enum MacroblockInfoKind {
     Intra,
 }
 
+#[derive(Debug, Clone)]
 enum MacroblockDestination {
     Current,
     Skipped,
@@ -734,9 +735,9 @@ impl MPEG1 {
             }
 
             if self.motion_forward.is_set {
-                self.copy_macroblock(forward_h, forward_v, destination, FrameOrder::Forward);
+                self.copy_macroblock(forward_h, forward_v, destination.clone(), FrameOrder::Forward);
                 if self.motion_backward.is_set {
-
+                    self.interpolate_macroblock(backward_h, backward_v, destination);
                 }
             }
             else {
@@ -999,21 +1000,13 @@ impl MPEG1 {
                 while dest < last {
                     for _x in 0..16 {
                         // vertical motion is half pel (?) so we have to compute average of above pixel
-                        let mut sum: u16 = s_y[src] as u16 + s_y[src + 1] as u16 + 2;
-                        sum += if src + width < d_frame.y.len() {
-                            s_y[src + width] as u16
-                        } else {
-                            0
-                        };
-                        sum += if src + width + 1 < d_frame.y.len() {
-                            s_y[src + width + 1] as u16
-                        } else {
-                            0
-                        };
-                        let count = 2
-                            + (src + width < d_frame.y.len()) as u16
-                            + (src + width + 1 < d_frame.y.len()) as u16;
-                        d_frame.y[dest] = (sum / count) as u8;
+                        let mut sum: u16 = s_y[src] as u16;
+                        sum += s_y[src + 1] as u16;
+                        sum += s_y[src + width] as u16;
+                        sum += s_y[src + width + 1] as u16;
+                        sum += 2;
+
+                        d_frame.y[dest] = (sum >> 2) as u8;
                         dest += 1;
                         src += 1;
                     }
@@ -1023,7 +1016,11 @@ impl MPEG1 {
             } else {
                 while dest < last {
                     for _x in 0..16 {
-                        d_frame.y[dest] = ((s_y[src] as u16 + s_y[src + 1] as u16 + 1) / 2) as u8;
+                        let mut sum: u16 = s_y[src] as u16;
+                        sum += s_y[src + 1] as u16;
+                        sum += 1 as u16;
+
+                        d_frame.y[dest] =  (sum >> 1) as u8;
                         dest += 1;
                         src += 1;
                     }
@@ -1035,14 +1032,11 @@ impl MPEG1 {
             if is_motion_v_odd {
                 while dest < last {
                     for _x in 0..16 {
-                        let mut sum: u16 = s_y[src] as u16 + 1;
-                        sum += if src + width < d_frame.y.len() {
-                            s_y[src + width] as u16
-                        } else {
-                            0
-                        };
-                        let count = 1 + (src + width < d_frame.y.len()) as u16;
-                        d_frame.y[dest] = (sum / count) as u8;
+                        let mut sum: u16 = s_y[src] as u16;
+                        sum += s_y[src + width] as u16;
+                        sum += 1;
+
+                        d_frame.y[dest] = (sum >> 1) as u8;
                         dest += 1;
                         src += 1;
                     }
@@ -1083,45 +1077,21 @@ impl MPEG1 {
                 while dest < last {
                     for _x in 0..8 {
                         // vertical motion is half pel (?) so we have to compute average of above pixel
-                        let mut sum = s_cr[src] as u16 + 2;
-                        sum += if src + 1 < s_cr.len() {
-                            s_cr[src + 1] as u16
-                        } else {
-                            0
-                        };
-                        sum += if src + width < s_cr.len() {
-                            s_cr[src + width] as u16
-                        } else {
-                            0
-                        };
-                        sum += if src + width + 1 < s_cr.len() {
-                            s_cr[src + width + 1] as u16
-                        } else {
-                            0
-                        };
-                        let count = 1
-                            + (src + 1 < d_frame.cr.len()) as u16
-                            + (src + width < d_frame.cr.len()) as u16
-                            + (src + width + 1 < d_frame.cr.len()) as u16;
-                        d_frame.cr[dest] = (sum / count) as u8;
+                        let mut sum = s_cr[src] as u16;
+                        sum += s_cr[src + 1] as u16;
+                        sum += s_cr[src + width] as u16;
+                        sum += s_cr[src + width + 1] as u16;
+                        sum += 2;
 
-                        let mut sum = s_cb[src] as u16 + 2;
-                        sum += if src + 1 < s_cb.len() {
-                            s_cb[src + 1] as u16
-                        } else {
-                            0
-                        };
-                        sum += if src + width < s_cb.len() {
-                            s_cb[src + width] as u16
-                        } else {
-                            0
-                        };
-                        sum += if src + width + 1 < s_cb.len() {
-                            s_cb[src + width + 1] as u16
-                        } else {
-                            0
-                        };
-                        d_frame.cb[dest] = (sum / count) as u8;
+                        d_frame.cr[dest] = (sum >> 2) as u8;
+
+                        let mut sum = s_cb[src] as u16;
+                        sum += s_cb[src + 1] as u16;
+                        sum += s_cb[src + width] as u16;
+                        sum += s_cb[src + width + 1] as u16;
+                        sum += 2;
+
+                        d_frame.cb[dest] = (sum >> 2) as u8;
 
                         dest += 1;
                         src += 1;
@@ -1132,22 +1102,17 @@ impl MPEG1 {
             } else {
                 while dest < last {
                     for _x in 0..8 {
-                        let mut sum = s_cr[src] as u16 + 1;
-                        sum += if src + 1 < s_cr.len() {
-                            s_cr[src + 1] as u16
-                        } else {
-                            0
-                        };
-                        let count = 1 + (src + 1 < d_frame.cr.len()) as u16;
-                        d_frame.cr[dest] = (sum / count) as u8;
+                        let mut sum = s_cr[src] as u16;
+                        sum += s_cr[src + 1] as u16;
+                        sum += 1;
+
+                        d_frame.cr[dest] = (sum >> 1) as u8;
 
                         let mut sum = s_cb[src] as u16 + 1;
-                        sum += if src + 1 < s_cb.len() {
-                            s_cb[src + 1] as u16
-                        } else {
-                            0
-                        };
-                        d_frame.cb[dest] = (sum / count) as u8;
+                        sum += s_cb[src + 1] as u16;
+                        sum += 1;
+
+                        d_frame.cb[dest] = (sum >> 1) as u8;
 
                         dest += 1;
                         src += 1;
@@ -1161,21 +1126,16 @@ impl MPEG1 {
                 while dest < last {
                     for _x in 0..8 {
                         let mut sum = s_cr[src] as u16 + 1;
-                        sum += if src + width < s_cr.len() {
-                            s_cr[src + width] as u16
-                        } else {
-                            0
-                        };
-                        let count = 1 + (src + width < d_frame.cr.len()) as u16;
-                        d_frame.cr[dest] = (sum / count) as u8;
+                        sum += s_cr[src + width] as u16;
+                        sum += 1;
 
-                        let mut sum = s_cb[src] as u16 + 1;
-                        sum += if src + width < s_cb.len() {
-                            s_cb[src + width] as u16
-                        } else {
-                            0
-                        };
-                        d_frame.cb[dest] = (sum / count) as u8;
+                        d_frame.cr[dest] = (sum >> 1) as u8;
+
+                        let mut sum = s_cb[src] as u16;
+                        sum += s_cb[src + width] as u16;
+                        sum += 1;
+
+                        d_frame.cb[dest] = (sum >> 1) as u8;
 
                         dest += 1;
                         src += 1;
@@ -1188,6 +1148,251 @@ impl MPEG1 {
                     for _x in 0..8 {
                         d_frame.cr[dest] = s_cr[src];
                         d_frame.cb[dest] = s_cb[src];
+                        dest += 1;
+                        src += 1;
+                    }
+                    dest += scan;
+                    src += scan;
+                }
+            }
+        }
+    }
+
+    fn interpolate_macroblock(
+        &mut self,
+        motion_h: i32,
+        motion_v: i32,
+        destination: MacroblockDestination,
+    ) {
+        let s = self.frame_backward.borrow();
+        let  (s_y, s_cr, s_cb) = (&s.current.y, &s.current.cr, &s.current.cb);
+
+        let mut d: RefMut<_> = (*self.frame_current).borrow_mut();
+        let (d_frame) = match destination {
+            MacroblockDestination::Current => (
+                &mut d.current
+            ),
+            MacroblockDestination::Skipped => (
+                &mut d.skipped
+            ),
+            MacroblockDestination::Moved => (
+                &mut d.moved
+            )
+        };
+
+        // Luminance
+        let width = self.coded_width as usize;
+        let scan = width - 16;
+
+        let h = motion_h as isize >> 1;
+        let v = motion_v as isize >> 1;
+
+        let is_motion_h_odd = motion_h & 1 == 1;
+        let is_motion_v_odd = motion_v & 1 == 1;
+
+        let mut src = (((self.mb_row as isize * 16) + v) * width as isize
+            + (self.mb_col as isize * 16)
+            + h) as usize;
+        let mut dest = (self.mb_row * width + self.mb_col) * 16;
+        let last = dest + (width * 16);
+
+        if is_motion_h_odd {
+            if is_motion_v_odd {
+                while dest < last {
+                    for _x in 0..16 {
+                        // vertical motion is half pel (?) so we have to compute average of above pixel
+                        let mut sum: u16 = s_y[src] as u16;
+                        sum += s_y[src + 1] as u16;
+                        sum += s_y[src + width] as u16;
+                        sum += s_y[src + width + 1] as u16;
+                        sum += 2;
+                        sum >>= 2;
+                        sum += 1;
+
+                        sum += d_frame.y[dest] as u16;
+
+                        d_frame.y[dest] = (sum >> 1) as u8;
+                        dest += 1;
+                        src += 1;
+                    }
+                    dest += scan;
+                    src += scan;
+                }
+            } else {
+                while dest < last {
+                    for _x in 0..16 {
+                        let mut sum: u16 = s_y[src] as u16;
+                        sum += s_y[src + 1] as u16;
+                        sum += 1 as u16;
+                        sum >>= 1;
+                        sum += 1;
+
+                        sum += d_frame.y[dest] as u16;
+
+                        d_frame.y[dest] =  (sum >> 1) as u8;
+                        dest += 1;
+                        src += 1;
+                    }
+                    dest += scan;
+                    src += scan;
+                }
+            }
+        } else {
+            if is_motion_v_odd {
+                while dest < last {
+                    for _x in 0..16 {
+                        let mut sum: u16 = s_y[src] as u16;
+                        sum += s_y[src + width] as u16;
+                        sum += 1;
+                        sum >>= 1;
+                        sum += 1;
+
+                        sum += d_frame.y[dest] as u16;
+
+                        d_frame.y[dest] = (sum >> 1) as u8;
+                        dest += 1;
+                        src += 1;
+                    }
+                    dest += scan;
+                    src += scan;
+                }
+            } else {
+                while dest < last {
+                    for _x in 0..16 {
+                        let mut sum: u16 = s_y[src] as u16;
+                        sum += 1;
+
+                        sum += d_frame.y[dest] as u16;
+
+                        d_frame.y[dest] += (sum >> 1) as u8;
+                        dest += 1;
+                        src += 1;
+                    }
+                    dest += scan;
+                    src += scan;
+                }
+            }
+        }
+
+        // Chrominance
+        let width = self.mb_width as usize * 8;
+        let scan = width - 8;
+
+        let h = (motion_h as isize / 2) >> 1;
+        let v = (motion_v as isize / 2) >> 1;
+
+        let is_motion_h_odd = (motion_h / 2) & 1 == 1;
+        let is_motion_v_odd = (motion_v / 2) & 1 == 1;
+
+        let mut src = (((self.mb_row as isize * 8) + v) * width as isize
+            + (self.mb_col as isize * 8)
+            + h) as usize;
+        let mut dest = (self.mb_row * width + self.mb_col) * 8;
+        let last = dest + (width * 8);
+
+        if is_motion_h_odd {
+            if is_motion_v_odd {
+                while dest < last {
+                    for _x in 0..8 {
+                        // vertical motion is half pel (?) so we have to compute average of above pixel
+                        let mut sum = s_cr[src] as u16;
+                        sum += s_cr[src + 1] as u16;
+                        sum += s_cr[src + width] as u16;
+                        sum += s_cr[src + width + 1] as u16;
+                        sum += 2;
+                        sum >>= 2;
+                        sum += 1;
+
+                        sum += d_frame.cr[dest] as u16;
+
+                        d_frame.cr[dest] = (sum >> 1) as u8;
+
+                        let mut sum = s_cb[src] as u16;
+                        sum += s_cb[src + 1] as u16;
+                        sum += s_cb[src + width] as u16;
+                        sum += s_cb[src + width + 1] as u16;
+                        sum += 2;
+                        sum >>= 2;
+                        sum += 1;
+
+                        sum += d_frame.cb[dest] as u16;
+
+                        d_frame.cb[dest] = (sum >> 1) as u8;
+
+                        dest += 1;
+                        src += 1;
+                    }
+                    dest += scan;
+                    src += scan;
+                }
+            } else {
+                while dest < last {
+                    for _x in 0..8 {
+                        let mut sum = s_cr[src] as u16;
+                        sum += s_cr[src + 1] as u16;
+                        sum += 1;
+                        sum >>= 1;
+                        sum += 1;
+
+                        sum += d_frame.cr[dest] as u16;
+
+                        d_frame.cr[dest] = (sum >> 1) as u8;
+
+                        let mut sum = s_cb[src] as u16 + 1;
+                        sum += s_cb[src + 1] as u16;
+                        sum += 1;
+                        sum >>= 1;
+                        sum += 1;
+
+                        sum += d_frame.cb[dest] as u16;
+
+                        d_frame.cb[dest] = (sum >> 1) as u8;
+
+                        dest += 1;
+                        src += 1;
+                    }
+                    dest += scan;
+                    src += scan;
+                }
+            }
+        } else {
+            if is_motion_v_odd {
+                while dest < last {
+                    for _x in 0..8 {
+                        let mut sum = s_cr[src] as u16 + 1;
+                        sum += s_cr[src + width] as u16;
+                        sum += 1;
+                        sum >>= 1;
+                        sum += 1;
+
+                        sum += d_frame.cr[dest] as u16;
+
+                        d_frame.cr[dest] = (sum >> 1) as u8;
+
+                        let mut sum = s_cb[src] as u16;
+                        sum += s_cb[src + width] as u16;
+                        sum += 1;
+                        sum >>= 1;
+                        sum += 1;
+
+                        sum += d_frame.cb[dest] as u16;
+
+                        d_frame.cb[dest] = (sum >> 1) as u8;
+
+                        dest += 1;
+                        src += 1;
+                    }
+                    dest += scan;
+                    src += scan;
+                }
+            } else {
+                while dest < last {
+                    for _x in 0..8 {
+                        d_frame.cr[dest] += s_cr[src] + 1;
+                        d_frame.cb[dest] += s_cb[src] + 1;
+
+                        d_frame.cr[dest] >>= 1;
+                        d_frame.cb[dest] >>= 1;
                         dest += 1;
                         src += 1;
                     }
