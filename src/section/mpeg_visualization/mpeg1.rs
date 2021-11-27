@@ -483,7 +483,7 @@ impl MPEG1 {
             || self.picture_type == constants::PICTURE_TYPE_PREDICTIVE {
             self.frame_backward = self.frame_current.clone();
             self.stats_backward = mem::take(&mut self.stats_current);
-            self.frame_current = temp_frame.clone();
+            self.frame_current = temp_frame;
             self.stats_current = mem::take(&mut stats_tmp);
         }
     }
@@ -955,7 +955,7 @@ impl MPEG1 {
         let  (s_y, s_cr, s_cb) = (&s.current.y, &s.current.cr, &s.current.cb);
 
         let mut d: RefMut<_> = (*self.frame_current).borrow_mut();
-        let (d_frame) = match destination {
+        let d_frame = match destination {
             MacroblockDestination::Current => (
                 &mut d.current
             ),
@@ -1006,7 +1006,7 @@ impl MPEG1 {
                     for _x in 0..16 {
                         let mut sum: u16 = s_y[src] as u16;
                         sum += s_y[src + 1] as u16;
-                        sum += 1 as u16;
+                        sum += 1;
 
                         d_frame.y[dest] =  (sum >> 1) as u8;
                         dest += 1;
@@ -1156,7 +1156,7 @@ impl MPEG1 {
         let  (s_y, s_cr, s_cb) = (&s.current.y, &s.current.cr, &s.current.cb);
 
         let mut d: RefMut<_> = (*self.frame_current).borrow_mut();
-        let (d_frame) = match destination {
+        let d_frame = match destination {
             MacroblockDestination::Current => (
                 &mut d.current
             ),
@@ -1211,7 +1211,7 @@ impl MPEG1 {
                     for _x in 0..16 {
                         let mut sum: u16 = s_y[src] as u16;
                         sum += s_y[src + 1] as u16;
-                        sum += 1 as u16;
+                        sum += 1;
                         sum >>= 1;
                         sum += 1;
 
@@ -1252,7 +1252,7 @@ impl MPEG1 {
 
                         sum += d_frame.y[dest] as u16;
 
-                        d_frame.y[dest] += (sum >> 1) as u8;
+                        d_frame.y[dest] = (sum >> 1) as u8;
                         dest += 1;
                         src += 1;
                     }
@@ -1376,11 +1376,19 @@ impl MPEG1 {
             } else {
                 while dest < last {
                     for _x in 0..8 {
-                        d_frame.cr[dest] += s_cr[src] + 1;
-                        d_frame.cb[dest] += s_cb[src] + 1;
+                        let mut sum = s_cr[src] as u16;
+                        sum += 1;
 
-                        d_frame.cr[dest] >>= 1;
-                        d_frame.cb[dest] >>= 1;
+                        sum += d_frame.cr[dest] as u16;
+
+                        d_frame.cr[dest] = (sum >> 1) as u8;
+
+                        let mut sum = s_cb[src] as u16;
+                        sum += 1;
+
+                        sum += d_frame.cb[dest] as u16;
+
+                        d_frame.cb[dest] = (sum >> 1) as u8;
                         dest += 1;
                         src += 1;
                     }
@@ -2186,21 +2194,4 @@ pub mod constants {
         17, 24, 23, 20, 17, 14,  9,  5,
          9, 12, 12, 10,  9,  7,  5,  2
     ];
-}
-
-#[cfg(test)]
-mod test {
-    use crate::section::mpeg_visualization::{mpeg1::MPEG1, ts::TSDemuxer};
-
-    #[test]
-    fn test() {
-        let bytes = include_bytes!("test.ts");
-        let demuxed_bytes = TSDemuxer::from_raw_bytes(bytes.to_vec()).parse_packets();
-        let mut mpeg1 = MPEG1::from_bytes(demuxed_bytes);
-
-        for _ in 0..30 {
-            let test = mpeg1.decode().unwrap();
-            let test2 = mpeg1.decode().unwrap();
-        }
-    }
 }
