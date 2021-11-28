@@ -7,7 +7,7 @@ use strum::IntoEnumIterator;
 use web_sys::MouseEvent;
 
 use super::model::{ExplainationTab, MacroblockType, Model, Msg};
-use super::mpeg1::constants::{PICTURE_TYPE_INTRA, PICTURE_TYPE_PREDICTIVE, PICTURE_TYPE_B};
+use super::mpeg1::constants::{PICTURE_TYPE_B, PICTURE_TYPE_INTRA, PICTURE_TYPE_PREDICTIVE};
 use super::mpeg1::MacroblockInfo;
 use super::page::wrap;
 
@@ -97,7 +97,10 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                     C![IF!(i == model.selected_frame => "-selected")],
                     ev(Ev::Click, move |_| wrap(Msg::FrameChanged(i))),
                     p![(i + 1).to_string()],
-                    p![C!["typeletter"], get_frame_type(frame.stats.picture_type, true)]
+                    p![
+                        C!["typeletter"],
+                        get_frame_type(frame.stats.picture_type, true)
+                    ]
                 ]
             }),
             IF!(not(model.frames.is_empty()) && model.has_more_frames => {
@@ -286,12 +289,12 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
 
 const fn get_frame_type(code: u8, letter: bool) -> &'static str {
     match (code, letter) {
-        (PICTURE_TYPE_INTRA, true) => "I",   
-        (PICTURE_TYPE_INTRA, false) => "Intra",   
-        (PICTURE_TYPE_PREDICTIVE, true) => "P",   
-        (PICTURE_TYPE_PREDICTIVE, false) => "Predictive",   
-        (_, true) => "B",   
-        (_, false) => "Bidirectional",   
+        (PICTURE_TYPE_INTRA, true) => "I",
+        (PICTURE_TYPE_INTRA, false) => "Intra",
+        (PICTURE_TYPE_PREDICTIVE, true) => "P",
+        (PICTURE_TYPE_PREDICTIVE, false) => "Predictive",
+        (_, true) => "B",
+        (_, false) => "Bidirectional",
     }
 }
 

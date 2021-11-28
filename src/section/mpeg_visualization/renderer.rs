@@ -207,7 +207,13 @@ impl Renderer {
         Self::render_channel(&self.canvas_y2, &buffer, ChannelType::Y);
         self.get_block(x, y + 8, &mut buffer, &frame.current.y, macroblock_width);
         Self::render_channel(&self.canvas_y3, &buffer, ChannelType::Y);
-        self.get_block(x + 8, y + 8, &mut buffer, &frame.current.y, macroblock_width);
+        self.get_block(
+            x + 8,
+            y + 8,
+            &mut buffer,
+            &frame.current.y,
+            macroblock_width,
+        );
         Self::render_channel(&self.canvas_y4, &buffer, ChannelType::Y);
         self.get_block(
             chroma_x,
