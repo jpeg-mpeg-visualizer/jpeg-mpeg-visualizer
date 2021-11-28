@@ -54,10 +54,16 @@ pub fn init(url: Url) -> Option<Model> {
 
     let subsampling_pack = SubsamplingPack { j: 4, a: 4, b: 4 };
 
+    let mut example_files = Vec::<ExampleImage>::new();
+    for i in 0..4 {
+        example_files.push(ExampleImage { tmp_number: i });
+    }
+
     Some(Model {
         file_chooser_zone_active: false,
         base_url,
         state: State::FileChooser,
+        example_images: example_files,
         original_image_canvas: ElRef::<HtmlCanvasElement>::default(),
         canvas_map,
         preview_canvas_map,

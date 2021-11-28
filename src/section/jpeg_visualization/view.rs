@@ -5,7 +5,7 @@ use seed::*;
 use super::model::{CanvasName, Model, Msg, PreviewCanvasName, State};
 use super::page::wrap;
 use crate::graphic_helpers::drag_n_drop::*;
-use crate::section::jpeg_visualization::model::{PlotName, SubsamplingPack};
+use crate::section::jpeg_visualization::model::{PlotName, SubsamplingPack, ExampleImage};
 use crate::{Msg as GMsg, BLOCK_SIZE};
 use web_sys::{Event, HtmlCanvasElement, HtmlImageElement};
 
@@ -631,6 +631,11 @@ pub fn view_jpeg_visualization(model: &Model) -> Node<GMsg> {
 }
 
 pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
+    let mut image_divs: Vec<Node<GMsg>> = Vec::<Node<GMsg>>::new();
+    for example_image in &model.example_images {
+        image_divs.push(tmp(example_image));
+    }
+
     div![
         C!["choose_file_wrapper"],
         div![
@@ -690,5 +695,35 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
                 wrap(Msg::FileChooserLoadImage(file))
             })
         ],
+        div![
+            C!["example_images_wrapper"],
+            image_divs,
+        ],
+    ]
+}
+
+fn tmp(example_image: &ExampleImage) -> Node<GMsg> {
+    div![
+        C!["example_image"],
+        table![
+            tr![
+                td![
+                    div![
+                        C!["example_image_clickable_div"],
+                        "TODO - image name",
+                    ]
+                ]
+            ],
+            tr![
+                td![
+                    "TODO - image preview"
+                ]
+            ],
+            tr![
+                td![
+                    "TODO - width x height".to_owned() + &example_image.tmp_number.to_string()
+                ]
+            ]
+        ]
     ]
 }

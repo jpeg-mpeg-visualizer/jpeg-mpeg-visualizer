@@ -95,6 +95,13 @@ pub enum PreviewCanvasName {
     ForComparison,
 }
 
+// Struct for example images from which user can choose one to analyse later on
+
+pub struct ExampleImage {
+   // pub file: web_sys::File
+   pub tmp_number: i8
+}
+
 // ------ ------
 //     Model
 // ------ ------
@@ -103,6 +110,7 @@ pub struct Model {
     pub file_chooser_zone_active: bool,
     pub base_url: Url,
     pub state: State,
+    pub example_images: Vec<ExampleImage>,
 
     pub original_image_canvas: ElRef<HtmlCanvasElement>,
     pub canvas_map: HashMap<CanvasName, ElRef<HtmlCanvasElement>>,
