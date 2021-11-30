@@ -3,6 +3,8 @@ use std::cell::{RefCell, RefMut};
 use std::mem;
 use std::ops::Deref;
 use std::rc::Rc;
+use bitvec::prelude::*;
+use seed::log;
 
 use self::constants::{DCT_DC_SIZE_CHROMINANCE, DCT_DC_SIZE_LUMINANCE};
 
@@ -108,10 +110,10 @@ impl MacroblockEncodedBlocks {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum MacroblockInfoKind {
     Skipped,
-    Moved { direction: (i32, i32) },
+    Moved { direction: (i32, i32), before_diff: MacroblockContent },
     Intra,
 }
 
@@ -130,6 +132,16 @@ pub struct DecodingStats {
     pub block_count: usize,
 
     pub macroblock_info: Vec<MacroblockInfo>,
+}
+
+#[derive(Clone)]
+pub struct MacroblockContent {
+    pub y1: [u8; 64],
+    pub y2: [u8; 64],
+    pub y3: [u8; 64],
+    pub y4: [u8; 64],
+    pub cb: [u8; 64],
+    pub cr: [u8; 64],
 }
 
 pub struct MPEG1 {
@@ -644,11 +656,15 @@ impl MPEG1 {
             self.decode_motion_vectors();
             self.predict_macroblock(MacroblockDestination::Current);
             self.predict_macroblock(MacroblockDestination::Moved);
+            
+            let before_diff = self.copy_macroblock_from_source();
+
             self.stats_current.macroblock_info.push(MacroblockInfo {
                 size: 0,
                 encoded_blocks: MacroblockEncodedBlocks::default(),
                 kind: MacroblockInfoKind::Moved {
                     direction: (self.motion_forward.h, self.motion_forward.v),
+                    before_diff
                 },
             });
         }
@@ -1418,6 +1434,28 @@ impl MPEG1 {
         }
         code_table[state as usize + 2]
     }
+
+    fn copy_macroblock_from_source(&mut self) -> MacroblockContent {
+        let frame_current = self.frame_current.deref().borrow();
+        let scan = self.coded_width as usize - 8;
+        let index = (self.mb_row * self.coded_width as usize + self.mb_col) * 16;
+        let y1 = copy_block_from_source(&frame_current.current.y, index, scan);
+        let index = index + 8;
+        let y2 = copy_block_from_source(&frame_current.current.y, index, scan);
+        let index = (index - 8) + self.coded_width as usize * 8;
+        let y3 = copy_block_from_source(&frame_current.current.y, index, scan);
+        let index = index + 8;
+        let y4 = copy_block_from_source(&frame_current.current.y, index, scan);
+            
+        let scan = self.coded_width as usize / 2 - 8;
+        let index = ((self.mb_row * self.coded_width as usize) * 4) + self.mb_col * 8;
+        let cb = copy_block_from_source(&frame_current.current.cb, index, scan);
+        let cr = copy_block_from_source(&frame_current.current.cr, index, scan);
+
+        MacroblockContent {
+            y1, y2, y3, y4, cb, cr
+        }
+    }
 }
 
 #[allow(clippy::identity_op)]
@@ -1479,6 +1517,24 @@ fn add_value_to_destination(value: i32, dest: &mut [u8], mut index: usize, scan:
         index += scan + 8;
     }
 }
+
+#[allow(clippy::identity_op)]
+fn copy_block_from_source(src: &[u8], mut index: usize, scan: usize) -> [u8; 64] {
+    let mut dest = [0; 64];
+    for i in (0..64).step_by(8) {
+        dest[i + 0] = src[index + 0];
+        dest[i + 1] = src[index + 1];
+        dest[i + 2] = src[index + 2];
+        dest[i + 3] = src[index + 3];
+        dest[i + 4] = src[index + 4];
+        dest[i + 5] = src[index + 5];
+        dest[i + 6] = src[index + 6];
+        dest[i + 7] = src[index + 7];
+        index += scan + 8;
+    }
+    dest
+}
+
 
 #[rustfmt::skip]
 #[allow(non_snake_case, clippy::identity_op, clippy::erasing_op)]

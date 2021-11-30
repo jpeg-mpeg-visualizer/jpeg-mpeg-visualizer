@@ -33,6 +33,9 @@ pub struct Model {
     pub selected_block: Option<usize>,
     pub canvas_indicator: ElRef<HtmlCanvasElement>,
     pub has_more_frames: bool,
+    pub canvas_history_result: ElRef<HtmlCanvasElement>,
+    pub canvas_history_previous_reference: ElRef<HtmlCanvasElement>,
+    pub canvas_history_previous_before_diff: ElRef<HtmlCanvasElement>,
 }
 
 pub enum Msg {

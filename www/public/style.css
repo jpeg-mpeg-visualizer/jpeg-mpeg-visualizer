@@ -610,10 +610,12 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 
 /* MPEG */
 .mpeg-container {
+    --component-gap: 20px;
     display: flex;
     justify-content: center;
     align-items: center;
     flex-direction: column;
+    margin-bottom: var(--component-gap);
 }
 
 .frames-accordion {
@@ -693,12 +695,18 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 
 .frame-container {
     display: flex;
-    gap: 20px;
+    gap: var(--component-gap);
     margin-top: 4px;
     align-items: start;
 }
 
-.frame-container > .canvas-container > .canvasindicator {
+.frame-main {
+    display: flex;
+    flex-direction: column;
+    gap: var(--component-gap);
+}
+
+.canvas-container > .canvasindicator {
     position: absolute;
     pointer-events: none;
 }
@@ -706,7 +714,7 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .frame-sidebar {
     display: flex;
     flex-direction: column;
-    gap: 20px;
+    gap: var(--component-gap);
 }
 
 .frame-sidebar.-hidden {
@@ -796,37 +804,84 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     gap: 2px;
 }
 
-.frame-type-explaination {
+.macroblock-history {
     display: flex;
     flex-direction: column;
-    margin-top: 3rem;
-}
-
-.frame-type-explaination > .tabs {
-    display: flex
-}
-
-.frame-type-explaination > .tabs > div {
-    padding: 0.3rem 0.5rem;
-    font-weight: bold;
-    font-size: 1rem;
-    background-color: #efefef;
-    border-top: 1px solid black;
-    border-left: 1px solid black;
-}
-
-.frame-type-explaination > .tabs > div:last-child {
-    border-right: 1px solid black;
-}
-
-.frame-type-explaination > .tabs > div.-selected {
+    font-size: initial;
     background-color: white;
 }
 
-.frame-type-explaination > .content {
-    font-size: 1rem;
-    padding: 1rem;
-    background: white;
-    margin-top: 0;
-    min-width: 130ch;
+.macroblock-history.-hidden {
+    display: none;
+}
+
+.history-container {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.history-container > .image {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.history-container > .image > canvas {
+    border: 5px solid transparent;
+}
+
+.history-container > .image.result > canvas {
+    border-color: olivedrab;
+}
+
+.history-container > .image.previous-reference {
+    position: relative;
+}
+
+.history-container > .image.previous-reference::after {
+    content: url('./img/red_cross.svg');
+    position: absolute;
+}
+
+.history-container > .arrow {
+    flex-grow: 1;
+    max-width: 170px;
+    max-height: 138px;
+    display: flex;
+    align-items: center;
+}
+
+.history-container > .arrow::before {
+    content: attr(data-text);
+    flex-grow: 1;
+    background: #ddd;
+    height: 60%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.history-container > .arrow::after {
+    content: '';
+    background: #ddd;
+    width: 50px;
+    clip-path: polygon(100% 50%, 0 0, 0 100%);
+    height: 100%;
+    display: flex;
+}
+
+.history-container.-skipped > .image.previous-reference,
+.history-container.-skipped > .image.previous-before-diff,
+.history-container.-skipped > .arrow.from-previous-reference,
+.history-container.-skipped > .arrow.from-previous-before-diff {
+    display: none;    
+}
+
+.history-container.-intra > .image.previous-before-diff,
+.history-container.-intra > .arrow.from-previous-before-diff {
+    display: none;    
+}
+.history-container.-intra > .image.previous-reference::after {
+    width: 100%;
 }
