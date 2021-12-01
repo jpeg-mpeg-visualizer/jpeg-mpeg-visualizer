@@ -871,17 +871,47 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     display: flex;
 }
 
+.history-container > .arrow.-left {
+    flex-direction: row-reverse;
+}
+
+.history-container > .arrow.-left::after {
+    clip-path: polygon(0 50%, 100% 0, 100% 100%);
+}
+
 .history-container.-skipped > .image.previous-reference,
 .history-container.-skipped > .image.previous-before-diff,
 .history-container.-skipped > .arrow.from-previous-reference,
-.history-container.-skipped > .arrow.from-previous-before-diff {
+.history-container.-skipped > .arrow.from-previous-before-diff,
+.history-container.-skipped > .image.next-reference,
+.history-container.-skipped > .image.next-before-diff,
+.history-container.-skipped > .arrow.from-next-reference,
+.history-container.-skipped > .arrow.from-next-before-diff {
     display: none;    
 }
 
 .history-container.-intra > .image.previous-before-diff,
-.history-container.-intra > .arrow.from-previous-before-diff {
+.history-container.-intra > .arrow.from-previous-before-diff,
+.history-container.-intra > .image.next-reference,
+.history-container.-intra > .image.next-before-diff,
+.history-container.-intra > .arrow.from-next-reference,
+.history-container.-intra > .arrow.from-next-before-diff {
     display: none;    
 }
 .history-container.-intra > .image.previous-reference::after {
-    width: 100%;
+    width: 100%; /* display cross */
+}
+
+.history-container.-forward > .image.next-reference,
+.history-container.-forward > .image.next-before-diff,
+.history-container.-forward > .arrow.from-next-reference,
+.history-container.-forward > .arrow.from-next-before-diff {
+    display: none;    
+}
+
+.history-container.-backward > .image.previous-reference,
+.history-container.-backward > .image.previous-before-diff,
+.history-container.-backward > .arrow.from-previous-reference,
+.history-container.-backward > .arrow.from-previous-before-diff {
+    display: none;    
 }

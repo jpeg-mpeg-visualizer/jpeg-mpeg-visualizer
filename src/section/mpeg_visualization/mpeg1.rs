@@ -113,7 +113,7 @@ impl MacroblockEncodedBlocks {
 #[derive(Clone)]
 pub enum MacroblockInfoKind {
     Skipped,
-    Moved { direction: (i32, i32), before_diff: MacroblockContent },
+    Moved { direction: (i32, i32), before_diff: MacroblockContent, is_forward: bool },
     Intra,
 }
 
@@ -657,6 +657,14 @@ impl MPEG1 {
             self.predict_macroblock(MacroblockDestination::Current);
             self.predict_macroblock(MacroblockDestination::Moved);
             
+            let is_interpolated = self.motion_forward.is_set && self.motion_backward.is_set;
+            
+            if is_interpolated {
+                // todo
+            } else {
+                // todo
+            }
+
             let before_diff = self.copy_macroblock_from_source();
 
             self.stats_current.macroblock_info.push(MacroblockInfo {
@@ -664,7 +672,8 @@ impl MPEG1 {
                 encoded_blocks: MacroblockEncodedBlocks::default(),
                 kind: MacroblockInfoKind::Moved {
                     direction: (self.motion_forward.h, self.motion_forward.v),
-                    before_diff
+                    before_diff,
+                    is_forward: self.picture_type == constants::PICTURE_TYPE_PREDICTIVE || self.motion_forward.is_set,
                 },
             });
         }

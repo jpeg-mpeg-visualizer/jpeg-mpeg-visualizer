@@ -38,6 +38,8 @@ pub fn init(_url: Url) -> Option<Model> {
         canvas_history_result: ElRef::<_>::default(),
         canvas_history_previous_reference: ElRef::<_>::default(),
         canvas_history_previous_before_diff: ElRef::<_>::default(),
+        canvas_history_next_reference: ElRef::<_>::default(),
+        canvas_history_next_before_diff: ElRef::<_>::default(),
     })
 }
 
@@ -81,6 +83,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 &model.canvas_history_result,
                 &model.canvas_history_previous_reference,
                 &model.canvas_history_previous_before_diff,
+                &model.canvas_history_next_reference,
+                &model.canvas_history_next_before_diff,
             );
             model.renderer = Some(renderer);
 

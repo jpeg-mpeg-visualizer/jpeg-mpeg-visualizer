@@ -343,6 +343,8 @@ fn view_macroblock_history(model: &Model) -> Node<GMsg> {
             C!["history-container"],
             IF!(matches!(kind, Some(MacroblockInfoKind::Skipped)) => C!["-skipped"]),
             IF!(matches!(kind, Some(MacroblockInfoKind::Intra)) => C!["-intra"]),
+            IF!(matches!(kind, Some(MacroblockInfoKind::Moved { is_forward: true, ..  })) => C!["-forward"]),
+            IF!(matches!(kind, Some(MacroblockInfoKind::Moved { is_forward: false, ..  })) => C!["-backward"]),
             div![
                 C!["image previous-reference"],
                 canvas![
@@ -374,7 +376,31 @@ fn view_macroblock_history(model: &Model) -> Node<GMsg> {
                     el_ref(&model.canvas_history_result)
                 ],
                 "Result"
-            ]
+            ],
+            div![
+                C!["arrow -left from-next-before-diff"],
+                attrs!{At::from("data-text") => "difference"},
+            ],
+            div![
+                C!["image next-before-diff"],
+                canvas![
+                    &canvas_attrs,
+                    el_ref(&model.canvas_history_next_before_diff)
+                ],
+                "Moved macroblock"
+            ],
+            div![
+                C!["arrow -left from-next-reference"],
+                attrs!{At::from("data-text") => "direction"},
+            ],
+            div![
+                C!["image next-reference"],
+                canvas![
+                    &canvas_attrs,
+                    el_ref(&model.canvas_history_next_reference)
+                ],
+                "Next reference"
+            ],
         ]
     ]
 }

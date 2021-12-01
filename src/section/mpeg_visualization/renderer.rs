@@ -20,6 +20,8 @@ pub struct Renderer {
     canvas_history_result: ElRef<HtmlCanvasElement>,
     canvas_history_previous_reference: ElRef<HtmlCanvasElement>,
     canvas_history_previous_before_diff: ElRef<HtmlCanvasElement>,
+    canvas_history_next_reference: ElRef<HtmlCanvasElement>,
+    canvas_history_next_before_diff: ElRef<HtmlCanvasElement>,
     width: u16,
     height: u16,
     rgb_data: Vec<u8>,
@@ -42,6 +44,8 @@ impl Renderer {
         canvas_history_result: &ElRef<HtmlCanvasElement>,
         canvas_history_previous_reference: &ElRef<HtmlCanvasElement>,
         canvas_history_previous_before_diff: &ElRef<HtmlCanvasElement>,
+        canvas_history_next_reference: &ElRef<HtmlCanvasElement>,
+        canvas_history_next_before_diff: &ElRef<HtmlCanvasElement>,
     ) -> Self {
         Self {
             canvas: canvas.clone(),
@@ -55,6 +59,8 @@ impl Renderer {
             canvas_history_result: canvas_history_result.clone(),
             canvas_history_previous_reference: canvas_history_previous_reference.clone(),
             canvas_history_previous_before_diff: canvas_history_previous_before_diff.clone(),
+            canvas_history_next_reference: canvas_history_next_reference.clone(),
+            canvas_history_next_before_diff: canvas_history_next_before_diff.clone(),
             width: 0,
             height: 0,
             rgb_data: Vec::new(),
@@ -324,12 +330,25 @@ impl Renderer {
 
         self.render_macroblock_result(&frame.frame.current, macroblock_index);
             
-        if matches!(info.kind, MacroblockInfoKind::Moved {..} | MacroblockInfoKind::Intra) {
-            self.render_previous_reference(frames, selected_frame, macroblock_index);
+        // if matches!(info.kind, MacroblockInfoKind::Moved { is_forward: true, ..} | MacroblockInfoKind::Intra) {
+        //     self.render_previous_reference(frames, selected_frame, macroblock_index);
+        // } else if matches!(info.kind)
+        match info.kind {
+            MacroblockInfoKind::Moved { is_forward: true, .. } | MacroblockInfoKind::Intra => {
+                self.render_previous_reference(frames, selected_frame, macroblock_index);
+            }
+            MacroblockInfoKind::Moved {is_forward: false, ..} => {
+                self.render_next_reference(frames, selected_frame, macroblock_index);
+            },
+            _ => {}
         }
 
-        if let MacroblockInfoKind::Moved { before_diff, .. } = &info.kind {
-            self.draw_macroblock(&self.canvas_history_previous_before_diff, before_diff);
+        if let MacroblockInfoKind::Moved { before_diff, is_forward , .. } = &info.kind {
+            if *is_forward {
+                self.draw_macroblock(&self.canvas_history_previous_before_diff, before_diff);
+            } else {
+                self.draw_macroblock(&self.canvas_history_next_before_diff, before_diff);
+            }
         }
 
         // match info.kind {
@@ -427,7 +446,24 @@ impl Renderer {
             .find(|frame| matches!(frame.stats.picture_type, constants::PICTURE_TYPE_INTRA | constants::PICTURE_TYPE_PREDICTIVE))
             .unwrap();
         
-        self.draw_macroblock_from_frame(&previous_reference_frame.frame.current, macroblock_index, &self.canvas_history_previous_reference);
+        self.draw_macroblock_from_frame(&previous_reference_frame.frame.current, macroblock_index, target);
+    }
+
+    fn render_next_reference(&self, frames: &[DecodedFrame], selected_frame:usize, macroblock_index: usize) {
+        // let target = &self.canvas_history_next_reference;
+
+        // if selected_frame == 0 {
+        //     let context = canvas_context_2d(&target.get().unwrap());
+        //     context.clear_rect(0.0, 0.0, self.width.into(), self.height.into());
+        //     return;
+        // } 
+        
+        let next_reference_frame = frames[selected_frame..frames.len()]
+            .iter()
+            .find(|frame| matches!(frame.stats.picture_type, constants::PICTURE_TYPE_INTRA | constants::PICTURE_TYPE_PREDICTIVE))
+            .unwrap();
+        
+        self.draw_macroblock_from_frame(&next_reference_frame.frame.current, macroblock_index, &self.canvas_history_next_reference);
     }
 }
 
