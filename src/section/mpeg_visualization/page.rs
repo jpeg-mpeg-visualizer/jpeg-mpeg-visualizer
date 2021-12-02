@@ -101,12 +101,12 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             if let Some(macroblock_address) = model.selected_macroblock {
                 renderer.render_macroblock(frame, macroblock_address);
             }
-            model.selected_explaination_tab = if model.frames[i].picture_type == PICTURE_TYPE_INTRA
-            {
-                ExplainationTab::Intra
-            } else {
-                ExplainationTab::Predictive
-            };
+            model.selected_explaination_tab =
+                if model.frames[i].stats.picture_type == PICTURE_TYPE_INTRA {
+                    ExplainationTab::Intra
+                } else {
+                    ExplainationTab::Predictive
+                };
         }
         Msg::ExplainationTabChanged(new_tab) => {
             model.selected_explaination_tab = new_tab;
@@ -126,7 +126,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 .render_frame(&model.frames[model.selected_frame], &model.control_state);
         }
         Msg::CanvasClicked(mouse_x, mouse_y) => {
-            let mb_width = (model.frames[model.selected_frame].width as usize + 15) / 16;
+            let mb_width = (model.frames[model.selected_frame].frame.width as usize + 15) / 16;
             let macroblock_address = (mouse_y / 16) * mb_width + (mouse_x / 16);
             model.selected_macroblock = Some(macroblock_address);
             model

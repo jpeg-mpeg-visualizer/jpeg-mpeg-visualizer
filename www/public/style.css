@@ -664,6 +664,10 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     background-color: honeydew;
 }
 
+.frame-item.-bidirectional:not(.-selected) {
+    background-color: cornsilk;
+}
+
 .frame-item.-more {
     text-orientation: upright;
     writing-mode: vertical-lr;

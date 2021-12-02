@@ -7,7 +7,7 @@ use strum::IntoEnumIterator;
 use web_sys::MouseEvent;
 
 use super::model::{ExplainationTab, MacroblockType, Model, Msg};
-use super::mpeg1::constants::{PICTURE_TYPE_INTRA, PICTURE_TYPE_PREDICTIVE};
+use super::mpeg1::constants::{PICTURE_TYPE_B, PICTURE_TYPE_INTRA, PICTURE_TYPE_PREDICTIVE};
 use super::mpeg1::MacroblockInfo;
 use super::page::wrap;
 
@@ -91,12 +91,16 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
             model.frames.iter().enumerate().map(|(i, frame)| {
                 div![
                     C!["frame-item"],
-                    C![IF!(frame.picture_type == PICTURE_TYPE_INTRA => "-intra")],
-                    C![IF!(frame.picture_type == PICTURE_TYPE_PREDICTIVE => "-predictive")],
+                    C![IF!(frame.stats.picture_type == PICTURE_TYPE_INTRA => "-intra")],
+                    C![IF!(frame.stats.picture_type == PICTURE_TYPE_PREDICTIVE => "-predictive")],
+                    C![IF!(frame.stats.picture_type == PICTURE_TYPE_B => "-bidirectional")],
                     C![IF!(i == model.selected_frame => "-selected")],
                     ev(Ev::Click, move |_| wrap(Msg::FrameChanged(i))),
                     p![(i + 1).to_string()],
-                    p![C!["typeletter"], get_frame_type(frame.picture_type, true)]
+                    p![
+                        C!["typeletter"],
+                        get_frame_type(frame.stats.picture_type, true)
+                    ]
                 ]
             }),
             IF!(not(model.frames.is_empty()) && model.has_more_frames => {
@@ -128,16 +132,17 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                 div![
                     C!["frame-info"],
                     IF!(not(model.frames.is_empty()) => {
-                        let frame = &model.frames[model.selected_frame];
+                        let decoded_frame = &model.frames[model.selected_frame];
+                        let frame = &decoded_frame.frame;
                         vec![
                             h3![format!("Frame #{}", model.selected_frame + 1)],
-                            p!["type: ", strong![get_frame_type(frame.picture_type, false)]],
+                            p!["type: ", strong![get_frame_type(decoded_frame.stats.picture_type, false)]],
                             p!["width: ", strong![frame.width.to_string()]],
                             p!["height: ", strong![frame.height.to_string()]],
-                            p!["size: ", strong![format!("{:.2} KB", frame.size as f32 / 1000.0 / 8.0)]],
+                            p!["size: ", strong![format!("{:.2} KB", decoded_frame.stats.size as f32 / 1000.0 / 8.0)]],
                             h4!["Additional information"],
-                            p!["# of macroblocks: ", strong![frame.macroblock_count.to_string()]],
-                            p!["# of blocks: ", strong![frame.block_count.to_string()]],
+                            p!["# of macroblocks: ", strong![decoded_frame.stats.macroblock_count.to_string()]],
+                            p!["# of blocks: ", strong![decoded_frame.stats.block_count.to_string()]],
                         ]
                     })
                 ],
@@ -177,14 +182,14 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                     div![IF!(model.selected_macroblock.is_some() => {
                         let macroblock_address = model.selected_macroblock.unwrap();
                         let selected_frame = &model.frames[model.selected_frame];
-                        let macroblock_width = (selected_frame.width + 15) / 16;
+                        let macroblock_width = (selected_frame.frame.width + 15) / 16;
                         let macroblock_y = macroblock_address / macroblock_width as usize;
                         let macroblock_x = macroblock_address % macroblock_width as usize;
                         let MacroblockInfo {
                             size,
                             encoded_blocks,
                             kind
-                        } = &selected_frame.macroblock_info[macroblock_address];
+                        } = &selected_frame.stats.macroblock_info[macroblock_address];
                         vec![
                             p!["x: ", strong![macroblock_x.to_string()], ", y: ", strong![macroblock_y.to_string()]],
                             p!["type: ", strong![format_macroblock_kind(&kind)]],
@@ -283,18 +288,13 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
 }
 
 const fn get_frame_type(code: u8, letter: bool) -> &'static str {
-    if code == PICTURE_TYPE_INTRA {
-        if letter {
-            "I"
-        } else {
-            "Intra"
-        }
-    } else {
-        if letter {
-            "P"
-        } else {
-            "Predictive"
-        }
+    match (code, letter) {
+        (PICTURE_TYPE_INTRA, true) => "I",
+        (PICTURE_TYPE_INTRA, false) => "Intra",
+        (PICTURE_TYPE_PREDICTIVE, true) => "P",
+        (PICTURE_TYPE_PREDICTIVE, false) => "Predictive",
+        (_, true) => "B",
+        (_, false) => "Bidirectional",
     }
 }
 
