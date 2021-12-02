@@ -955,14 +955,35 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     content: none;
 }
 
-.example_images_wrapper {
+.preset_images_wrapper {
     display: flex;
     flex-direction: row;
     width: 70%;
 }
-.example_image {
+.preset_image_wrapper {
     flex: 1;
 }
-.example_image_clickable_div {
+.square_div_container {
+    display: inline-block;
+    position: relative;
+    min-width: 100%;
+    padding-top: 100%;
+}
+.preset_image_clickable_div {
+    margin: 5%;
     cursor: pointer;
+    overflow: hidden;
+    border-radius: 50%;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+.preset_img {
+    display: block;
+    min-width: 100%;
+    max-height: 100%;
+    position: absolute;
+    left: -25%;
 }

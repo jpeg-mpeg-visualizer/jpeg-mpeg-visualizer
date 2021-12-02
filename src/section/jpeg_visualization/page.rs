@@ -54,16 +54,10 @@ pub fn init(url: Url) -> Option<Model> {
 
     let subsampling_pack = SubsamplingPack { j: 4, a: 4, b: 4 };
 
-    let mut example_files = Vec::<ExampleImage>::new();
-    for i in 0..4 {
-        example_files.push(ExampleImage { tmp_number: i });
-    }
-
     Some(Model {
         file_chooser_zone_active: false,
         base_url,
         state: State::FileChooser,
-        example_images: example_files,
         original_image_canvas: ElRef::<HtmlCanvasElement>::default(),
         canvas_map,
         preview_canvas_map,
@@ -905,6 +899,50 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         }
         Msg::FileChooserDragStarted => model.file_chooser_zone_active = true,
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
+        Msg::FileChooserPresetClicked(file_path) => {
+            // TODO: Display that request is processed
+            orders.perform_cmd(async move {
+                /*let mut opts = RequestInit::new();
+                opts.method("GET");
+                opts.mode(RequestMode::Cors);
+
+                let request = Request::new_with_str_and_init(&file_path, &opts).unwrap();
+
+                /*request
+                .headers()
+                .set("Accept", "application/vnd.github.v3+json")?;*/
+
+                let window = web_sys::window().unwrap();
+                let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.unwrap();
+
+                // `resp_value` is a `Response` object.
+                assert!(resp_value.is_instance_of::<Response>());
+                let resp: Response = resp_value.dyn_into().unwrap();
+
+                // Convert this other `Promise` into a rust `Future`.
+                let blob = JsFuture::from(resp.blob().unwrap()).await.unwrap();
+
+                let file_blob = blob.dyn_into().unwrap();*/
+                let img_bytes = Request::new(file_path)
+                    .method(Method::Get)
+                    .fetch()
+                    .await
+                    .unwrap()
+                    .check_status()
+                    .unwrap()
+                    .bytes()
+                    .await
+                    .unwrap();
+
+                let file_blob = gloo_file::Blob::new(img_bytes.as_slice());
+
+                let raw_image = utils::load_image(file_blob).await;
+                Msg::ImageLoaded(raw_image)
+            });
+            model.quality = 50;
+            model.zoom = 7;
+            model.state = State::PreImageView
+        }
         Msg::ImageLoaded(raw_image) => {
             let raw_image_rc = Rc::new(raw_image);
             let image_window =

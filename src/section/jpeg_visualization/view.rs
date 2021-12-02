@@ -5,7 +5,7 @@ use seed::*;
 use super::model::{CanvasName, Model, Msg, PreviewCanvasName, State};
 use super::page::wrap;
 use crate::graphic_helpers::drag_n_drop::*;
-use crate::section::jpeg_visualization::model::{PlotName, SubsamplingPack, ExampleImage};
+use crate::section::jpeg_visualization::model::{PlotName, SubsamplingPack};
 use crate::{Msg as GMsg, BLOCK_SIZE};
 use web_sys::{Event, HtmlCanvasElement, HtmlImageElement};
 
@@ -631,10 +631,11 @@ pub fn view_jpeg_visualization(model: &Model) -> Node<GMsg> {
 }
 
 pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
-    let mut image_divs: Vec<Node<GMsg>> = Vec::<Node<GMsg>>::new();
-    for example_image in &model.example_images {
-        image_divs.push(tmp(example_image));
-    }
+    let mut preset_image_divs: Vec<Node<GMsg>> = Vec::<Node<GMsg>>::new();
+    preset_image_divs.push(preset_image_div("nothern.jpg", 3546, 2255));
+    preset_image_divs.push(preset_image_div("ymm.jpg", 1280, 857));
+    preset_image_divs.push(preset_image_div("green.jpg", 1920, 1281));
+    preset_image_divs.push(preset_image_div("car.png", 1833, 1121));
 
     div![
         C!["choose_file_wrapper"],
@@ -696,34 +697,30 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
             })
         ],
         div![
-            C!["example_images_wrapper"],
-            image_divs,
+            C!["preset_images_wrapper"],
+            preset_image_divs,
         ],
     ]
 }
 
-fn tmp(example_image: &ExampleImage) -> Node<GMsg> {
+fn preset_image_div(file_name: &str, img_width: u32, img_height: u32) -> Node<GMsg> {
+    let file_path = format!("public/preset_images/{}", file_name);
     div![
-        C!["example_image"],
-        table![
-            tr![
-                td![
-                    div![
-                        C!["example_image_clickable_div"],
-                        "TODO - image name",
-                    ]
-                ]
-            ],
-            tr![
-                td![
-                    "TODO - image preview"
-                ]
-            ],
-            tr![
-                td![
-                    "TODO - width x height".to_owned() + &example_image.tmp_number.to_string()
-                ]
+        C!["preset_image_wrapper"],
+        div![
+            C!["square_div_container"],
+            div![
+                C!["preset_image_clickable_div"],
+                img![
+                    C!["preset_img"],
+                    attrs![
+                        At::Src => file_path.clone()
+                    ],
+                    ev(Ev::Click, |_| {
+                        wrap(Msg::FileChooserPresetClicked(file_path))
+                    })
+                ],
             ]
-        ]
+        ],
     ]
 }
