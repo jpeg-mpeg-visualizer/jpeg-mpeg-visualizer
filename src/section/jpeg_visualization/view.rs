@@ -696,14 +696,12 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
                 wrap(Msg::FileChooserLoadImage(file))
             })
         ],
-        div![
-            C!["preset_images_wrapper"],
-            preset_image_divs,
-        ],
+        div![C!["preset_images_wrapper"], preset_image_divs,],
     ]
 }
 
-fn preset_image_div(file_name: &str, img_width: u32, img_height: u32) -> Node<GMsg> {
+// TODO: Consider displaying width and height below the image preset
+fn preset_image_div(file_name: &str, _img_width: u32, _img_height: u32) -> Node<GMsg> {
     let file_path = format!("public/preset_images/{}", file_name);
     div![
         C!["preset_image_wrapper"],
@@ -714,7 +712,7 @@ fn preset_image_div(file_name: &str, img_width: u32, img_height: u32) -> Node<GM
                 img![
                     C!["preset_img"],
                     attrs![
-                        At::Src => file_path.clone()
+                        At::Src => file_path
                     ],
                     ev(Ev::Click, |_| {
                         wrap(Msg::FileChooserPresetClicked(file_path))
