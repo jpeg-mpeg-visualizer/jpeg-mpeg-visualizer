@@ -290,6 +290,7 @@ fn view_macroblock_history(model: &Model) -> Node<GMsg> {
         C!["macroblock-history"],
         C![IF!(is_visible => "-hidden")],
         h3!["Macroblock history"],
+        p!["Macroblock type: ", kind.map(|x| strong![format_macroblock_kind(x).to_string()])],
         div![
             C!["history-container"],
             IF!(matches!(kind, Some(MacroblockInfoKind::Skipped)) => C!["-skipped"]),
@@ -386,7 +387,8 @@ const fn get_frame_type(code: u8, letter: bool) -> &'static str {
 const fn format_macroblock_kind(kind: &MacroblockInfoKind) -> &'static str {
     match kind {
         MacroblockInfoKind::Skipped => "Skipped",
-        MacroblockInfoKind::Moved { .. } => "Moved",
+        MacroblockInfoKind::Moved { is_forward: true, .. } => "Forward predicted",
+        MacroblockInfoKind::Moved { is_forward: false, .. } => "Backward predicted",
         MacroblockInfoKind::Intra => "Intra",
         MacroblockInfoKind::Interpolated { .. } => "Interpolated"
     }

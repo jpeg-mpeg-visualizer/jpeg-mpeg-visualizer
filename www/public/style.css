@@ -817,7 +817,7 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 }
 
 .macroblock-history > h3 {
-    margin-top: 0;
+    margin: 0;
 }
 
 .history-container {
@@ -845,15 +845,6 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 
 .history-container .image.result > canvas {
     border-color: olivedrab;
-}
-
-.history-container > .image.previous-reference {
-    position: relative;
-}
-
-.history-container > .image.previous-reference::after {
-    content: url('./img/red_cross.svg');
-    position: absolute;
 }
 
 .history-container .arrow {
@@ -920,7 +911,9 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     display: none;    
 }
 
+.history-container.-intra > .image.previous-reference,
 .history-container.-intra > .image.previous-before-diff,
+.history-container.-intra > .arrow.from-previous-reference,
 .history-container.-intra > .arrow.from-previous-before-diff,
 .history-container.-intra > .image.next-reference,
 .history-container.-intra > .image.next-before-diff,
@@ -929,9 +922,6 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .history-container.-intra .image.interpolated,
 .history-container.-intra .arrow.from-interpolated {
     display: none;    
-}
-.history-container.-intra > .image.previous-reference::after {
-    width: 100%; /* display cross */
 }
 
 .history-container.-forward > .image.next-reference,
