@@ -611,6 +611,7 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 /* MPEG */
 .mpeg-container {
     --component-gap: 20px;
+    --component-padding: 1rem;
     display: flex;
     justify-content: center;
     align-items: center;
@@ -723,7 +724,7 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 
 .frame-sidebar > * {
     min-width: 258px;
-    padding: 1rem 1em;
+    padding: var(--component-padding);
     background: white;
     font-size: initial;
 }
@@ -738,7 +739,6 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 
 .macroblock-details {
     background-color: white;
-    padding: 1rem;
     font-size: 1rem;
 }
 
@@ -809,29 +809,41 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     flex-direction: column;
     font-size: initial;
     background-color: white;
+    padding: var(--component-padding);
 }
 
 .macroblock-history.-hidden {
     display: none;
 }
 
-.history-container {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
+.macroblock-history > h3 {
+    margin-top: 0;
 }
 
-.history-container > .image {
+.history-container {
+    --canvas-gap: 15px;
+    display: flex;
+    justify-content: center;
+    gap: var(--canvas-gap);
+}
+
+.history-container .image {
     display: flex;
     flex-direction: column;
     align-items: center;
 }
 
-.history-container > .image > canvas {
+.history-container > .vertical-container {
+    display: flex;
+    flex-direction: column;
+    gap: var(--canvas-gap);
+}
+
+.history-container .image > canvas {
     border: 5px solid transparent;
 }
 
-.history-container > .image.result > canvas {
+.history-container .image.result > canvas {
     border-color: olivedrab;
 }
 
@@ -844,7 +856,7 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     position: absolute;
 }
 
-.history-container > .arrow {
+.history-container .arrow {
     flex-grow: 1;
     max-width: 170px;
     max-height: 138px;
@@ -852,7 +864,7 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     align-items: center;
 }
 
-.history-container > .arrow::before {
+.history-container .arrow::before {
     content: attr(data-text);
     flex-grow: 1;
     background: #ddd;
@@ -862,7 +874,7 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     justify-content: center;
 }
 
-.history-container > .arrow::after {
+.history-container .arrow::after {
     content: '';
     background: #ddd;
     width: 50px;
@@ -879,6 +891,22 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     clip-path: polygon(0 50%, 100% 0, 100% 100%);
 }
 
+.history-container .arrow.-down {
+    flex-direction: column;
+}
+
+.history-container .arrow.-down::before {
+    width: 60%;
+    height: unset;
+    padding: 10px 0;
+}
+
+.history-container .arrow.-down::after {
+    height: 50px;
+    clip-path: polygon(0 0, 100% 0, 50% 100%);
+    width: 100%;
+}
+
 .history-container.-skipped > .image.previous-reference,
 .history-container.-skipped > .image.previous-before-diff,
 .history-container.-skipped > .arrow.from-previous-reference,
@@ -886,7 +914,9 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .history-container.-skipped > .image.next-reference,
 .history-container.-skipped > .image.next-before-diff,
 .history-container.-skipped > .arrow.from-next-reference,
-.history-container.-skipped > .arrow.from-next-before-diff {
+.history-container.-skipped > .arrow.from-next-before-diff,
+.history-container.-skipped .image.interpolated,
+.history-container.-skipped .arrow.from-interpolated {
     display: none;    
 }
 
@@ -895,7 +925,9 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .history-container.-intra > .image.next-reference,
 .history-container.-intra > .image.next-before-diff,
 .history-container.-intra > .arrow.from-next-reference,
-.history-container.-intra > .arrow.from-next-before-diff {
+.history-container.-intra > .arrow.from-next-before-diff,
+.history-container.-intra .image.interpolated,
+.history-container.-intra .arrow.from-interpolated {
     display: none;    
 }
 .history-container.-intra > .image.previous-reference::after {
@@ -905,13 +937,27 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .history-container.-forward > .image.next-reference,
 .history-container.-forward > .image.next-before-diff,
 .history-container.-forward > .arrow.from-next-reference,
-.history-container.-forward > .arrow.from-next-before-diff {
+.history-container.-forward > .arrow.from-next-before-diff,
+.history-container.-forward .image.interpolated,
+.history-container.-forward .arrow.from-interpolated {
     display: none;    
 }
 
 .history-container.-backward > .image.previous-reference,
 .history-container.-backward > .image.previous-before-diff,
 .history-container.-backward > .arrow.from-previous-reference,
-.history-container.-backward > .arrow.from-previous-before-diff {
+.history-container.-backward > .arrow.from-previous-before-diff,
+.history-container.-backward .image.interpolated,
+.history-container.-backward .arrow.from-interpolated {
     display: none;    
+}
+
+
+.history-container.-interpolated > .arrow.from-next-before-diff,
+.history-container.-interpolated > .arrow.from-previous-before-diff {
+    flex-grow: 0;
+}
+.history-container.-interpolated > .arrow.from-next-before-diff::before,
+.history-container.-interpolated > .arrow.from-previous-before-diff::before {
+    content: none;
 }

@@ -38,6 +38,7 @@ pub struct Model {
     pub canvas_history_previous_before_diff: ElRef<HtmlCanvasElement>,
     pub canvas_history_next_reference: ElRef<HtmlCanvasElement>,
     pub canvas_history_next_before_diff: ElRef<HtmlCanvasElement>,
+    pub canvas_history_interpolated: ElRef<HtmlCanvasElement>,
 }
 
 pub enum Msg {

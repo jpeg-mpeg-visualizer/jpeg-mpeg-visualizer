@@ -130,55 +130,6 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                     ],
                 ],
                 view_macroblock_history(&model),
-                // div![
-                //     C!["macroblock-history"],
-                //     C![IF!(model.frames.is_empty() || model.selected_macroblock.is_none() => "-hidden")],
-                //     h3!["Macroblock history"],
-                //     div![
-                //         C!["history-container"],
-                //         div![
-                //             C!["image previous-reference"],
-                //             canvas![
-                //                 attrs!{
-                //                     At::Width => 128,
-                //                     At::Height => 128,
-                //                 },
-                //                 el_ref(&model.canvas_history_previous_reference)
-                //             ],
-                //             "Previous reference"
-                //         ],
-                //         div![
-                //             C!["arrow -right"],
-                //             attrs!{At::from("data-text") => "intra"},
-                //         ],
-                //         div![
-                //             C!["image previous-before-diff"],
-                //             canvas![
-                //                 attrs!{
-                //                     At::Width => 128,
-                //                     At::Height => 128,
-                //                 },
-                //                 el_ref(&model.canvas_history_previous_before_diff)
-                //             ],
-                //             "Moved macroblock"
-                //         ],
-                //         div![
-                //             C!["arrow -right"],
-                //             attrs!{At::from("data-text") => "intra"},
-                //         ],
-                //         div![
-                //             C!["image result"],
-                //             canvas![
-                //                 attrs!{
-                //                     At::Width => 128,
-                //                     At::Height => 128,
-                //                 },
-                //                 el_ref(&model.canvas_history_result)
-                //             ],
-                //             "Result"
-                //         ]
-                //     ]
-                // ]
             ],
             div![
                 C!["frame-sidebar", IF!(model.frames.is_empty() => "-hidden")],
@@ -331,7 +282,7 @@ fn view_macroblock_history(model: &Model) -> Node<GMsg> {
     let kind = macroblock_info.map(|x| &x.kind);
     let previous_reference_text = match kind {
         Some(MacroblockInfoKind::Intra) => "intra",
-        Some(MacroblockInfoKind::Moved { .. }) => "direction",
+        Some(MacroblockInfoKind::Moved { .. } | MacroblockInfoKind::Interpolated { .. }) => "direction",
         _ => "",
     };
 
@@ -345,6 +296,7 @@ fn view_macroblock_history(model: &Model) -> Node<GMsg> {
             IF!(matches!(kind, Some(MacroblockInfoKind::Intra)) => C!["-intra"]),
             IF!(matches!(kind, Some(MacroblockInfoKind::Moved { is_forward: true, ..  })) => C!["-forward"]),
             IF!(matches!(kind, Some(MacroblockInfoKind::Moved { is_forward: false, ..  })) => C!["-backward"]),
+            IF!(matches!(kind, Some(MacroblockInfoKind::Interpolated { ..  })) => C!["-interpolated"]),
             div![
                 C!["image previous-reference"],
                 canvas![
@@ -370,12 +322,27 @@ fn view_macroblock_history(model: &Model) -> Node<GMsg> {
                 attrs!{At::from("data-text") => "difference"},
             ],
             div![
-                C!["image result"],
-                canvas![
-                    &canvas_attrs,
-                    el_ref(&model.canvas_history_result)
+                C!["vertical-container"],
+                div![
+                    C!["image interpolated"],
+                    canvas![
+                        &canvas_attrs,
+                        el_ref(&model.canvas_history_interpolated)
+                    ],
+                    "Interpolation result"
                 ],
-                "Result"
+                div![
+                    C!["arrow -down from-interpolated"],
+                    attrs!{At::from("data-text") => "difference"},
+                ],
+                div![
+                    C!["image result"],
+                    canvas![
+                        &canvas_attrs,
+                        el_ref(&model.canvas_history_result)
+                    ],
+                    "Result"
+                ],
             ],
             div![
                 C!["arrow -left from-next-before-diff"],
@@ -421,5 +388,6 @@ const fn format_macroblock_kind(kind: &MacroblockInfoKind) -> &'static str {
         MacroblockInfoKind::Skipped => "Skipped",
         MacroblockInfoKind::Moved { .. } => "Moved",
         MacroblockInfoKind::Intra => "Intra",
+        MacroblockInfoKind::Interpolated { .. } => "Interpolated"
     }
 }
