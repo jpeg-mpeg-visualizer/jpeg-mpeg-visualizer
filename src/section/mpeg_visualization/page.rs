@@ -1,9 +1,7 @@
-use super::model::{ControlState, ExplainationTab, MacroblockType, Model, Msg, State};
-use super::mpeg1::constants::PICTURE_TYPE_INTRA;
-use super::mpeg1::{DecodedFrame, MPEG1, MacroblockInfo};
+use super::model::{ControlState, MacroblockType, Model, Msg, State};
+use super::mpeg1::{DecodedFrame, MPEG1};
 use super::view::{view_file_chooser, view_video_player};
 use crate::Msg as GMsg;
-use crate::section::mpeg_visualization::mpeg1::MacroblockInfoKind;
 use gloo_file;
 use seed::prelude::*;
 
@@ -19,7 +17,6 @@ pub fn init(_url: Url) -> Option<Model> {
         canvas: ElRef::<_>::default(),
         frames: Vec::new(),
         selected_frame: 0,
-        selected_explaination_tab: ExplainationTab::General,
         control_state: ControlState {
             skipped: true,
             moved: true,
@@ -115,15 +112,6 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 renderer.render_macroblock(frame, macroblock_address);
                 renderer.render_history(&model.frames, model.selected_frame, macroblock_address);
             }
-            model.selected_explaination_tab =
-                if model.frames[i].stats.picture_type == PICTURE_TYPE_INTRA {
-                    ExplainationTab::Intra
-                } else {
-                    ExplainationTab::Predictive
-                };
-        }
-        Msg::ExplainationTabChanged(new_tab) => {
-            model.selected_explaination_tab = new_tab;
         }
         Msg::ToggleControl(macroblock_type) => {
             match macroblock_type {

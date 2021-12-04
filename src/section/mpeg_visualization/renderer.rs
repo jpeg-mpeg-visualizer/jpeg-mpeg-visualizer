@@ -4,9 +4,18 @@ use seed::*;
 use wasm_bindgen::Clamped;
 use web_sys::{HtmlCanvasElement, ImageData};
 
-use crate::{image::pixel::{self, RGB}, section::{jpeg_visualization::drawing_utils::draw_scaled_image_with_image_data_with_w_h_and_scale, mpeg_visualization::mpeg1::constants}};
+use crate::{
+    image::pixel::{self, RGB},
+    section::{
+        jpeg_visualization::drawing_utils::draw_scaled_image_with_image_data_with_w_h_and_scale,
+        mpeg_visualization::mpeg1::constants,
+    },
+};
 
-use super::{model::ControlState, mpeg1::{DecodedFrame, FrameImage, MacroblockContent, MacroblockInfoKind}};
+use super::{
+    model::ControlState,
+    mpeg1::{DecodedFrame, FrameImage, MacroblockContent, MacroblockInfoKind},
+};
 
 pub struct Renderer {
     canvas: ElRef<HtmlCanvasElement>,
@@ -326,26 +335,44 @@ impl Renderer {
             16.0 + LINE_WIDTH,
         );
     }
-    
-    pub fn render_history(&self, frames: &Vec<DecodedFrame>, selected_frame: usize, macroblock_index: usize) {
+
+    pub fn render_history(
+        &self,
+        frames: &Vec<DecodedFrame>,
+        selected_frame: usize,
+        macroblock_index: usize,
+    ) {
         let frame = &frames[selected_frame];
         let info = &frame.stats.macroblock_info[macroblock_index];
 
         self.render_macroblock_result(&frame.frame.current, macroblock_index);
-            
+
         match &info.kind {
             MacroblockInfoKind::Intra => {
                 self.render_previous_reference(frames, selected_frame, macroblock_index);
             }
-            MacroblockInfoKind::Moved { is_forward: true, before_diff, .. } => {
+            MacroblockInfoKind::Moved {
+                is_forward: true,
+                before_diff,
+                ..
+            } => {
                 self.render_previous_reference(frames, selected_frame, macroblock_index);
                 self.draw_macroblock(&self.canvas_history_previous_before_diff, &before_diff);
             }
-            MacroblockInfoKind::Moved {is_forward: false, before_diff , ..} => {
+            MacroblockInfoKind::Moved {
+                is_forward: false,
+                before_diff,
+                ..
+            } => {
                 self.render_next_reference(frames, selected_frame, macroblock_index);
                 self.draw_macroblock(&self.canvas_history_next_before_diff, &before_diff);
-            },
-            MacroblockInfoKind::Interpolated { forward, backward, interpolated, ..  } => {
+            }
+            MacroblockInfoKind::Interpolated {
+                forward,
+                backward,
+                interpolated,
+                ..
+            } => {
                 self.render_previous_reference(frames, selected_frame, macroblock_index);
                 self.render_next_reference(frames, selected_frame, macroblock_index);
                 self.draw_macroblock(&self.canvas_history_previous_before_diff, &forward);
@@ -355,19 +382,24 @@ impl Renderer {
             MacroblockInfoKind::Skipped => {}
         }
     }
-    
+
     fn render_macroblock_result(&self, frame: &FrameImage, macroblock_address: usize) {
         self.draw_macroblock_from_frame(frame, macroblock_address, &self.canvas_history_result);
     }
-    
-    fn draw_macroblock_from_frame(&self, frame: &FrameImage, macroblock_address: usize, target: &ElRef<HtmlCanvasElement>) {
+
+    fn draw_macroblock_from_frame(
+        &self,
+        frame: &FrameImage,
+        macroblock_address: usize,
+        target: &ElRef<HtmlCanvasElement>,
+    ) {
         let mut y1 = [0; 64];
         let mut y2 = [0; 64];
         let mut y3 = [0; 64];
         let mut y4 = [0; 64];
         let mut cb = [0; 64];
         let mut cr = [0; 64];
-        
+
         let macroblock_width = (self.width as usize + 15) / 16;
         let y = (macroblock_address / macroblock_width) * 16;
         let x = (macroblock_address % macroblock_width) * 16;
@@ -376,40 +408,50 @@ impl Renderer {
         self.get_block(x + 8, y, &mut y2, &frame.y, macroblock_width);
         self.get_block(x, y + 8, &mut y3, &frame.y, macroblock_width);
         self.get_block(x + 8, y + 8, &mut y4, &frame.y, macroblock_width);
-        
+
         let chroma_y = y / 2;
         let chroma_x = x / 2;
 
-        self.get_block(chroma_x, chroma_y, &mut cr, &frame.cr,macroblock_width / 2);
-        self.get_block(chroma_x, chroma_y, &mut cb, &frame.cb,macroblock_width / 2);
-        
+        self.get_block(chroma_x, chroma_y, &mut cr, &frame.cr, macroblock_width / 2);
+        self.get_block(chroma_x, chroma_y, &mut cb, &frame.cb, macroblock_width / 2);
+
         let macroblock_content = MacroblockContent {
-            y1, y2, y3, y4, cb, cr
+            y1,
+            y2,
+            y3,
+            y4,
+            cb,
+            cr,
         };
-        
+
         self.draw_macroblock(target, &macroblock_content);
     }
 
     fn draw_macroblock(&self, target: &ElRef<HtmlCanvasElement>, macroblock: &MacroblockContent) {
-        let ys = [&macroblock.y1, &macroblock.y2, &macroblock.y3, &macroblock.y4];
-        
+        let ys = [
+            &macroblock.y1,
+            &macroblock.y2,
+            &macroblock.y3,
+            &macroblock.y4,
+        ];
+
         let mut image_data = Vec::with_capacity(16 * 16 * 4);
         for row in 0..16 {
             for col in 0..16 {
                 let y_buffer_index = 2 * (row / 8) + (col / 8);
                 let y_index = (row % 8) * 8 + col % 8;
                 let chroma_index = (row / 2) * 8 + (col / 2);
-                
+
                 let y = ys[y_buffer_index][y_index];
                 let cb = macroblock.cb[chroma_index];
                 let cr = macroblock.cr[chroma_index];
-                
+
                 let ycbr = crate::image::pixel::YCbCr { y, cb, cr };
                 let RGB { r, g, b } = ycbr.to_rgb();
                 image_data.extend([r, g, b, 255]);
             }
         }
-        
+
         let image_data =
             ImageData::new_with_u8_clamped_array_and_sh(Clamped(&mut image_data), 16, 16).unwrap();
         let context = canvas_context_2d(&target.get().unwrap());
@@ -424,39 +466,59 @@ impl Renderer {
         );
     }
 
-    fn render_previous_reference(&self, frames: &[DecodedFrame], selected_frame:usize, macroblock_index: usize) {
+    fn render_previous_reference(
+        &self,
+        frames: &[DecodedFrame],
+        selected_frame: usize,
+        macroblock_index: usize,
+    ) {
         let target = &self.canvas_history_previous_reference;
 
         if selected_frame == 0 {
             let context = canvas_context_2d(&target.get().unwrap());
             context.clear_rect(0.0, 0.0, self.width.into(), self.height.into());
             return;
-        } 
-        
+        }
+
         let previous_reference_frame = frames[0..selected_frame]
             .iter()
             .rev()
-            .find(|frame| matches!(frame.stats.picture_type, constants::PICTURE_TYPE_INTRA | constants::PICTURE_TYPE_PREDICTIVE))
+            .find(|frame| {
+                matches!(
+                    frame.stats.picture_type,
+                    constants::PICTURE_TYPE_INTRA | constants::PICTURE_TYPE_PREDICTIVE
+                )
+            })
             .unwrap();
-        
-        self.draw_macroblock_from_frame(&previous_reference_frame.frame.current, macroblock_index, target);
+
+        self.draw_macroblock_from_frame(
+            &previous_reference_frame.frame.current,
+            macroblock_index,
+            target,
+        );
     }
 
-    fn render_next_reference(&self, frames: &[DecodedFrame], selected_frame:usize, macroblock_index: usize) {
-        // let target = &self.canvas_history_next_reference;
-
-        // if selected_frame == 0 {
-        //     let context = canvas_context_2d(&target.get().unwrap());
-        //     context.clear_rect(0.0, 0.0, self.width.into(), self.height.into());
-        //     return;
-        // } 
-        
+    fn render_next_reference(
+        &self,
+        frames: &[DecodedFrame],
+        selected_frame: usize,
+        macroblock_index: usize,
+    ) {
         let next_reference_frame = frames[selected_frame..frames.len()]
             .iter()
-            .find(|frame| matches!(frame.stats.picture_type, constants::PICTURE_TYPE_INTRA | constants::PICTURE_TYPE_PREDICTIVE))
+            .find(|frame| {
+                matches!(
+                    frame.stats.picture_type,
+                    constants::PICTURE_TYPE_INTRA | constants::PICTURE_TYPE_PREDICTIVE
+                )
+            })
             .unwrap();
-        
-        self.draw_macroblock_from_frame(&next_reference_frame.frame.current, macroblock_index, &self.canvas_history_next_reference);
+
+        self.draw_macroblock_from_frame(
+            &next_reference_frame.frame.current,
+            macroblock_index,
+            &self.canvas_history_next_reference,
+        );
     }
 }
 

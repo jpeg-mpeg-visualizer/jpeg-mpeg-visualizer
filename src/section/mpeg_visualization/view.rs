@@ -3,10 +3,9 @@ use crate::section::mpeg_visualization::mpeg1::MacroblockInfoKind;
 use crate::Msg as GMsg;
 use seed::prelude::*;
 use seed::*;
-use strum::IntoEnumIterator;
 use web_sys::MouseEvent;
 
-use super::model::{ExplainationTab, MacroblockType, Model, Msg};
+use super::model::{MacroblockType, Model, Msg};
 use super::mpeg1::constants::{PICTURE_TYPE_B, PICTURE_TYPE_INTRA, PICTURE_TYPE_PREDICTIVE};
 use super::mpeg1::MacroblockInfo;
 use super::page::wrap;
@@ -273,16 +272,19 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
 
 fn view_macroblock_history(model: &Model) -> Node<GMsg> {
     let is_visible = model.frames.is_empty() || model.selected_macroblock.is_none();
-    let canvas_attrs = attrs!{
+    let canvas_attrs = attrs! {
         At::Width => 128,
         At::Height => 128,
     };
-    let macroblock_info = model.selected_macroblock.map(|i|
-        &model.frames[model.selected_frame].stats.macroblock_info[i]);
+    let macroblock_info = model
+        .selected_macroblock
+        .map(|i| &model.frames[model.selected_frame].stats.macroblock_info[i]);
     let kind = macroblock_info.map(|x| &x.kind);
     let previous_reference_text = match kind {
         Some(MacroblockInfoKind::Intra) => "intra",
-        Some(MacroblockInfoKind::Moved { .. } | MacroblockInfoKind::Interpolated { .. }) => "direction",
+        Some(MacroblockInfoKind::Moved { .. } | MacroblockInfoKind::Interpolated { .. }) => {
+            "direction"
+        }
         _ => "",
     };
 
@@ -290,7 +292,10 @@ fn view_macroblock_history(model: &Model) -> Node<GMsg> {
         C!["macroblock-history"],
         C![IF!(is_visible => "-hidden")],
         h3!["Macroblock history"],
-        p!["Macroblock type: ", kind.map(|x| strong![format_macroblock_kind(x).to_string()])],
+        p![
+            "Macroblock type: ",
+            kind.map(|x| strong![format_macroblock_kind(x).to_string()])
+        ],
         div![
             C!["history-container"],
             IF!(matches!(kind, Some(MacroblockInfoKind::Skipped)) => C!["-skipped"]),
@@ -308,7 +313,7 @@ fn view_macroblock_history(model: &Model) -> Node<GMsg> {
             ],
             div![
                 C!["arrow -right from-previous-reference"],
-                attrs!{At::from("data-text") => previous_reference_text},
+                attrs! {At::from("data-text") => previous_reference_text},
             ],
             div![
                 C!["image previous-before-diff"],
@@ -320,34 +325,28 @@ fn view_macroblock_history(model: &Model) -> Node<GMsg> {
             ],
             div![
                 C!["arrow -right from-previous-before-diff"],
-                attrs!{At::from("data-text") => "difference"},
+                attrs! {At::from("data-text") => "difference"},
             ],
             div![
                 C!["vertical-container"],
                 div![
                     C!["image interpolated"],
-                    canvas![
-                        &canvas_attrs,
-                        el_ref(&model.canvas_history_interpolated)
-                    ],
+                    canvas![&canvas_attrs, el_ref(&model.canvas_history_interpolated)],
                     "Interpolation result"
                 ],
                 div![
                     C!["arrow -down from-interpolated"],
-                    attrs!{At::from("data-text") => "difference"},
+                    attrs! {At::from("data-text") => "difference"},
                 ],
                 div![
                     C!["image result"],
-                    canvas![
-                        &canvas_attrs,
-                        el_ref(&model.canvas_history_result)
-                    ],
+                    canvas![&canvas_attrs, el_ref(&model.canvas_history_result)],
                     "Result"
                 ],
             ],
             div![
                 C!["arrow -left from-next-before-diff"],
-                attrs!{At::from("data-text") => "difference"},
+                attrs! {At::from("data-text") => "difference"},
             ],
             div![
                 C!["image next-before-diff"],
@@ -359,14 +358,11 @@ fn view_macroblock_history(model: &Model) -> Node<GMsg> {
             ],
             div![
                 C!["arrow -left from-next-reference"],
-                attrs!{At::from("data-text") => "direction"},
+                attrs! {At::from("data-text") => "direction"},
             ],
             div![
                 C!["image next-reference"],
-                canvas![
-                    &canvas_attrs,
-                    el_ref(&model.canvas_history_next_reference)
-                ],
+                canvas![&canvas_attrs, el_ref(&model.canvas_history_next_reference)],
                 "Next reference"
             ],
         ]
@@ -387,9 +383,13 @@ const fn get_frame_type(code: u8, letter: bool) -> &'static str {
 const fn format_macroblock_kind(kind: &MacroblockInfoKind) -> &'static str {
     match kind {
         MacroblockInfoKind::Skipped => "Skipped",
-        MacroblockInfoKind::Moved { is_forward: true, .. } => "Forward predicted",
-        MacroblockInfoKind::Moved { is_forward: false, .. } => "Backward predicted",
+        MacroblockInfoKind::Moved {
+            is_forward: true, ..
+        } => "Forward predicted",
+        MacroblockInfoKind::Moved {
+            is_forward: false, ..
+        } => "Backward predicted",
         MacroblockInfoKind::Intra => "Intra",
-        MacroblockInfoKind::Interpolated { .. } => "Interpolated"
+        MacroblockInfoKind::Interpolated { .. } => "Interpolated",
     }
 }
