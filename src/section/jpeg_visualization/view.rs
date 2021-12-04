@@ -298,7 +298,7 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
                     ],
                     div![
                         C!["info_overlay"],
-                        "Difference for each pixel is percentage equal to sum of differences of (r,g,b) pixel values divided by max possible value (3 * 255)",
+                        "Difference for each pixel is percentage equal to sum of absolute vales of differences of (r,g,b) pixel values divided by max possible value (3 * 255)",
                         style![
                             St::Width => px(BLOCK_SIZE * model.zoom * 2 / 3),
                             St::Left => px(BLOCK_SIZE * model.zoom / 6),
