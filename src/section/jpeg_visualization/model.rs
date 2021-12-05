@@ -119,4 +119,7 @@ pub struct Model {
     pub zoom: u32,
     pub is_diff_info_shown: bool,
     pub subsampling_pack: SubsamplingPack,
+
+    pub scaled_luminance_quant_table: [[u8; 8]; 8],
+    pub scaled_chrominance_quant_table: [[u8; 8]; 8],
 }

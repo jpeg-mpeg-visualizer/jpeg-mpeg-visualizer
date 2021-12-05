@@ -492,7 +492,7 @@ fn plot_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>, zoom: u32) -
     ]
 }
 
-pub fn view_settings_sidebar(_model: &Model) -> Node<GMsg> {
+pub fn view_settings_sidebar(model: &Model) -> Node<GMsg> {
     div![
         C!["setting_sidebar"],
         input![
@@ -523,7 +523,7 @@ pub fn view_settings_sidebar(_model: &Model) -> Node<GMsg> {
                     At::Type => "range",
                     At::Max => 12,
                     At::Min => 2,
-                    At::Default => 7,
+                    At::Value => model.zoom,
                     At::Id => "zoom",
                 },
                 input_ev("change", |value| {
@@ -589,13 +589,40 @@ pub fn view_settings_sidebar(_model: &Model) -> Node<GMsg> {
                 attrs! {
                     At::Type => "range",
                     At::Max => 100,
-                    At::Min => 1,
+                    At::Value => model.quality,
+                    At::Min => 0,
                     At::Id => "quality",
                 },
                 input_ev("change", |value| {
                     wrap(Msg::QualityUpdated(value.parse::<u8>().unwrap()))
                 })
             ],
+            table![
+                C!["block-content"],
+                caption![
+                  "Luminance quantization table"
+                ],
+                (0..8).into_iter().map(|row| {
+                    tr![
+                        (0..8).into_iter().map(|col| {
+                            td![model.scaled_luminance_quant_table[row][col].to_string()]
+                        })
+                    ]
+                })
+            ],
+            table![
+                C!["block-content"],
+                caption![
+                  "Chrominance quantization table"
+                ],
+                (0..8).into_iter().map(|row| {
+                    tr![
+                        (0..8).into_iter().map(|col| {
+                            td![model.scaled_chrominance_quant_table[row][col].to_string()]
+                        })
+                    ]
+                })
+            ]
         ]
     ]
 }
