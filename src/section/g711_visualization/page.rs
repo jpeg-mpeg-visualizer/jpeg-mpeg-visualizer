@@ -79,6 +79,7 @@ pub fn init(url: Url) -> Option<Model> {
     })
 }
 
+#[allow(unused_must_use)]
 pub fn deinit(model: &mut Model) {
     if model.audio_context.is_some() {
         model.audio_context.as_mut().unwrap().close().unwrap();
