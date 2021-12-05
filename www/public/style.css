@@ -1002,3 +1002,17 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     position: absolute;
     left: -25%;
 }
+
+.preset-videos-wrapper {
+    display: flex;
+    width: 70%;
+    font-size: 1rem;
+    justify-content: space-around;
+    margin-top: 2rem;
+}
+
+.preset-videos-wrapper > .preset-video {
+    background-color: #efefef;
+    padding-inline: 20px;
+    cursor: pointer;
+}

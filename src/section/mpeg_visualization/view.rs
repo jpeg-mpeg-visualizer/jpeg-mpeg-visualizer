@@ -20,6 +20,27 @@ macro_rules! stop_and_prevent {
 }
 
 pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
+    let preset_videos_divs: Vec<Node<GMsg>> = vec![
+        preset_video_div(
+            "csgo.ts",
+            "CSGO snippet",
+            "960x720",
+            "mostly static, no P frames",
+        ),
+        preset_video_div(
+            "bbb_720_b.ts",
+            "Big Buck Bunny",
+            "1280x720",
+            "slow zoom, many interpolated macroblocks",
+        ),
+        preset_video_div(
+            "rocky_b_new.ts",
+            "A$AP Rocky - A$AP Forever snippet",
+            "1280x720",
+            "smooth transitions that make use of interpolation",
+        ),
+    ];
+
     div![
         C!["choose_file_wrapper"],
         div![
@@ -79,6 +100,25 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
                 wrap(Msg::FileChooserLoadVideo(file))
             })
         ],
+        div![C!["preset-videos-wrapper"], preset_videos_divs],
+    ]
+}
+
+fn preset_video_div(
+    file_name: &str,
+    name: &str,
+    resolution: &str,
+    description: &str,
+) -> Node<GMsg> {
+    let file_path = format!("public/preset_videos/{}", file_name);
+    div![
+        C!["preset-video"],
+        ev(Ev::Click, |_| wrap(Msg::FileChooserPresetClicked(
+            file_path
+        ))),
+        h4![name],
+        p![resolution],
+        p![description],
     ]
 }
 
