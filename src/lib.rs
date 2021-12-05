@@ -109,6 +109,12 @@ pub enum Msg {
 fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::UrlChanged(subs::UrlChanged(url)) => {
+            match model.page {
+                Page::G711Visualizer(ref mut child_model) => {
+                    g711_visualization::page::deinit(child_model)
+                }
+                _ => {}
+            }
             model.page = Page::init(url);
         }
         Msg::JPEGVisualizationMessage(child_message) => {

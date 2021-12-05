@@ -599,28 +599,20 @@ pub fn view_settings_sidebar(model: &Model) -> Node<GMsg> {
             ],
             table![
                 C!["block-content"],
-                caption![
-                  "Luminance quantization table"
-                ],
+                caption!["Luminance quantization table"],
                 (0..8).into_iter().map(|row| {
-                    tr![
-                        (0..8).into_iter().map(|col| {
-                            td![model.scaled_luminance_quant_table[row][col].to_string()]
-                        })
-                    ]
+                    tr![(0..8).into_iter().map(|col| {
+                        td![model.scaled_luminance_quant_table[row][col].to_string()]
+                    })]
                 })
             ],
             table![
                 C!["block-content"],
-                caption![
-                  "Chrominance quantization table"
-                ],
+                caption!["Chrominance quantization table"],
                 (0..8).into_iter().map(|row| {
-                    tr![
-                        (0..8).into_iter().map(|col| {
-                            td![model.scaled_chrominance_quant_table[row][col].to_string()]
-                        })
-                    ]
+                    tr![(0..8).into_iter().map(|col| {
+                        td![model.scaled_chrominance_quant_table[row][col].to_string()]
+                    })]
                 })
             ]
         ]
