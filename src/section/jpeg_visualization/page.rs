@@ -23,11 +23,11 @@ use super::drawing_utils::{
 use super::utils::get_image_diff;
 use std::collections::HashMap;
 
+use crate::quant::{CHROMINANCE_QUANTIZATION_TABLE, LUMINANCE_QUANTIZATION_TABLE};
 use crate::section::jpeg_visualization::utils::{
     create_tmp_canvas, horiz_mult_from_subsampling, vert_mult_from_subsampling,
 };
 use web_sys::{Blob, HtmlCanvasElement, HtmlImageElement};
-use crate::quant::{CHROMINANCE_QUANTIZATION_TABLE, LUMINANCE_QUANTIZATION_TABLE};
 
 pub fn init(url: Url) -> Option<Model> {
     let base_url = url.to_base_url();
@@ -946,9 +946,10 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
 
                 model.scaled_luminance_quant_table =
                     quant::scale_quantization_table(&quant::LUMINANCE_QUANTIZATION_TABLE, quality);
-                model.scaled_chrominance_quant_table =
-                    quant::scale_quantization_table(&quant::CHROMINANCE_QUANTIZATION_TABLE, quality);
-
+                model.scaled_chrominance_quant_table = quant::scale_quantization_table(
+                    &quant::CHROMINANCE_QUANTIZATION_TABLE,
+                    quality,
+                );
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
