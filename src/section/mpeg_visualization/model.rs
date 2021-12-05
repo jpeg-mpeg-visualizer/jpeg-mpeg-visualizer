@@ -44,6 +44,7 @@ pub enum Msg {
     FileChooserLoadVideo(web_sys::File),
     FileChooserDragStarted,
     FileChooserDragLeave,
+    FileChooserPresetClicked(String),
     VideoBytesLoaded(Vec<u8>),
     PreFrameLoaded(Vec<DecodedFrame>),
     FramesLoaded(Vec<DecodedFrame>),

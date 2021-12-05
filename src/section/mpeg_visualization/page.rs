@@ -68,6 +68,25 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::FileChooserDragStarted => model.file_chooser_zone_active = true,
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
+        Msg::FileChooserPresetClicked(file_path) => {
+            model.state = State::LoadingSpinnerView;
+            orders.perform_cmd(async move {
+                let bytes = Request::new(file_path)
+                    .method(Method::Get)
+                    .fetch()
+                    .await
+                    .unwrap()
+                    .check_status()
+                    .unwrap()
+                    .bytes()
+                    .await
+                    .unwrap();
+
+                let mut demuxer = super::ts::TSDemuxer::from_raw_bytes(bytes);
+                let video_stream = demuxer.parse_packets();
+                Msg::VideoBytesLoaded(video_stream)
+            });
+        }
         Msg::VideoBytesLoaded(video_stream) => {
             let mut mpeg1 = super::mpeg1::MPEG1::from_bytes(video_stream);
 
