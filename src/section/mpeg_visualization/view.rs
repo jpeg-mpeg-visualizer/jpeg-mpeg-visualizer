@@ -3,10 +3,9 @@ use crate::section::mpeg_visualization::mpeg1::MacroblockInfoKind;
 use crate::Msg as GMsg;
 use seed::prelude::*;
 use seed::*;
-use strum::IntoEnumIterator;
 use web_sys::MouseEvent;
 
-use super::model::{ExplainationTab, MacroblockType, Model, Msg};
+use super::model::{MacroblockType, Model, Msg};
 use super::mpeg1::constants::{PICTURE_TYPE_B, PICTURE_TYPE_INTRA, PICTURE_TYPE_PREDICTIVE};
 use super::mpeg1::MacroblockInfo;
 use super::page::wrap;
@@ -114,18 +113,22 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
         div![
             C!["frame-container"],
             div![
-                C!["canvas-container"],
-                canvas![C!["canvasindicator"], el_ref(&model.canvas_indicator),],
-                canvas![
-                    el_ref(&model.canvas),
-                    ev(Ev::Click, move |event| {
-                        let mouse_event: MouseEvent = event.unchecked_into();
-                        wrap(Msg::CanvasClicked(
-                            mouse_event.offset_x() as usize,
-                            mouse_event.offset_y() as usize,
-                        ))
-                    })
+                C!["frame-main"],
+                div![
+                    C!["canvas-container"],
+                    canvas![C!["canvasindicator"], el_ref(&model.canvas_indicator),],
+                    canvas![
+                        el_ref(&model.canvas),
+                        ev(Ev::Click, move |event| {
+                            let mouse_event: MouseEvent = event.unchecked_into();
+                            wrap(Msg::CanvasClicked(
+                                mouse_event.offset_x() as usize,
+                                mouse_event.offset_y() as usize,
+                            ))
+                        })
+                    ],
                 ],
+                view_macroblock_history(&model),
             ],
             div![
                 C!["frame-sidebar", IF!(model.frames.is_empty() => "-hidden")],
@@ -212,7 +215,7 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                                 ]
                             ],
                             match kind {
-                                MacroblockInfoKind::Moved { direction } => p!["direction: ", strong![format!("x: {}, y: {}", direction.0, direction.1)]],
+                                MacroblockInfoKind::Moved { direction, .. } => p!["direction: ", strong![format!("x: {}, y: {}", direction.0, direction.1)]],
                                 _ => seed::empty(),
                             },
                             if let Some(encoded_block) = model.selected_block.and_then(|n| encoded_blocks.blocks[n].as_ref()) {
@@ -264,26 +267,105 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                 ],
             ],
         ],
-        IF!(not(model.frames.is_empty()) => {
+    ]
+}
+
+fn view_macroblock_history(model: &Model) -> Node<GMsg> {
+    let is_visible = model.frames.is_empty() || model.selected_macroblock.is_none();
+    let canvas_attrs = attrs! {
+        At::Width => 128,
+        At::Height => 128,
+    };
+    let macroblock_info = model
+        .selected_macroblock
+        .map(|i| &model.frames[model.selected_frame].stats.macroblock_info[i]);
+    let kind = macroblock_info.map(|x| &x.kind);
+    let previous_reference_text = match kind {
+        Some(MacroblockInfoKind::Intra) => "intra",
+        Some(MacroblockInfoKind::Moved { .. } | MacroblockInfoKind::Interpolated { .. }) => {
+            "direction"
+        }
+        _ => "",
+    };
+
+    div![
+        C!["macroblock-history"],
+        C![IF!(is_visible => "-hidden")],
+        h3!["Macroblock history"],
+        p![
+            "Macroblock type: ",
+            kind.map(|x| strong![format_macroblock_kind(x).to_string()])
+        ],
+        div![
+            C!["history-container"],
+            IF!(matches!(kind, Some(MacroblockInfoKind::Skipped)) => C!["-skipped"]),
+            IF!(matches!(kind, Some(MacroblockInfoKind::Intra)) => C!["-intra"]),
+            IF!(matches!(kind, Some(MacroblockInfoKind::Moved { is_forward: true, ..  })) => C!["-forward"]),
+            IF!(matches!(kind, Some(MacroblockInfoKind::Moved { is_forward: false, ..  })) => C!["-backward"]),
+            IF!(matches!(kind, Some(MacroblockInfoKind::Interpolated { ..  })) => C!["-interpolated"]),
             div![
-                C!["frame-type-explaination"],
+                C!["image previous-reference"],
+                canvas![
+                    &canvas_attrs,
+                    el_ref(&model.canvas_history_previous_reference)
+                ],
+                "Previous reference"
+            ],
+            div![
+                C!["arrow -right from-previous-reference"],
+                attrs! {At::from("data-text") => previous_reference_text},
+            ],
+            div![
+                C!["image previous-before-diff"],
+                canvas![
+                    &canvas_attrs,
+                    el_ref(&model.canvas_history_previous_before_diff)
+                ],
+                "Moved macroblock"
+            ],
+            div![
+                C!["arrow -right from-previous-before-diff"],
+                attrs! {At::from("data-text") => "difference"},
+            ],
+            div![
+                C!["vertical-container"],
                 div![
-                    C!["tabs"],
-                    ExplainationTab::iter().map(|tab| {
-                        div![
-                            IF!(model.selected_explaination_tab == tab => C!["-selected"]),
-                            tab.to_string(),
-                            ev(Ev::Click, move |_| wrap(Msg::ExplainationTabChanged(tab)))
-                        ]
-                    })
+                    C!["image interpolated"],
+                    canvas![&canvas_attrs, el_ref(&model.canvas_history_interpolated)],
+                    "Interpolation result"
                 ],
                 div![
-                    C!["content"],
-                    h3!["Lorem ipsum"],
-                    "Lorem ipsum dolor sit amet."
+                    C!["arrow -down from-interpolated"],
+                    attrs! {At::from("data-text") => "difference"},
                 ],
-            ]
-        })
+                div![
+                    C!["image result"],
+                    canvas![&canvas_attrs, el_ref(&model.canvas_history_result)],
+                    "Result"
+                ],
+            ],
+            div![
+                C!["arrow -left from-next-before-diff"],
+                attrs! {At::from("data-text") => "difference"},
+            ],
+            div![
+                C!["image next-before-diff"],
+                canvas![
+                    &canvas_attrs,
+                    el_ref(&model.canvas_history_next_before_diff)
+                ],
+                "Moved macroblock"
+            ],
+            div![
+                C!["arrow -left from-next-reference"],
+                attrs! {At::from("data-text") => "direction"},
+            ],
+            div![
+                C!["image next-reference"],
+                canvas![&canvas_attrs, el_ref(&model.canvas_history_next_reference)],
+                "Next reference"
+            ],
+        ]
     ]
 }
 
@@ -301,7 +383,13 @@ const fn get_frame_type(code: u8, letter: bool) -> &'static str {
 const fn format_macroblock_kind(kind: &MacroblockInfoKind) -> &'static str {
     match kind {
         MacroblockInfoKind::Skipped => "Skipped",
-        MacroblockInfoKind::Moved { .. } => "Moved",
+        MacroblockInfoKind::Moved {
+            is_forward: true, ..
+        } => "Forward predicted",
+        MacroblockInfoKind::Moved {
+            is_forward: false, ..
+        } => "Backward predicted",
         MacroblockInfoKind::Intra => "Intra",
+        MacroblockInfoKind::Interpolated { .. } => "Interpolated",
     }
 }

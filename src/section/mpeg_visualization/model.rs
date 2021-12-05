@@ -1,5 +1,4 @@
 use seed::prelude::ElRef;
-use strum_macros::EnumIter;
 use web_sys::HtmlCanvasElement;
 
 use super::{
@@ -21,7 +20,6 @@ pub struct Model {
     pub canvas: ElRef<HtmlCanvasElement>,
     pub frames: Vec<DecodedFrame>,
     pub selected_frame: usize,
-    pub selected_explaination_tab: ExplainationTab,
     pub control_state: ControlState,
     pub selected_macroblock: Option<usize>,
     pub canvas_y1: ElRef<HtmlCanvasElement>,
@@ -33,6 +31,12 @@ pub struct Model {
     pub selected_block: Option<usize>,
     pub canvas_indicator: ElRef<HtmlCanvasElement>,
     pub has_more_frames: bool,
+    pub canvas_history_result: ElRef<HtmlCanvasElement>,
+    pub canvas_history_previous_reference: ElRef<HtmlCanvasElement>,
+    pub canvas_history_previous_before_diff: ElRef<HtmlCanvasElement>,
+    pub canvas_history_next_reference: ElRef<HtmlCanvasElement>,
+    pub canvas_history_next_before_diff: ElRef<HtmlCanvasElement>,
+    pub canvas_history_interpolated: ElRef<HtmlCanvasElement>,
 }
 
 pub enum Msg {
@@ -42,28 +46,10 @@ pub enum Msg {
     VideoBytesLoaded(Vec<u8>),
     FramesLoaded(Vec<DecodedFrame>),
     FrameChanged(usize),
-    ExplainationTabChanged(ExplainationTab),
     ToggleControl(MacroblockType),
     CanvasClicked(usize, usize),
     BlockSelected(usize),
     MoreFramesClicked,
-}
-
-#[derive(Clone, Copy, PartialEq, EnumIter)]
-pub enum ExplainationTab {
-    General,
-    Intra,
-    Predictive,
-}
-
-impl ToString for ExplainationTab {
-    fn to_string(&self) -> String {
-        match self {
-            ExplainationTab::General => "General info".into(),
-            ExplainationTab::Intra => "Intra frame".into(),
-            ExplainationTab::Predictive => "Predictive frame".into(),
-        }
-    }
 }
 
 pub struct ControlState {

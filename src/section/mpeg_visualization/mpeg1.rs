@@ -19,7 +19,7 @@ struct VideoMotion {
     pub v: i32,
 }
 
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct FrameImage {
     pub y: Vec<u8>,
     pub cb: Vec<u8>,
@@ -40,17 +40,7 @@ impl FrameImage {
     }
 }
 
-impl Default for FrameImage {
-    fn default() -> Self {
-        FrameImage {
-            y: vec![],
-            cb: vec![],
-            cr: vec![],
-        }
-    }
-}
-
-#[derive(Clone)]
+#[derive(Default, Clone)]
 pub struct VideoFrame {
     pub width: u16,
     pub height: u16,
@@ -59,20 +49,6 @@ pub struct VideoFrame {
     pub skipped: FrameImage,
     pub moved: FrameImage,
     pub intra: FrameImage,
-}
-
-impl Default for VideoFrame {
-    fn default() -> Self {
-        VideoFrame {
-            width: 0,
-            height: 0,
-
-            current: Default::default(),
-            skipped: Default::default(),
-            moved: Default::default(),
-            intra: Default::default(),
-        }
-    }
 }
 
 pub struct DecodedFrame {
@@ -108,14 +84,25 @@ impl MacroblockEncodedBlocks {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum MacroblockInfoKind {
     Skipped,
-    Moved { direction: (i32, i32) },
     Intra,
+    Moved {
+        direction: (i32, i32),
+        before_diff: MacroblockContent,
+        is_forward: bool,
+    },
+    Interpolated {
+        direction: (i32, i32),
+        forward: MacroblockContent,
+        backward: MacroblockContent,
+        interpolated: MacroblockContent,
+    },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 enum MacroblockDestination {
     Current,
     Skipped,
@@ -130,6 +117,30 @@ pub struct DecodingStats {
     pub block_count: usize,
 
     pub macroblock_info: Vec<MacroblockInfo>,
+}
+
+#[derive(Clone)]
+pub struct MacroblockContent {
+    pub y1: [u8; 64],
+    pub y2: [u8; 64],
+    pub y3: [u8; 64],
+    pub y4: [u8; 64],
+    pub cb: [u8; 64],
+    pub cr: [u8; 64],
+}
+
+impl Default for MacroblockContent {
+    fn default() -> Self {
+        let empty = [0; 64];
+        Self {
+            y1: empty,
+            y2: empty,
+            y3: empty,
+            y4: empty,
+            cb: empty,
+            cr: empty,
+        }
+    }
 }
 
 pub struct MPEG1 {
@@ -172,6 +183,10 @@ pub struct MPEG1 {
     quantizer_scale: u8,
     macroblock_count: usize,
     block_count: usize,
+
+    forward_macroblock: MacroblockContent,
+    backward_macroblock: MacroblockContent,
+    interpolated_macroblock: MacroblockContent,
 }
 
 impl MPEG1 {
@@ -226,6 +241,10 @@ impl MPEG1 {
             quantizer_scale: 0,
             macroblock_count: 0,
             block_count: 0,
+
+            forward_macroblock: MacroblockContent::default(),
+            backward_macroblock: MacroblockContent::default(),
+            interpolated_macroblock: MacroblockContent::default(),
         }
     }
 
@@ -644,12 +663,34 @@ impl MPEG1 {
             self.decode_motion_vectors();
             self.predict_macroblock(MacroblockDestination::Current);
             self.predict_macroblock(MacroblockDestination::Moved);
+
+            let is_interpolated = self.picture_type == constants::PICTURE_TYPE_B
+                && self.motion_forward.is_set
+                && self.motion_backward.is_set;
+            let kind;
+
+            if is_interpolated {
+                kind = MacroblockInfoKind::Interpolated {
+                    direction: (self.motion_forward.h, self.motion_forward.v),
+                    forward: self.forward_macroblock.clone(),
+                    backward: self.backward_macroblock.clone(),
+                    interpolated: self.interpolated_macroblock.clone(),
+                };
+            } else {
+                let before_diff = self.get_macroblock(&self.frame_current);
+
+                kind = MacroblockInfoKind::Moved {
+                    direction: (self.motion_forward.h, self.motion_forward.v),
+                    before_diff,
+                    is_forward: self.picture_type == constants::PICTURE_TYPE_PREDICTIVE
+                        || self.motion_forward.is_set,
+                };
+            }
+
             self.stats_current.macroblock_info.push(MacroblockInfo {
                 size: 0,
                 encoded_blocks: MacroblockEncodedBlocks::default(),
-                kind: MacroblockInfoKind::Moved {
-                    direction: (self.motion_forward.h, self.motion_forward.v),
-                },
+                kind,
             });
         }
 
@@ -738,14 +779,30 @@ impl MPEG1 {
             }
 
             if self.motion_forward.is_set {
+                // HACK: get the content of the backward predicted macroblock before interpolation
+                if self.motion_backward.is_set && destination == MacroblockDestination::Current {
+                    self.copy_macroblock(
+                        backward_h,
+                        backward_v,
+                        MacroblockDestination::Current,
+                        FrameOrder::Backward,
+                    );
+                    self.backward_macroblock = self.get_macroblock(&self.frame_current);
+                }
+
                 self.copy_macroblock(
                     forward_h,
                     forward_v,
                     destination.clone(),
                     FrameOrder::Forward,
                 );
+
+                if destination == MacroblockDestination::Current {
+                    self.forward_macroblock = self.get_macroblock(&self.frame_current);
+                }
                 if self.motion_backward.is_set {
                     self.interpolate_macroblock(backward_h, backward_v, destination);
+                    self.interpolated_macroblock = self.get_macroblock(&self.frame_current);
                 }
             } else {
                 self.copy_macroblock(backward_h, backward_v, destination, FrameOrder::Backward);
@@ -1418,6 +1475,33 @@ impl MPEG1 {
         }
         code_table[state as usize + 2]
     }
+
+    fn get_macroblock(&self, src: &Rc<RefCell<VideoFrame>>) -> MacroblockContent {
+        let src = src.deref().borrow();
+        let scan = self.coded_width as usize - 8;
+        let index = (self.mb_row * self.coded_width as usize + self.mb_col) * 16;
+        let y1 = copy_block_from_source(&src.current.y, index, scan);
+        let index = index + 8;
+        let y2 = copy_block_from_source(&src.current.y, index, scan);
+        let index = (index - 8) + self.coded_width as usize * 8;
+        let y3 = copy_block_from_source(&src.current.y, index, scan);
+        let index = index + 8;
+        let y4 = copy_block_from_source(&src.current.y, index, scan);
+
+        let scan = self.coded_width as usize / 2 - 8;
+        let index = ((self.mb_row * self.coded_width as usize) * 4) + self.mb_col * 8;
+        let cb = copy_block_from_source(&src.current.cb, index, scan);
+        let cr = copy_block_from_source(&src.current.cr, index, scan);
+
+        MacroblockContent {
+            y1,
+            y2,
+            y3,
+            y4,
+            cb,
+            cr,
+        }
+    }
 }
 
 #[allow(clippy::identity_op)]
@@ -1478,6 +1562,23 @@ fn add_value_to_destination(value: i32, dest: &mut [u8], mut index: usize, scan:
         dest[index + 7] = (dest[index + 7] as i32 + value).clamp(0, 255) as u8;
         index += scan + 8;
     }
+}
+
+#[allow(clippy::identity_op)]
+fn copy_block_from_source(src: &[u8], mut index: usize, scan: usize) -> [u8; 64] {
+    let mut dest = [0; 64];
+    for i in (0..64).step_by(8) {
+        dest[i + 0] = src[index + 0];
+        dest[i + 1] = src[index + 1];
+        dest[i + 2] = src[index + 2];
+        dest[i + 3] = src[index + 3];
+        dest[i + 4] = src[index + 4];
+        dest[i + 5] = src[index + 5];
+        dest[i + 6] = src[index + 6];
+        dest[i + 7] = src[index + 7];
+        index += scan + 8;
+    }
+    dest
 }
 
 #[rustfmt::skip]
