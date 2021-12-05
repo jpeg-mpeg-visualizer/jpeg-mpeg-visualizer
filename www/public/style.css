@@ -955,6 +955,21 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     content: none;
 }
 
+.macroblock-selection-hint {
+    padding: var(--component-gap);
+    background-color: mintcream;
+    border: 2px solid yellowgreen;
+    color: darkgreen;
+    border-radius: 5px;
+    font-size: 1rem;
+    text-align: center;
+}
+
+.macroblock-selection-hint.-hidden {
+    display: none;
+}
+
+/* PRESETS */
 .preset_images_wrapper {
     display: flex;
     flex-direction: row;

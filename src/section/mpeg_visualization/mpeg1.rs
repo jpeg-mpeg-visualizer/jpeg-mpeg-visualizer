@@ -85,20 +85,20 @@ impl MacroblockEncodedBlocks {
 }
 
 #[derive(Clone)]
-#[allow(clippy::large_enum_variant)]
 pub enum MacroblockInfoKind {
     Skipped,
     Intra,
     Moved {
         direction: (i32, i32),
-        before_diff: MacroblockContent,
+        before_diff: Box<MacroblockContent>,
         is_forward: bool,
     },
     Interpolated {
-        direction: (i32, i32),
-        forward: MacroblockContent,
-        backward: MacroblockContent,
-        interpolated: MacroblockContent,
+        forward_direction: (i32, i32),
+        backward_direction: (i32, i32),
+        forward: Box<MacroblockContent>,
+        backward: Box<MacroblockContent>,
+        interpolated: Box<MacroblockContent>,
     },
 }
 
@@ -671,13 +671,14 @@ impl MPEG1 {
 
             if is_interpolated {
                 kind = MacroblockInfoKind::Interpolated {
-                    direction: (self.motion_forward.h, self.motion_forward.v),
-                    forward: self.forward_macroblock.clone(),
-                    backward: self.backward_macroblock.clone(),
-                    interpolated: self.interpolated_macroblock.clone(),
+                    forward_direction: (self.motion_forward.h, self.motion_forward.v),
+                    backward_direction: (self.motion_backward.h, self.motion_backward.v),
+                    forward: Box::new(self.forward_macroblock.clone()),
+                    backward: Box::new(self.backward_macroblock.clone()),
+                    interpolated: Box::new(self.interpolated_macroblock.clone()),
                 };
             } else {
-                let before_diff = self.get_macroblock(&self.frame_current);
+                let before_diff = Box::new(self.get_macroblock(&self.frame_current));
 
                 kind = MacroblockInfoKind::Moved {
                     direction: (self.motion_forward.h, self.motion_forward.v),
