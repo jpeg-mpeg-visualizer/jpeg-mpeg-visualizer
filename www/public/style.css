@@ -45,6 +45,9 @@ body {
     justify-content: center;
     min-height: calc(100vh - 2.7rem);
 }
+.choose_file_wrapper {
+    flex-direction: column;
+}
 
 .select_menu_button {
     width: 27%;
@@ -950,4 +953,37 @@ input.sidebar_activator:checked ~ .sidebar_settings {
 .history-container.-interpolated > .arrow.from-next-before-diff::before,
 .history-container.-interpolated > .arrow.from-previous-before-diff::before {
     content: none;
+}
+
+.preset_images_wrapper {
+    display: flex;
+    flex-direction: row;
+    width: 70%;
+}
+.preset_image_wrapper {
+    flex: 1;
+}
+.square_div_container {
+    display: inline-block;
+    position: relative;
+    min-width: 100%;
+    padding-top: 100%;
+}
+.preset_image_clickable_div {
+    margin: 5%;
+    cursor: pointer;
+    overflow: hidden;
+    border-radius: 50%;
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    right: 0;
+}
+.preset_img {
+    display: block;
+    min-width: 100%;
+    max-height: 100%;
+    position: absolute;
+    left: -25%;
 }

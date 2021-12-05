@@ -298,7 +298,7 @@ fn view_image_recovered(model: &Model) -> Node<GMsg> {
                     ],
                     div![
                         C!["info_overlay"],
-                        "Difference for each pixel is percentage equal to sum of differences of (r,g,b) pixel values divided by max possible value (3 * 255)",
+                        "Difference for each pixel is percentage equal to sum of absolute vales of differences of (r,g,b) pixel values divided by max possible value (3 * 255)",
                         style![
                             St::Width => px(BLOCK_SIZE * model.zoom * 2 / 3),
                             St::Left => px(BLOCK_SIZE * model.zoom / 6),
@@ -631,6 +631,12 @@ pub fn view_jpeg_visualization(model: &Model) -> Node<GMsg> {
 }
 
 pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
+    let mut preset_image_divs: Vec<Node<GMsg>> = Vec::<Node<GMsg>>::new();
+    preset_image_divs.push(preset_image_div("nothern.jpg", 3546, 2255));
+    preset_image_divs.push(preset_image_div("ymm.jpg", 1280, 857));
+    preset_image_divs.push(preset_image_div("green.jpg", 1920, 1281));
+    preset_image_divs.push(preset_image_div("car.png", 1833, 1121));
+
     div![
         C!["choose_file_wrapper"],
         div![
@@ -689,6 +695,30 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
                     .unwrap();
                 wrap(Msg::FileChooserLoadImage(file))
             })
+        ],
+        div![C!["preset_images_wrapper"], preset_image_divs,],
+    ]
+}
+
+// TODO: Consider displaying width and height below the image preset
+fn preset_image_div(file_name: &str, _img_width: u32, _img_height: u32) -> Node<GMsg> {
+    let file_path = format!("public/preset_images/{}", file_name);
+    div![
+        C!["preset_image_wrapper"],
+        div![
+            C!["square_div_container"],
+            div![
+                C!["preset_image_clickable_div"],
+                img![
+                    C!["preset_img"],
+                    attrs![
+                        At::Src => file_path
+                    ],
+                    ev(Ev::Click, |_| {
+                        wrap(Msg::FileChooserPresetClicked(file_path))
+                    })
+                ],
+            ]
         ],
     ]
 }

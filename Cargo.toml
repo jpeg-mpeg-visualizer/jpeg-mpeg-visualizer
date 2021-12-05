@@ -53,4 +53,8 @@ features = [
     "AudioDestinationNode",
     "HtmlDivElement",
     "Blob",
-    "Url" ]
+    "Url",
+    "Request",
+    "RequestInit",
+    "RequestMode",
+    "Response"]

@@ -38,6 +38,7 @@ pub enum Msg {
     FileChooserLoadImage(web_sys::File),
     FileChooserDragStarted,
     FileChooserDragLeave,
+    FileChooserPresetClicked(String),
     ImageLoaded(image::RawImage),
     QualityUpdated(u8),
     ZoomUpdated(u32),

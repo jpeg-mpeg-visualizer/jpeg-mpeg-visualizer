@@ -899,6 +899,29 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         }
         Msg::FileChooserDragStarted => model.file_chooser_zone_active = true,
         Msg::FileChooserDragLeave => model.file_chooser_zone_active = false,
+        Msg::FileChooserPresetClicked(file_path) => {
+            // TODO: Display that request is processed
+            orders.perform_cmd(async move {
+                let img_bytes = Request::new(file_path)
+                    .method(Method::Get)
+                    .fetch()
+                    .await
+                    .unwrap()
+                    .check_status()
+                    .unwrap()
+                    .bytes()
+                    .await
+                    .unwrap();
+
+                let file_blob = gloo_file::Blob::new(img_bytes.as_slice());
+
+                let raw_image = utils::load_image(file_blob).await;
+                Msg::ImageLoaded(raw_image)
+            });
+            model.quality = 50;
+            model.zoom = 7;
+            model.state = State::PreImageView
+        }
         Msg::ImageLoaded(raw_image) => {
             let raw_image_rc = Rc::new(raw_image);
             let image_window =
