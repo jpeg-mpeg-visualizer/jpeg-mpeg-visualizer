@@ -9,6 +9,7 @@ use super::{
 pub enum State {
     ChoosingFile,
     DisplayingVideo,
+    LoadingSpinnerView,
 }
 
 pub struct Model {
@@ -44,6 +45,7 @@ pub enum Msg {
     FileChooserDragStarted,
     FileChooserDragLeave,
     VideoBytesLoaded(Vec<u8>),
+    PreFrameLoaded(Vec<DecodedFrame>),
     FramesLoaded(Vec<DecodedFrame>),
     FrameChanged(usize),
     ToggleControl(MacroblockType),

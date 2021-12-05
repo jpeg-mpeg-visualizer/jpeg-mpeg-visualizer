@@ -1,6 +1,7 @@
 use super::model::{ControlState, MacroblockType, Model, Msg, State};
 use super::mpeg1::{DecodedFrame, MPEG1};
 use super::view::{view_file_chooser, view_video_player};
+use crate::mpeg_visualization::view::view_loading_spinner;
 use crate::Msg as GMsg;
 use gloo_file;
 use seed::prelude::*;
@@ -45,6 +46,7 @@ pub fn view(model: &Model) -> Node<GMsg> {
     match &model.state {
         State::ChoosingFile => view_file_chooser(model),
         State::DisplayingVideo => view_video_player(model),
+        State::LoadingSpinnerView => view_loading_spinner(model),
     }
 }
 
@@ -55,7 +57,7 @@ pub fn wrap(msg: Msg) -> GMsg {
 pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
     match msg {
         Msg::FileChooserLoadVideo(file) => {
-            model.state = State::DisplayingVideo;
+            model.state = State::LoadingSpinnerView;
             let file_blob = gloo_file::Blob::from(file);
             orders.perform_cmd(async move {
                 let bytes = gloo_file::futures::read_as_bytes(&file_blob).await.unwrap();
@@ -93,7 +95,11 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             }
             model.mpeg1 = Some(mpeg1);
 
-            orders.perform_cmd(async move { Msg::FramesLoaded(frames) });
+            orders.after_next_render(|_| Msg::PreFrameLoaded(frames));
+        }
+        Msg::PreFrameLoaded(frames) => {
+            model.state = State::DisplayingVideo;
+            orders.after_next_render(|_| Msg::FramesLoaded(frames));
         }
         Msg::FramesLoaded(frames) => {
             model.frames.extend(frames);
