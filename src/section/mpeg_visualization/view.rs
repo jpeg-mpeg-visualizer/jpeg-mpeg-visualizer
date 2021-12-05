@@ -144,8 +144,8 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                             p!["height: ", strong![frame.height.to_string()]],
                             p!["size: ", strong![format!("{:.2} KB", decoded_frame.stats.size as f32 / 1000.0 / 8.0)]],
                             h4!["Additional information"],
-                            p!["# of macroblocks: ", strong![decoded_frame.stats.macroblock_count.to_string()]],
-                            p!["# of blocks: ", strong![decoded_frame.stats.block_count.to_string()]],
+                            p!["# of encoded macroblocks: ", strong![decoded_frame.stats.macroblock_count.to_string()]],
+                            p!["# of encoded blocks: ", strong![decoded_frame.stats.block_count.to_string()]],
                         ]
                     })
                 ],
@@ -185,18 +185,22 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                     div![IF!(model.selected_macroblock.is_some() => {
                         let macroblock_address = model.selected_macroblock.unwrap();
                         let selected_frame = &model.frames[model.selected_frame];
-                        let macroblock_width = (selected_frame.frame.width + 15) / 16;
-                        let macroblock_y = macroblock_address / macroblock_width as usize;
-                        let macroblock_x = macroblock_address % macroblock_width as usize;
                         let MacroblockInfo {
                             size,
                             encoded_blocks,
                             kind
                         } = &selected_frame.stats.macroblock_info[macroblock_address];
-                        vec![
-                            p!["x: ", strong![macroblock_x.to_string()], ", y: ", strong![macroblock_y.to_string()]],
+                        nodes![
                             p!["type: ", strong![format_macroblock_kind(&kind)]],
                             p!["size: ", strong![format!("{} bits", size)]],
+                            match kind {
+                                MacroblockInfoKind::Moved { direction, .. } => vec![p!["direction: ", strong![format!("x: {}, y: {}", direction.0, direction.1)]]],
+                                MacroblockInfoKind::Interpolated { forward_direction, backward_direction, .. } => vec![
+                                    p!["forward direction: ", strong![format!("x: {}, y: {}", forward_direction.0, forward_direction.1)]],
+                                    p!["backward direction: ", strong![format!("x: {}, y: {}", backward_direction.0, backward_direction.1)]]
+                                ],
+                                _ => vec![],
+                            },
                             p![
                                 C!["block-container"],
                                 "encoded blocks: ",
@@ -214,10 +218,6 @@ pub fn view_video_player(model: &Model) -> Node<GMsg> {
                                     })
                                 ]
                             ],
-                            match kind {
-                                MacroblockInfoKind::Moved { direction, .. } => p!["direction: ", strong![format!("x: {}, y: {}", direction.0, direction.1)]],
-                                _ => seed::empty(),
-                            },
                             if let Some(encoded_block) = model.selected_block.and_then(|n| encoded_blocks.blocks[n].as_ref()) {
                                 table![
                                     C!["block-content"],

@@ -95,7 +95,8 @@ pub enum MacroblockInfoKind {
         is_forward: bool,
     },
     Interpolated {
-        direction: (i32, i32),
+        forward_direction: (i32, i32),
+        backward_direction: (i32, i32),
         forward: MacroblockContent,
         backward: MacroblockContent,
         interpolated: MacroblockContent,
@@ -671,7 +672,8 @@ impl MPEG1 {
 
             if is_interpolated {
                 kind = MacroblockInfoKind::Interpolated {
-                    direction: (self.motion_forward.h, self.motion_forward.v),
+                    forward_direction: (self.motion_forward.h, self.motion_forward.v),
+                    backward_direction: (self.motion_backward.h, self.motion_backward.v),
                     forward: self.forward_macroblock.clone(),
                     backward: self.backward_macroblock.clone(),
                     interpolated: self.interpolated_macroblock.clone(),
