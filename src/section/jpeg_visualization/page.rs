@@ -27,6 +27,7 @@ use crate::section::jpeg_visualization::utils::{
     create_tmp_canvas, horiz_mult_from_subsampling, vert_mult_from_subsampling,
 };
 use web_sys::{Blob, HtmlCanvasElement, HtmlImageElement};
+use crate::quant::{CHROMINANCE_QUANTIZATION_TABLE, LUMINANCE_QUANTIZATION_TABLE};
 
 pub fn init(url: Url) -> Option<Model> {
     let base_url = url.to_base_url();
@@ -69,6 +70,8 @@ pub fn init(url: Url) -> Option<Model> {
         zoom: 7,
         is_diff_info_shown: false,
         subsampling_pack,
+        scaled_luminance_quant_table: LUMINANCE_QUANTIZATION_TABLE,
+        scaled_chrominance_quant_table: CHROMINANCE_QUANTIZATION_TABLE,
     })
 }
 
@@ -940,6 +943,12 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
                     &model.chosen_block_plot_map,
                     &model.subsampling_pack,
                 );
+
+                model.scaled_luminance_quant_table =
+                    quant::scale_quantization_table(&quant::LUMINANCE_QUANTIZATION_TABLE, quality);
+                model.scaled_chrominance_quant_table =
+                    quant::scale_quantization_table(&quant::CHROMINANCE_QUANTIZATION_TABLE, quality);
+
             }
         }
         Msg::PreviewCanvasClicked(x, y) => {
