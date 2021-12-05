@@ -902,27 +902,6 @@ pub(crate) fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>)
         Msg::FileChooserPresetClicked(file_path) => {
             // TODO: Display that request is processed
             orders.perform_cmd(async move {
-                /*let mut opts = RequestInit::new();
-                opts.method("GET");
-                opts.mode(RequestMode::Cors);
-
-                let request = Request::new_with_str_and_init(&file_path, &opts).unwrap();
-
-                /*request
-                .headers()
-                .set("Accept", "application/vnd.github.v3+json")?;*/
-
-                let window = web_sys::window().unwrap();
-                let resp_value = JsFuture::from(window.fetch_with_request(&request)).await.unwrap();
-
-                // `resp_value` is a `Response` object.
-                assert!(resp_value.is_instance_of::<Response>());
-                let resp: Response = resp_value.dyn_into().unwrap();
-
-                // Convert this other `Promise` into a rust `Future`.
-                let blob = JsFuture::from(resp.blob().unwrap()).await.unwrap();
-
-                let file_blob = blob.dyn_into().unwrap();*/
                 let img_bytes = Request::new(file_path)
                     .method(Method::Get)
                     .fetch()
