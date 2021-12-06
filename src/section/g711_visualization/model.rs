@@ -141,6 +141,7 @@ pub enum Msg {
     FileChooserLoadAudio(web_sys::File),
     FileChooserDragStarted,
     FileChooserDragLeave,
+    FileChooserPresetClicked(String),
     PreAudioLoaded(Vec<i16>, f32, u32, Vec<i16>, u32),
     AudioLoaded,
 

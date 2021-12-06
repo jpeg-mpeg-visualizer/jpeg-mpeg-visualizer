@@ -1003,7 +1003,7 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     left: -25%;
 }
 
-.preset-videos-wrapper {
+.preset-videos-wrapper, .preset-audio-wrapper {
     display: flex;
     width: 70%;
     font-size: 1rem;
@@ -1011,7 +1011,7 @@ input.sidebar_activator:checked ~ .sidebar_settings {
     margin-top: 2rem;
 }
 
-.preset-videos-wrapper > .preset-video {
+.preset-videos-wrapper > .preset-video, .preset-audio-wrapper > .preset-audio{
     background-color: #efefef;
     padding-inline: 20px;
     cursor: pointer;

@@ -519,6 +519,25 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         }
         Msg::FileChooserDragStarted => model.state = State::FileChooser { zone_active: true },
         Msg::FileChooserDragLeave => model.state = State::FileChooser { zone_active: false },
+        Msg::FileChooserPresetClicked(file_path) => {
+            model.state = LoadingSpinnerView;
+            orders.perform_cmd(async move {
+                let bytes = Request::new(file_path)
+                    .method(Method::Get)
+                    .fetch()
+                    .await
+                    .unwrap()
+                    .check_status()
+                    .unwrap()
+                    .bytes()
+                    .await
+                    .unwrap();
+
+                let file_blob = gloo_file::Blob::new(bytes.as_slice());
+                let (raw_sound, bitrate, length, sound_8khz, length_8khz) =
+                    utils::load_audio(file_blob).await;
+                Msg::PreAudioLoaded(raw_sound, bitrate, length, sound_8khz, length_8khz)            });
+        }
         Msg::PreAudioLoaded(audio, bitrate, length, audio_8khz, lenght_8khz) => {
             model.pcm_i16 = audio;
             model.pcm_i16_8khz = audio_8khz;

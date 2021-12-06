@@ -1,5 +1,5 @@
 use seed::prelude::*;
-use seed::{attrs, div, input, label, strong, C, IF};
+use seed::{attrs, div, h4, input, label, p, strong, C, IF};
 
 use super::model::{Model, Msg};
 use super::page::wrap;
@@ -17,6 +17,24 @@ macro_rules! stop_and_prevent {
 
 #[rustfmt::skip]
 pub fn view_file_chooser(_: &Model, zone_active: bool) -> Node<GMsg> {
+    let preset_audio_divs: Vec<Node<GMsg>> = vec![
+        preset_audio_div(
+            "music_orig.wav",
+            "Music sample",
+            "1:31",
+        ),
+        preset_audio_div(
+            "speech_orig.wav",
+            "Speech sample",
+            "0:11",
+        ),
+        preset_audio_div(
+            "white_noise.mp3",
+            "White noise",
+            "2:41",
+        ),
+    ];
+
     div![
         C!["choose_file_wrapper"],
         div![
@@ -76,5 +94,22 @@ pub fn view_file_chooser(_: &Model, zone_active: bool) -> Node<GMsg> {
                 wrap(Msg::FileChooserLoadAudio(file))
             })
         ],
+        div![C!["preset-audio-wrapper"], preset_audio_divs],
+    ]
+}
+
+fn preset_audio_div(
+    file_name: &str,
+    name: &str,
+    length: &str,
+) -> Node<GMsg> {
+    let file_path = format!("public/preset_audios/{}", file_name);
+    div![
+        C!["preset-audio"],
+        ev(Ev::Click, |_| wrap(Msg::FileChooserPresetClicked(
+            file_path
+        ))),
+        h4![name],
+        p![format!("Length: {}", length)],
     ]
 }
