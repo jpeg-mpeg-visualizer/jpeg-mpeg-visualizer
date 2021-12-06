@@ -632,10 +632,10 @@ pub fn view_jpeg_visualization(model: &Model) -> Node<GMsg> {
 
 pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
     let mut preset_image_divs: Vec<Node<GMsg>> = Vec::<Node<GMsg>>::new();
+    preset_image_divs.push(preset_image_div("agh.jpg", 1280, 857));
+    preset_image_divs.push(preset_image_div("chess.png", 1280, 857));
     preset_image_divs.push(preset_image_div("nothern.jpg", 3546, 2255));
-    preset_image_divs.push(preset_image_div("ymm.jpg", 1280, 857));
     preset_image_divs.push(preset_image_div("green.jpg", 1920, 1281));
-    preset_image_divs.push(preset_image_div("car.png", 1833, 1121));
 
     div![
         C!["choose_file_wrapper"],
@@ -702,6 +702,7 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
 
 // TODO: Consider displaying width and height below the image preset
 fn preset_image_div(file_name: &str, _img_width: u32, _img_height: u32) -> Node<GMsg> {
+    let mini_file_path = format!("public/preset_images_mini/{}", file_name);
     let file_path = format!("public/preset_images/{}", file_name);
     div![
         C!["preset_image_wrapper"],
@@ -712,7 +713,7 @@ fn preset_image_div(file_name: &str, _img_width: u32, _img_height: u32) -> Node<
                 img![
                     C!["preset_img"],
                     attrs![
-                        At::Src => file_path
+                        At::Src => mini_file_path
                     ],
                     ev(Ev::Click, |_| {
                         wrap(Msg::FileChooserPresetClicked(file_path))
