@@ -98,11 +98,7 @@ pub fn view_file_chooser(_: &Model, zone_active: bool) -> Node<GMsg> {
     ]
 }
 
-fn preset_audio_div(
-    file_name: &str,
-    name: &str,
-    length: &str,
-) -> Node<GMsg> {
+fn preset_audio_div(file_name: &str, name: &str, length: &str) -> Node<GMsg> {
     let file_path = format!("public/preset_audios/{}", file_name);
     div![
         C!["preset-audio"],

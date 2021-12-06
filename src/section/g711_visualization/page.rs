@@ -536,7 +536,8 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                 let file_blob = gloo_file::Blob::new(bytes.as_slice());
                 let (raw_sound, bitrate, length, sound_8khz, length_8khz) =
                     utils::load_audio(file_blob).await;
-                Msg::PreAudioLoaded(raw_sound, bitrate, length, sound_8khz, length_8khz)            });
+                Msg::PreAudioLoaded(raw_sound, bitrate, length, sound_8khz, length_8khz)
+            });
         }
         Msg::PreAudioLoaded(audio, bitrate, length, audio_8khz, lenght_8khz) => {
             model.pcm_i16 = audio;
