@@ -90,5 +90,10 @@ pub fn draw_scaled_image_default(canvas: &ElRef<HtmlCanvasElement>, image: &Vec<
 
 pub fn clear_canvas(canvas: &ElRef<HtmlCanvasElement>) {
     let ctx = canvas_context_2d(&canvas.get().unwrap());
-    ctx.clear_rect(0.0, 0.0, canvas.get().unwrap().width() as f64, canvas.get().unwrap().height() as f64);
+    ctx.clear_rect(
+        0.0,
+        0.0,
+        canvas.get().unwrap().width() as f64,
+        canvas.get().unwrap().height() as f64,
+    );
 }

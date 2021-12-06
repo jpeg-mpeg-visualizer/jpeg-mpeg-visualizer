@@ -373,7 +373,7 @@ fn canvas_labeled_div_with_overlay(
         None => {}
     }
 
-    let label_text = format!("{} [{}x{}]", label, width/zoom, height/zoom);
+    let label_text = format!("{} [{}x{}]", label, width / zoom, height / zoom);
 
     labeled_canvas_wrapper(
         BLOCK_SIZE * zoom,
@@ -492,7 +492,7 @@ fn plot_labeled_div(
         None => {}
     }
 
-    let label_text = format!("{} [{}x{}]", label, width/zoom, height/zoom);
+    let label_text = format!("{} [{}x{}]", label, width / zoom, height / zoom);
 
     div![
         C!["labeled_canvas_wrapper"],
@@ -718,29 +718,12 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
     ]
 }
 
-fn column_of_3_divs(
-    div1: Node<GMsg>,
-    div2: Node<GMsg>,
-    div3: Node<GMsg>,
-    size: u32,
-) -> Node<GMsg> {
+fn column_of_3_divs(div1: Node<GMsg>, div2: Node<GMsg>, div3: Node<GMsg>, size: u32) -> Node<GMsg> {
     table![
         C!["canvas_column_wrapper"],
-        tr![
-            td![
-                div1
-            ]
-        ],
-        tr![
-            td![
-                div2
-            ]
-        ],
-        tr![
-            td![
-                div3
-            ]
-        ],
+        tr![td![div1]],
+        tr![td![div2]],
+        tr![td![div3]],
         style![
             St::MinHeight => px(size),
             St::MaxWidth => px(size),

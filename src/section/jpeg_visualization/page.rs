@@ -24,11 +24,11 @@ use super::utils::get_image_diff;
 use std::collections::HashMap;
 
 use crate::quant::{CHROMINANCE_QUANTIZATION_TABLE, LUMINANCE_QUANTIZATION_TABLE};
+use crate::section::jpeg_visualization::drawing_utils::clear_canvas;
 use crate::section::jpeg_visualization::utils::{
     create_tmp_canvas, horiz_mult_from_subsampling, vert_mult_from_subsampling,
 };
 use web_sys::{Blob, HtmlCanvasElement, HtmlImageElement};
-use crate::section::jpeg_visualization::drawing_utils::clear_canvas;
 
 pub fn init(url: Url) -> Option<Model> {
     let base_url = url.to_base_url();
