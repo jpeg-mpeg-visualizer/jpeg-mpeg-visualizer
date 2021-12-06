@@ -25,7 +25,7 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
             "csgo.ts",
             "CSGO snippet",
             "960x720",
-            "mostly static, no P frames",
+            "mostly static, no B frames",
         ),
         preset_video_div(
             "bbb_720_b.ts",
