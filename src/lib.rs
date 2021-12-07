@@ -163,7 +163,7 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
                     a![
                         C!["select_menu_button"],
                         attrs! { At::Href => Urls::new(model.base_url.clone()).mpeg_visualizer() },
-                        p!["MPEG"]
+                        p!["MPEG-1"]
                     ],
                     a![
                         C!["select_menu_button"],
