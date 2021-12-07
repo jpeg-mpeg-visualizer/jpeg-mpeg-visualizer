@@ -14,7 +14,7 @@ use crate::{
 
 use super::{
     model::ControlState,
-    mpeg1::{DecodedFrame, FrameImage, MacroblockContent, MacroblockInfoKind},
+    mpeg1::{DecodedFrame, MacroblockContent, MacroblockInfoKind, VideoFrame},
 };
 
 pub struct Renderer {
@@ -96,29 +96,34 @@ impl Renderer {
         } = control_state;
 
         self.rgb_data.clear();
-        self.rgb_data.resize(self.width as usize * self.height as usize * 4, 0);
+        self.rgb_data
+            .resize(self.width as usize * self.height as usize * 4, 0);
         let mb_width = (self.width as usize + 15) / 16;
 
         for row in 0..(self.height as usize / 2) {
             for col in 0..(self.width as usize / 2) {
                 let macroblock_address = (row / 8) * mb_width + (col / 8);
-                
+
                 match stats.macroblock_info[macroblock_address].kind {
                     MacroblockInfoKind::Skipped if !skipped => continue,
-                    MacroblockInfoKind::Interpolated { .. } | MacroblockInfoKind::Moved { .. } if !moved => continue,
+                    MacroblockInfoKind::Interpolated { .. } | MacroblockInfoKind::Moved { .. }
+                        if !moved =>
+                    {
+                        continue
+                    }
                     MacroblockInfoKind::Intra if !intra => continue,
                     _ => {}
                 };
-                
+
                 let y_index = row * 2 * self.width as usize + col * 2;
                 let chroma_index = row * (self.width as usize / 2) + col;
 
-                let y1 = frame.current.y[y_index];
-                let y2 = frame.current.y[y_index + 1];
-                let y3 = frame.current.y[y_index + self.width as usize];
-                let y4 = frame.current.y[y_index + self.width as usize + 1];
-                let cb = frame.current.cb[chroma_index];
-                let cr = frame.current.cr[chroma_index];
+                let y1 = frame.y[y_index];
+                let y2 = frame.y[y_index + 1];
+                let y3 = frame.y[y_index + self.width as usize];
+                let y4 = frame.y[y_index + self.width as usize + 1];
+                let cb = frame.cb[chroma_index];
+                let cr = frame.cr[chroma_index];
 
                 let ycbr1 = crate::image::pixel::YCbCr { y: y1, cr, cb };
                 let ycbr2 = crate::image::pixel::YCbCr { y: y2, cr, cb };
@@ -186,25 +191,19 @@ impl Renderer {
         let chroma_y = y / 2;
         let chroma_x = x / 2;
 
-        self.get_block(x, y, &mut buffer, &frame.current.y, macroblock_width);
+        self.get_block(x, y, &mut buffer, &frame.y, macroblock_width);
         Self::render_channel(&self.canvas_y1, &buffer, ChannelType::Y);
-        self.get_block(x + 8, y, &mut buffer, &frame.current.y, macroblock_width);
+        self.get_block(x + 8, y, &mut buffer, &frame.y, macroblock_width);
         Self::render_channel(&self.canvas_y2, &buffer, ChannelType::Y);
-        self.get_block(x, y + 8, &mut buffer, &frame.current.y, macroblock_width);
+        self.get_block(x, y + 8, &mut buffer, &frame.y, macroblock_width);
         Self::render_channel(&self.canvas_y3, &buffer, ChannelType::Y);
-        self.get_block(
-            x + 8,
-            y + 8,
-            &mut buffer,
-            &frame.current.y,
-            macroblock_width,
-        );
+        self.get_block(x + 8, y + 8, &mut buffer, &frame.y, macroblock_width);
         Self::render_channel(&self.canvas_y4, &buffer, ChannelType::Y);
         self.get_block(
             chroma_x,
             chroma_y,
             &mut buffer,
-            &frame.current.cb,
+            &frame.cb,
             macroblock_width / 2,
         );
         Self::render_channel(&self.canvas_cb, &buffer, ChannelType::Cb);
@@ -212,7 +211,7 @@ impl Renderer {
             chroma_x,
             chroma_y,
             &mut buffer,
-            &frame.current.cr,
+            &frame.cr,
             macroblock_width / 2,
         );
         Self::render_channel(&self.canvas_cr, &buffer, ChannelType::Cr);
@@ -306,7 +305,7 @@ impl Renderer {
         let frame = &frames[selected_frame];
         let info = &frame.stats.macroblock_info[macroblock_index];
 
-        self.render_macroblock_result(&frame.frame.current, macroblock_index);
+        self.render_macroblock_result(&frame.frame, macroblock_index);
 
         match &info.kind {
             MacroblockInfoKind::Intra => {
@@ -344,13 +343,13 @@ impl Renderer {
         }
     }
 
-    fn render_macroblock_result(&self, frame: &FrameImage, macroblock_address: usize) {
+    fn render_macroblock_result(&self, frame: &VideoFrame, macroblock_address: usize) {
         self.draw_macroblock_from_frame(frame, macroblock_address, &self.canvas_history_result);
     }
 
     fn draw_macroblock_from_frame(
         &self,
-        frame: &FrameImage,
+        frame: &VideoFrame,
         macroblock_address: usize,
         target: &ElRef<HtmlCanvasElement>,
     ) {
@@ -452,11 +451,7 @@ impl Renderer {
             })
             .unwrap();
 
-        self.draw_macroblock_from_frame(
-            &previous_reference_frame.frame.current,
-            macroblock_index,
-            target,
-        );
+        self.draw_macroblock_from_frame(&previous_reference_frame.frame, macroblock_index, target);
     }
 
     fn render_next_reference(
@@ -476,7 +471,7 @@ impl Renderer {
             .unwrap();
 
         self.draw_macroblock_from_frame(
-            &next_reference_frame.frame.current,
+            &next_reference_frame.frame,
             macroblock_index,
             &self.canvas_history_next_reference,
         );

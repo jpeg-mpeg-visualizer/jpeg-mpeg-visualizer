@@ -20,32 +20,13 @@ struct VideoMotion {
 }
 
 #[derive(Default, Clone)]
-pub struct FrameImage {
-    pub y: Vec<u8>,
-    pub cb: Vec<u8>,
-    pub cr: Vec<u8>,
-}
-
-impl FrameImage {
-    fn clear(&mut self) {
-        let old_size_y = self.y.len();
-        let old_size_cb = self.y.len();
-
-        self.y.clear();
-        self.cb.clear();
-        self.cr.clear();
-        self.y.resize(old_size_y, 0);
-        self.cb.resize(old_size_cb, 0);
-        self.cr.resize(old_size_cb, 0);
-    }
-}
-
-#[derive(Default, Clone)]
 pub struct VideoFrame {
     pub width: u16,
     pub height: u16,
 
-    pub current: FrameImage,
+    pub y: Vec<u8>,
+    pub cb: Vec<u8>,
+    pub cr: Vec<u8>,
 }
 
 pub struct DecodedFrame {
@@ -347,9 +328,9 @@ impl MPEG1 {
         frame.width = width;
         frame.height = height;
 
-        frame.current.y = vec![0; coded_size as usize];
-        frame.current.cb = vec![0; coded_size as usize / 4];
-        frame.current.cr = vec![0; coded_size as usize / 4];
+        frame.y = vec![0; coded_size as usize];
+        frame.cb = vec![0; coded_size as usize / 4];
+        frame.cr = vec![0; coded_size as usize / 4];
     }
 
     fn decode_sequence_header(&mut self) {
@@ -751,19 +732,11 @@ impl MPEG1 {
             if self.motion_forward.is_set {
                 // HACK: get the content of the backward predicted macroblock before interpolation
                 if self.motion_backward.is_set {
-                    self.copy_macroblock(
-                        backward_h,
-                        backward_v,
-                        FrameOrder::Backward,
-                    );
+                    self.copy_macroblock(backward_h, backward_v, FrameOrder::Backward);
                     self.backward_macroblock = self.get_macroblock(&self.frame_current);
                 }
 
-                self.copy_macroblock(
-                    forward_h,
-                    forward_v,
-                    FrameOrder::Forward,
-                );
+                self.copy_macroblock(forward_h, forward_v, FrameOrder::Forward);
 
                 self.forward_macroblock = self.get_macroblock(&self.frame_current);
                 if self.motion_backward.is_set {
@@ -886,14 +859,13 @@ impl MPEG1 {
                 level * constants::PREMULTIPLIER_MATRIX[de_zig_zagged] as i32;
         }
 
-        let mut frame_borrow;
+        let mut frame_borrow = self.frame_current.deref().borrow_mut();
         let mut dest_array;
         let mut dest_index;
         let scan;
 
         if block < 4 {
-            frame_borrow = self.frame_current.deref().borrow_mut();
-            dest_array = &mut frame_borrow.current.y;
+            dest_array = &mut frame_borrow.y;
             scan = self.coded_width as usize - 8;
             dest_index = (self.mb_row * self.coded_width as usize + self.mb_col) * 16;
             if block & 1 != 0 {
@@ -903,11 +875,10 @@ impl MPEG1 {
                 dest_index += self.coded_width as usize * 8;
             }
         } else {
-            frame_borrow = self.frame_current.deref().borrow_mut();
             dest_array = if block == 4 {
-                &mut frame_borrow.current.cb
+                &mut frame_borrow.cb
             } else {
-                &mut frame_borrow.current.cr
+                &mut frame_borrow.cr
             };
             scan = self.coded_width as usize / 2 - 8;
             dest_index = ((self.mb_row * self.coded_width as usize) * 4) + self.mb_col * 8;
@@ -949,19 +920,14 @@ impl MPEG1 {
         }
     }
 
-    fn copy_macroblock(
-        &mut self,
-        motion_h: i32,
-        motion_v: i32,
-        s_order: FrameOrder,
-    ) {
+    fn copy_macroblock(&mut self, motion_h: i32, motion_v: i32, s_order: FrameOrder) {
         let s = match s_order {
             FrameOrder::Forward => self.frame_forward.borrow(),
             FrameOrder::Backward => self.frame_backward.borrow(),
         };
-        let (s_y, s_cr, s_cb) = (&s.current.y, &s.current.cr, &s.current.cb);
+        let (s_y, s_cr, s_cb) = (&s.y, &s.cr, &s.cb);
 
-        let d_frame = &mut self.frame_current.deref().borrow_mut().current;
+        let d_frame = &mut self.frame_current.deref().borrow_mut();
 
         // Luminance
         let width = self.coded_width as usize;
@@ -1142,15 +1108,11 @@ impl MPEG1 {
         }
     }
 
-    fn interpolate_macroblock(
-        &mut self,
-        motion_h: i32,
-        motion_v: i32,
-    ) {
+    fn interpolate_macroblock(&mut self, motion_h: i32, motion_v: i32) {
         let s = self.frame_backward.borrow();
-        let (s_y, s_cr, s_cb) = (&s.current.y, &s.current.cr, &s.current.cb);
+        let (s_y, s_cr, s_cb) = (&s.y, &s.cr, &s.cb);
 
-        let d_frame = &mut self.frame_current.deref().borrow_mut().current;
+        let d_frame = &mut self.frame_current.deref().borrow_mut();
 
         // Luminance
         let width = self.coded_width as usize;
@@ -1400,18 +1362,18 @@ impl MPEG1 {
         let src = src.deref().borrow();
         let scan = self.coded_width as usize - 8;
         let index = (self.mb_row * self.coded_width as usize + self.mb_col) * 16;
-        let y1 = copy_block_from_source(&src.current.y, index, scan);
+        let y1 = copy_block_from_source(&src.y, index, scan);
         let index = index + 8;
-        let y2 = copy_block_from_source(&src.current.y, index, scan);
+        let y2 = copy_block_from_source(&src.y, index, scan);
         let index = (index - 8) + self.coded_width as usize * 8;
-        let y3 = copy_block_from_source(&src.current.y, index, scan);
+        let y3 = copy_block_from_source(&src.y, index, scan);
         let index = index + 8;
-        let y4 = copy_block_from_source(&src.current.y, index, scan);
+        let y4 = copy_block_from_source(&src.y, index, scan);
 
         let scan = self.coded_width as usize / 2 - 8;
         let index = ((self.mb_row * self.coded_width as usize) * 4) + self.mb_col * 8;
-        let cb = copy_block_from_source(&src.current.cb, index, scan);
-        let cr = copy_block_from_source(&src.current.cr, index, scan);
+        let cb = copy_block_from_source(&src.cb, index, scan);
+        let cr = copy_block_from_source(&src.cr, index, scan);
 
         MacroblockContent {
             y1,
