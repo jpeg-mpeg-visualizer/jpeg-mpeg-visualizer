@@ -88,7 +88,7 @@ pub fn view_ycbcr(model: &Model) -> Node<GMsg> {
                 model.zoom
             ),
             canvas_labeled_div_with_overlay(
-                " Y ",
+                "Y",
                 &model.canvas_map.get(&CanvasName::Ys).unwrap(),
                 &model.overlay_map.get(&CanvasName::Ys).unwrap(),
                 None,
@@ -132,8 +132,7 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                     None,
                     model.zoom
                 ),
-                div![
-                    C!["canvas_column_wrapper"],
+                column_of_3_divs(
                     canvas_labeled_div_with_overlay(
                         "Y QUANTIZED",
                         &model.canvas_map.get(&CanvasName::YsQuant).unwrap(),
@@ -144,7 +143,8 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                     plot_labeled_div(
                         "Y QUANTIZED 3D",
                         &model.plot_map.get(&PlotName::YsQuant3d).unwrap(),
-                        model.zoom
+                        None,
+                        model.zoom,
                     ),
                     plot_labeled_div(
                         "Y QUANTIZED 3D CHOSEN BLOCK",
@@ -152,14 +152,12 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                             .chosen_block_plot_map
                             .get(&PlotName::YsQuant3d)
                             .unwrap(),
+                        None,
                         model.zoom
                     ),
-                    style![
-                        St::MaxWidth => px(BLOCK_SIZE * model.zoom + 20)
-                    ]
-                ],
-                div![
-                    C!["canvas_column_wrapper"],
+                    BLOCK_SIZE * model.zoom + 20,
+                ),
+                column_of_3_divs(
                     canvas_labeled_div_with_overlay(
                         "CB QUANTIZED",
                         &model.canvas_map.get(&CanvasName::CbsQuant).unwrap(),
@@ -170,6 +168,7 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                     plot_labeled_div(
                         "CB QUANTIZED 3D",
                         &model.plot_map.get(&PlotName::CbsQuant3d).unwrap(),
+                        Some(&model.subsampling_pack),
                         model.zoom
                     ),
                     plot_labeled_div(
@@ -178,14 +177,12 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                             .chosen_block_plot_map
                             .get(&PlotName::CbsQuant3d)
                             .unwrap(),
+                        Some(&model.subsampling_pack),
                         model.zoom
                     ),
-                    style![
-                        St::MaxWidth => px(BLOCK_SIZE * model.zoom + 20)
-                    ]
-                ],
-                div![
-                    C!["canvas_column_wrapper"],
+                    BLOCK_SIZE * model.zoom + 20
+                ),
+                column_of_3_divs(
                     canvas_labeled_div_with_overlay(
                         "CR QUANTIZED",
                         &model.canvas_map.get(&CanvasName::CrsQuant).unwrap(),
@@ -196,6 +193,7 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                     plot_labeled_div(
                         "CR QUANTIZED 3D",
                         &model.plot_map.get(&PlotName::CrsQuant3d).unwrap(),
+                        Some(&model.subsampling_pack),
                         model.zoom
                     ),
                     plot_labeled_div(
@@ -204,12 +202,11 @@ pub fn view_dct_quantized(model: &Model) -> Node<GMsg> {
                             .chosen_block_plot_map
                             .get(&PlotName::CrsQuant3d)
                             .unwrap(),
+                        Some(&model.subsampling_pack),
                         model.zoom
                     ),
-                    style![
-                        St::MaxWidth => px(BLOCK_SIZE * model.zoom + 20)
-                    ]
-                ],
+                    BLOCK_SIZE * model.zoom + 20
+                ),
             ],
         ]
     ]
@@ -376,10 +373,12 @@ fn canvas_labeled_div_with_overlay(
         None => {}
     }
 
+    let label_text = format!("{} [{}x{}]", label, width / zoom, height / zoom);
+
     labeled_canvas_wrapper(
         BLOCK_SIZE * zoom,
         div![
-            label![C!["canvas_label"], &label],
+            label![C!["canvas_label"], &label_text],
             style![
                 St::Width => px(BLOCK_SIZE * zoom),
             ]
@@ -400,8 +399,6 @@ fn labeled_canvas_wrapper(
         content_element,
         style![
             St::MaxWidth => px(width + padding * 2),
-            // TODO: Instead of that put dct divs into a table
-            St::MinHeight => px(width),
         ]
     ]
 }
@@ -473,12 +470,33 @@ fn canvas_with_overlay(
     canvas_with_overlay_with_w_h(canvas, img, width, height, is_resizable_canvas)
 }
 
-fn plot_labeled_div(label: &str, canvas: &ElRef<HtmlCanvasElement>, zoom: u32) -> Node<GMsg> {
+fn plot_labeled_div(
+    label: &str,
+    canvas: &ElRef<HtmlCanvasElement>,
+    // if canvas should not be subsampled, pass None
+    subsampling_pack_option: Option<&SubsamplingPack>,
+    zoom: u32,
+) -> Node<GMsg> {
     let padding = 10;
+
+    let mut width: u32 = BLOCK_SIZE * zoom;
+    let mut height: u32 = BLOCK_SIZE * zoom;
+
+    match subsampling_pack_option {
+        Some(subsampling_pack) => {
+            width = width * subsampling_pack.a as u32 / subsampling_pack.j as u32;
+            if subsampling_pack.b == 0 {
+                height = height / 2;
+            }
+        }
+        None => {}
+    }
+
+    let label_text = format!("{} [{}x{}]", label, width / zoom, height / zoom);
 
     div![
         C!["labeled_canvas_wrapper"],
-        label![C!["canvas_label"], &label],
+        label![C!["canvas_label"], &label_text],
         div![canvas![
             el_ref(&canvas),
             attrs![
@@ -632,10 +650,10 @@ pub fn view_jpeg_visualization(model: &Model) -> Node<GMsg> {
 
 pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
     let mut preset_image_divs: Vec<Node<GMsg>> = Vec::<Node<GMsg>>::new();
+    preset_image_divs.push(preset_image_div("agh.jpg", 1280, 857));
+    preset_image_divs.push(preset_image_div("chess.png", 1280, 857));
     preset_image_divs.push(preset_image_div("nothern.jpg", 3546, 2255));
-    preset_image_divs.push(preset_image_div("ymm.jpg", 1280, 857));
     preset_image_divs.push(preset_image_div("green.jpg", 1920, 1281));
-    preset_image_divs.push(preset_image_div("car.png", 1833, 1121));
 
     div![
         C!["choose_file_wrapper"],
@@ -700,8 +718,21 @@ pub fn view_file_chooser(model: &Model) -> Node<GMsg> {
     ]
 }
 
-// TODO: Consider displaying width and height below the image preset
+fn column_of_3_divs(div1: Node<GMsg>, div2: Node<GMsg>, div3: Node<GMsg>, size: u32) -> Node<GMsg> {
+    table![
+        C!["canvas_column_wrapper"],
+        tr![td![div1]],
+        tr![td![div2]],
+        tr![td![div3]],
+        style![
+            St::MinHeight => px(size),
+            St::MaxWidth => px(size),
+        ]
+    ]
+}
+
 fn preset_image_div(file_name: &str, _img_width: u32, _img_height: u32) -> Node<GMsg> {
+    let mini_file_path = format!("public/preset_images_mini/{}", file_name);
     let file_path = format!("public/preset_images/{}", file_name);
     div![
         C!["preset_image_wrapper"],
@@ -712,7 +743,7 @@ fn preset_image_div(file_name: &str, _img_width: u32, _img_height: u32) -> Node<
                 img![
                     C!["preset_img"],
                     attrs![
-                        At::Src => file_path
+                        At::Src => mini_file_path
                     ],
                     ev(Ev::Click, |_| {
                         wrap(Msg::FileChooserPresetClicked(file_path))

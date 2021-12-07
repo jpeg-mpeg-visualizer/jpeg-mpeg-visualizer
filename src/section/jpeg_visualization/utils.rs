@@ -51,12 +51,14 @@ pub fn get_image_diff(img_a: &Vec<u8>, img_b: &Vec<u8>) -> Vec<u8> {
         let g_b = img_b[i + 1] as i16;
         let b_a = img_a[i + 2] as i16;
         let b_b = img_b[i + 2] as i16;
+        // We don't affect alfa, so it can be equal to original
+        let alfa = img_b[i + 3];
         let diff: i16 = (r_a - r_b).abs() + (g_a - g_b).abs() + (b_a - b_b).abs();
         let val: u8 = 255 - cmp::min(diff, 255) as u8;
         res.push(val);
         res.push(val);
         res.push(val);
-        res.push(255);
+        res.push(alfa);
     }
     res
 }

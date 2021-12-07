@@ -24,6 +24,7 @@ use super::utils::get_image_diff;
 use std::collections::HashMap;
 
 use crate::quant::{CHROMINANCE_QUANTIZATION_TABLE, LUMINANCE_QUANTIZATION_TABLE};
+use crate::section::jpeg_visualization::drawing_utils::clear_canvas;
 use crate::section::jpeg_visualization::utils::{
     create_tmp_canvas, horiz_mult_from_subsampling, vert_mult_from_subsampling,
 };
@@ -734,9 +735,10 @@ fn write_to_image_data(
     for y in 0..8 {
         for x in 0..8 {
             let offset = ((v * 8 + y) * (vert_block_count * 8) as usize + (u * 8) + x) * 4;
-            image_data[offset] = 255 - spatial[y][x].abs().clamp(0, 255) as u8;
-            image_data[offset + 1] = 255 - spatial[y][x].abs().clamp(0, 255) as u8;
-            image_data[offset + 2] = 255 - spatial[y][x].abs().clamp(0, 255) as u8;
+            let val: u8 = 255 - spatial[y][x].abs().clamp(0, 255) as u8;
+            image_data[offset] = val;
+            image_data[offset + 1] = val;
+            image_data[offset + 2] = val;
             image_data[offset + 3] = 255;
         }
     }
@@ -773,6 +775,8 @@ fn draw_input_previews(
 ) {
     let input_image = &image_window.to_image();
     for (_canvas_name, canvas) in preview_canvas_map {
+        // Because of potential transparency, we need to clear this canvas
+        clear_canvas(&canvas);
         draw_scaled_image_default(&canvas, &input_image, zoom);
     }
 }
