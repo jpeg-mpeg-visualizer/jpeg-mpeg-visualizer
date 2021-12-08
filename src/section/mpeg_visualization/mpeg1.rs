@@ -20,35 +20,13 @@ struct VideoMotion {
 }
 
 #[derive(Default, Clone)]
-pub struct FrameImage {
-    pub y: Vec<u8>,
-    pub cb: Vec<u8>,
-    pub cr: Vec<u8>,
-}
-
-impl FrameImage {
-    fn clear(&mut self) {
-        let old_size_y = self.y.len();
-        let old_size_cb = self.y.len();
-
-        self.y.clear();
-        self.cb.clear();
-        self.cr.clear();
-        self.y.resize(old_size_y, 0);
-        self.cb.resize(old_size_cb, 0);
-        self.cr.resize(old_size_cb, 0);
-    }
-}
-
-#[derive(Default, Clone)]
 pub struct VideoFrame {
     pub width: u16,
     pub height: u16,
 
-    pub current: FrameImage,
-    pub skipped: FrameImage,
-    pub moved: FrameImage,
-    pub intra: FrameImage,
+    pub y: Vec<u8>,
+    pub cb: Vec<u8>,
+    pub cr: Vec<u8>,
 }
 
 pub struct DecodedFrame {
@@ -100,13 +78,6 @@ pub enum MacroblockInfoKind {
         backward: Box<MacroblockContent>,
         interpolated: Box<MacroblockContent>,
     },
-}
-
-#[derive(Debug, Clone, PartialEq)]
-enum MacroblockDestination {
-    Current,
-    Skipped,
-    Moved,
 }
 
 #[derive(Clone, Default)]
@@ -357,21 +328,9 @@ impl MPEG1 {
         frame.width = width;
         frame.height = height;
 
-        frame.current.y = vec![0; coded_size as usize];
-        frame.current.cb = vec![0; coded_size as usize / 4];
-        frame.current.cr = vec![0; coded_size as usize / 4];
-
-        frame.skipped.y = vec![0; coded_size as usize];
-        frame.skipped.cb = vec![0; coded_size as usize / 4];
-        frame.skipped.cr = vec![0; coded_size as usize / 4];
-
-        frame.moved.y = vec![0; coded_size as usize];
-        frame.moved.cb = vec![0; coded_size as usize / 4];
-        frame.moved.cr = vec![0; coded_size as usize / 4];
-
-        frame.intra.y = vec![0; coded_size as usize];
-        frame.intra.cb = vec![0; coded_size as usize / 4];
-        frame.intra.cr = vec![0; coded_size as usize / 4];
+        frame.y = vec![0; coded_size as usize];
+        frame.cb = vec![0; coded_size as usize / 4];
+        frame.cr = vec![0; coded_size as usize / 4];
     }
 
     fn decode_sequence_header(&mut self) {
@@ -484,13 +443,6 @@ impl MPEG1 {
         {
             self.pointer += 32;
             start_code = self.get_next_start_code();
-        }
-
-        {
-            let mut frame_current: RefMut<_> = self.frame_current.deref().borrow_mut();
-            frame_current.moved.clear();
-            frame_current.skipped.clear();
-            frame_current.intra.clear();
         }
 
         while let Some(constants::SLICE_FIRST_START_CODE..=constants::SLICE_LAST_START_CODE) =
@@ -612,8 +564,7 @@ impl MPEG1 {
                 self.macroblock_address += 1;
                 self.mb_row = self.macroblock_address as usize / self.mb_width as usize;
                 self.mb_col = self.macroblock_address as usize % self.mb_width as usize;
-                self.predict_macroblock(MacroblockDestination::Current);
-                self.predict_macroblock(MacroblockDestination::Skipped);
+                self.predict_macroblock();
                 increment -= 1;
                 self.stats_current
                     .macroblock_info
@@ -661,8 +612,7 @@ impl MPEG1 {
             self.dc_predictor_cb = 128;
 
             self.decode_motion_vectors();
-            self.predict_macroblock(MacroblockDestination::Current);
-            self.predict_macroblock(MacroblockDestination::Moved);
+            self.predict_macroblock();
 
             let is_interpolated = self.picture_type == constants::PICTURE_TYPE_B
                 && self.motion_forward.is_set
@@ -761,7 +711,7 @@ impl MPEG1 {
         new_motion
     }
 
-    fn predict_macroblock(&mut self, destination: MacroblockDestination) {
+    fn predict_macroblock(&mut self) {
         let mut forward_h = self.motion_forward.h;
         let mut forward_v = self.motion_forward.v;
 
@@ -781,35 +731,23 @@ impl MPEG1 {
 
             if self.motion_forward.is_set {
                 // HACK: get the content of the backward predicted macroblock before interpolation
-                if self.motion_backward.is_set && destination == MacroblockDestination::Current {
-                    self.copy_macroblock(
-                        backward_h,
-                        backward_v,
-                        MacroblockDestination::Current,
-                        FrameOrder::Backward,
-                    );
+                if self.motion_backward.is_set {
+                    self.copy_macroblock(backward_h, backward_v, FrameOrder::Backward);
                     self.backward_macroblock = self.get_macroblock(&self.frame_current);
                 }
 
-                self.copy_macroblock(
-                    forward_h,
-                    forward_v,
-                    destination.clone(),
-                    FrameOrder::Forward,
-                );
+                self.copy_macroblock(forward_h, forward_v, FrameOrder::Forward);
 
-                if destination == MacroblockDestination::Current {
-                    self.forward_macroblock = self.get_macroblock(&self.frame_current);
-                }
+                self.forward_macroblock = self.get_macroblock(&self.frame_current);
                 if self.motion_backward.is_set {
-                    self.interpolate_macroblock(backward_h, backward_v, destination);
+                    self.interpolate_macroblock(backward_h, backward_v);
                     self.interpolated_macroblock = self.get_macroblock(&self.frame_current);
                 }
             } else {
-                self.copy_macroblock(backward_h, backward_v, destination, FrameOrder::Backward);
+                self.copy_macroblock(backward_h, backward_v, FrameOrder::Backward);
             }
         } else {
-            self.copy_macroblock(forward_h, forward_v, destination, FrameOrder::Forward);
+            self.copy_macroblock(forward_h, forward_v, FrameOrder::Forward);
         }
     }
 
@@ -921,23 +859,13 @@ impl MPEG1 {
                 level * constants::PREMULTIPLIER_MATRIX[de_zig_zagged] as i32;
         }
 
-        let (mut dest_array, mut dest_array_new);
+        let mut frame_borrow = self.frame_current.deref().borrow_mut();
+        let mut dest_array;
         let mut dest_index;
         let scan;
 
         if block < 4 {
-            let temp = RefMut::map_split((*self.frame_current).borrow_mut(), |c| {
-                (
-                    &mut c.current.y,
-                    if macroblock_intra {
-                        &mut c.intra.y
-                    } else {
-                        &mut c.moved.y
-                    },
-                )
-            });
-            dest_array = temp.0;
-            dest_array_new = temp.1;
+            dest_array = &mut frame_borrow.y;
             scan = self.coded_width as usize - 8;
             dest_index = (self.mb_row * self.coded_width as usize + self.mb_col) * 16;
             if block & 1 != 0 {
@@ -947,32 +875,10 @@ impl MPEG1 {
                 dest_index += self.coded_width as usize * 8;
             }
         } else {
-            if block == 4 {
-                let temp = RefMut::map_split((*self.frame_current).borrow_mut(), |c| {
-                    (
-                        &mut c.current.cb,
-                        if macroblock_intra {
-                            &mut c.intra.cb
-                        } else {
-                            &mut c.moved.cb
-                        },
-                    )
-                });
-                dest_array = temp.0;
-                dest_array_new = temp.1;
+            dest_array = if block == 4 {
+                &mut frame_borrow.cb
             } else {
-                let temp = RefMut::map_split((*self.frame_current).borrow_mut(), |c| {
-                    (
-                        &mut c.current.cr,
-                        if macroblock_intra {
-                            &mut c.intra.cr
-                        } else {
-                            &mut c.moved.cr
-                        },
-                    )
-                });
-                dest_array = temp.0;
-                dest_array_new = temp.1;
+                &mut frame_borrow.cr
             };
             scan = self.coded_width as usize / 2 - 8;
             dest_index = ((self.mb_row * self.coded_width as usize) * 4) + self.mb_col * 8;
@@ -983,7 +889,6 @@ impl MPEG1 {
             if n == 1 {
                 let value = ((self.block_data[0] + 128) >> 8) as u8;
                 copy_value_to_destination(value, &mut dest_array, dest_index, scan);
-                copy_value_to_destination(value, &mut dest_array_new, dest_index, scan);
                 self.stats_current.macroblock_info[self.macroblock_address as usize]
                     .encoded_blocks
                     .set_nth(block.into(), &[value.into(); 64]);
@@ -991,7 +896,6 @@ impl MPEG1 {
             } else {
                 IDCT(&mut self.block_data);
                 copy_block_to_destination(&self.block_data, &mut dest_array, dest_index, scan);
-                copy_block_to_destination(&self.block_data, &mut dest_array_new, dest_index, scan);
                 self.stats_current.macroblock_info[self.macroblock_address as usize]
                     .encoded_blocks
                     .set_nth(block.into(), &self.block_data);
@@ -1001,7 +905,6 @@ impl MPEG1 {
             if n == 1 {
                 let value = (self.block_data[0] + 128) >> 8;
                 add_value_to_destination(value, &mut dest_array, dest_index, scan);
-                add_value_to_destination(value, &mut dest_array_new, dest_index, scan);
                 self.stats_current.macroblock_info[self.macroblock_address as usize]
                     .encoded_blocks
                     .set_nth(block.into(), &[value as i32; 64]);
@@ -1009,7 +912,6 @@ impl MPEG1 {
             } else {
                 IDCT(&mut self.block_data);
                 add_block_to_destination(&self.block_data, &mut dest_array, dest_index, scan);
-                add_block_to_destination(&self.block_data, &mut dest_array_new, dest_index, scan);
                 self.stats_current.macroblock_info[self.macroblock_address as usize]
                     .encoded_blocks
                     .set_nth(block.into(), &self.block_data);
@@ -1018,25 +920,14 @@ impl MPEG1 {
         }
     }
 
-    fn copy_macroblock(
-        &mut self,
-        motion_h: i32,
-        motion_v: i32,
-        destination: MacroblockDestination,
-        s_order: FrameOrder,
-    ) {
+    fn copy_macroblock(&mut self, motion_h: i32, motion_v: i32, s_order: FrameOrder) {
         let s = match s_order {
             FrameOrder::Forward => self.frame_forward.borrow(),
             FrameOrder::Backward => self.frame_backward.borrow(),
         };
-        let (s_y, s_cr, s_cb) = (&s.current.y, &s.current.cr, &s.current.cb);
+        let (s_y, s_cr, s_cb) = (&s.y, &s.cr, &s.cb);
 
-        let mut d: RefMut<_> = (*self.frame_current).borrow_mut();
-        let d_frame = match destination {
-            MacroblockDestination::Current => (&mut d.current),
-            MacroblockDestination::Skipped => (&mut d.skipped),
-            MacroblockDestination::Moved => (&mut d.moved),
-        };
+        let d_frame = &mut self.frame_current.deref().borrow_mut();
 
         // Luminance
         let width = self.coded_width as usize;
@@ -1217,21 +1108,11 @@ impl MPEG1 {
         }
     }
 
-    fn interpolate_macroblock(
-        &mut self,
-        motion_h: i32,
-        motion_v: i32,
-        destination: MacroblockDestination,
-    ) {
+    fn interpolate_macroblock(&mut self, motion_h: i32, motion_v: i32) {
         let s = self.frame_backward.borrow();
-        let (s_y, s_cr, s_cb) = (&s.current.y, &s.current.cr, &s.current.cb);
+        let (s_y, s_cr, s_cb) = (&s.y, &s.cr, &s.cb);
 
-        let mut d: RefMut<_> = (*self.frame_current).borrow_mut();
-        let d_frame = match destination {
-            MacroblockDestination::Current => (&mut d.current),
-            MacroblockDestination::Skipped => (&mut d.skipped),
-            MacroblockDestination::Moved => (&mut d.moved),
-        };
+        let d_frame = &mut self.frame_current.deref().borrow_mut();
 
         // Luminance
         let width = self.coded_width as usize;
@@ -1481,18 +1362,18 @@ impl MPEG1 {
         let src = src.deref().borrow();
         let scan = self.coded_width as usize - 8;
         let index = (self.mb_row * self.coded_width as usize + self.mb_col) * 16;
-        let y1 = copy_block_from_source(&src.current.y, index, scan);
+        let y1 = copy_block_from_source(&src.y, index, scan);
         let index = index + 8;
-        let y2 = copy_block_from_source(&src.current.y, index, scan);
+        let y2 = copy_block_from_source(&src.y, index, scan);
         let index = (index - 8) + self.coded_width as usize * 8;
-        let y3 = copy_block_from_source(&src.current.y, index, scan);
+        let y3 = copy_block_from_source(&src.y, index, scan);
         let index = index + 8;
-        let y4 = copy_block_from_source(&src.current.y, index, scan);
+        let y4 = copy_block_from_source(&src.y, index, scan);
 
         let scan = self.coded_width as usize / 2 - 8;
         let index = ((self.mb_row * self.coded_width as usize) * 4) + self.mb_col * 8;
-        let cb = copy_block_from_source(&src.current.cb, index, scan);
-        let cr = copy_block_from_source(&src.current.cr, index, scan);
+        let cb = copy_block_from_source(&src.cb, index, scan);
+        let cr = copy_block_from_source(&src.cr, index, scan);
 
         MacroblockContent {
             y1,
