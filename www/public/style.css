@@ -25,15 +25,11 @@ body {
     top: 0;
     position: sticky;
     z-index: 1;
-    display: flex;
-    justify-content: center;
+    padding: 10px;
+    text-align: center;
 }
 
-.navbar ul {
-    list-style-type: none;
-}
-
-.navbar ul li a {
+.navbar a {
     font-weight: bolder;
     font-size: 2.4em;
     color: aliceblue;
@@ -78,7 +74,7 @@ body {
 }
 
 .select_menu_button p {
-    font-size: 5em;
+    font-size: clamp(1rem, 6vw, 5em);
     color: aliceblue;
 }
 

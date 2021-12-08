@@ -184,10 +184,10 @@ fn view(model: &Model) -> impl IntoNodes<Msg> {
 fn header(base_url: &Url) -> Node<Msg> {
     nav![
         C!["navbar"],
-        ul![li![a![
+        a![
             attrs! { At::Href => Urls::new(base_url).home() },
             "Compression visualizer",
-        ]],]
+        ]
     ]
 }
 
