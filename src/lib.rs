@@ -2,13 +2,14 @@ use seed::{prelude::*, *};
 
 use section::*;
 
+mod bench;
 mod block;
 mod codec;
 mod dct;
 mod graphic_helpers;
 mod image;
 mod quant;
-mod section;
+pub mod section;
 
 const BLOCK_SIZE: u32 = 64;
 

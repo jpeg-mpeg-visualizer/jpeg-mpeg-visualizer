@@ -1,6 +1,7 @@
 use super::model::{ControlState, MacroblockType, Model, Msg, State};
 use super::mpeg1::{DecodedFrame, MPEG1};
 use super::view::{view_file_chooser, view_video_player};
+use crate::bench::Timer;
 use crate::mpeg_visualization::view::view_loading_spinner;
 use crate::Msg as GMsg;
 use gloo_file;
@@ -60,9 +61,13 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
             model.state = State::LoadingSpinnerView;
             let file_blob = gloo_file::Blob::from(file);
             orders.perform_cmd(async move {
+                let loading_timer = Timer::new("MPEG :: loading from file");
                 let bytes = gloo_file::futures::read_as_bytes(&file_blob).await.unwrap();
+                drop(loading_timer);
+                let demuxing_timer = Timer::new("MPEG :: demuxing");
                 let mut demuxer = super::ts::TSDemuxer::from_raw_bytes(bytes);
                 let video_stream = demuxer.parse_packets();
+                drop(demuxing_timer);
                 Msg::VideoBytesLoaded(video_stream)
             });
         }
@@ -71,6 +76,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
         Msg::FileChooserPresetClicked(file_path) => {
             model.state = State::LoadingSpinnerView;
             orders.perform_cmd(async move {
+                let loading_timer = Timer::new("MPEG :: loading from preset");
                 let bytes = Request::new(file_path)
                     .method(Method::Get)
                     .fetch()
@@ -81,9 +87,12 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
                     .bytes()
                     .await
                     .unwrap();
+                drop(loading_timer);
 
+                let demuxing_timer = Timer::new("MPEG :: demuxing");
                 let mut demuxer = super::ts::TSDemuxer::from_raw_bytes(bytes);
                 let video_stream = demuxer.parse_packets();
+                drop(demuxing_timer);
                 Msg::VideoBytesLoaded(video_stream)
             });
         }
@@ -179,6 +188,7 @@ pub fn update(msg: Msg, model: &mut Model, orders: &mut impl Orders<Msg>) {
 }
 
 fn load_more_frames(mpeg1: &mut MPEG1) -> Vec<DecodedFrame> {
+    let _timer = Timer::new("MPEG :: decoding frames");
     let mut frames = Vec::with_capacity(FRAME_LOAD_COUNT);
 
     for _ in 0..FRAME_LOAD_COUNT {
