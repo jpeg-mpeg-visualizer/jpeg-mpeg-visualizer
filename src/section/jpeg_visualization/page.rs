@@ -11,6 +11,7 @@ use super::utils;
 use super::view::*;
 use crate::image::pixel::RGB;
 use crate::image::RawImageWindow;
+use crate::quant::scale_quantization_table;
 use crate::{
     block::{self, BlockMatrix},
     image, quant, Msg as GMsg, BLOCK_SIZE,
@@ -54,6 +55,8 @@ pub fn init(url: Url) -> Option<Model> {
     }
 
     let subsampling_pack = SubsamplingPack { j: 4, a: 4, b: 4 };
+    
+    let quality = 50;
 
     Some(Model {
         file_chooser_zone_active: false,
@@ -67,12 +70,12 @@ pub fn init(url: Url) -> Option<Model> {
         original_image_overlay: ElRef::<HtmlImageElement>::default(),
         overlay_map,
         preview_overlay_map,
-        quality: 50,
+        quality,
         zoom: 7,
         is_diff_info_shown: false,
         subsampling_pack,
-        scaled_luminance_quant_table: LUMINANCE_QUANTIZATION_TABLE,
-        scaled_chrominance_quant_table: CHROMINANCE_QUANTIZATION_TABLE,
+        scaled_luminance_quant_table: scale_quantization_table(&LUMINANCE_QUANTIZATION_TABLE, quality),
+        scaled_chrominance_quant_table: scale_quantization_table(&CHROMINANCE_QUANTIZATION_TABLE, quality),
     })
 }
 
