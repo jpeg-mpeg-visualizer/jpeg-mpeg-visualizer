@@ -113,13 +113,9 @@ fn preset_video_div(
     let pathname = window().location().pathname().unwrap();
     let file_path;
     if pathname.ends_with('/') {
-        file_path = format!(
-            "{}/public/preset_videos/{}",
-            window().location().pathname().unwrap(),
-            file_name
-        );
+        file_path = format!("{}public/preset_videos/{}", pathname, file_name);
     } else {
-        file_path = format!("public/preset_videos/{}", file_name);
+        file_path = format!("{}/public/preset_videos/{}", pathname, file_name);
     }
     div![
         C!["preset-video"],

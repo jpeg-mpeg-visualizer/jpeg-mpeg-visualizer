@@ -102,9 +102,9 @@ fn preset_audio_div(file_name: &str, name: &str, length: &str) -> Node<GMsg> {
     let pathname = window().location().pathname().unwrap();
     let file_path;
     if pathname.ends_with('/') {
-        file_path = format!("{}/public/preset_audios/{}", pathname, file_name);
+        file_path = format!("{}public/preset_audios/{}", pathname, file_name);
     } else {
-        file_path = format!("public/preset_audios/{}", file_name);
+        file_path = format!("{}/public/preset_audios/{}", pathname, file_name);
     }
     div![
         C!["preset-audio"],
