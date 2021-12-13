@@ -99,11 +99,13 @@ pub fn view_file_chooser(_: &Model, zone_active: bool) -> Node<GMsg> {
 }
 
 fn preset_audio_div(file_name: &str, name: &str, length: &str) -> Node<GMsg> {
-    let file_path = format!(
-        "{}/public/preset_audios/{}",
-        window().location().pathname().unwrap(),
-        file_name
-    );
+    let pathname = window().location().pathname().unwrap();
+    let file_path;
+    if pathname.ends_with('/') {
+        file_path = format!("{}/public/preset_audios/{}", pathname, file_name);
+    } else {
+        file_path = format!("public/preset_audios/{}", file_name);
+    }
     div![
         C!["preset-audio"],
         ev(Ev::Click, |_| wrap(Msg::FileChooserPresetClicked(
