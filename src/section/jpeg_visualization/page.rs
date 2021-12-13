@@ -55,7 +55,7 @@ pub fn init(url: Url) -> Option<Model> {
     }
 
     let subsampling_pack = SubsamplingPack { j: 4, a: 4, b: 4 };
-    
+
     let quality = 50;
 
     Some(Model {
@@ -74,8 +74,14 @@ pub fn init(url: Url) -> Option<Model> {
         zoom: 7,
         is_diff_info_shown: false,
         subsampling_pack,
-        scaled_luminance_quant_table: scale_quantization_table(&LUMINANCE_QUANTIZATION_TABLE, quality),
-        scaled_chrominance_quant_table: scale_quantization_table(&CHROMINANCE_QUANTIZATION_TABLE, quality),
+        scaled_luminance_quant_table: scale_quantization_table(
+            &LUMINANCE_QUANTIZATION_TABLE,
+            quality,
+        ),
+        scaled_chrominance_quant_table: scale_quantization_table(
+            &CHROMINANCE_QUANTIZATION_TABLE,
+            quality,
+        ),
     })
 }
 
