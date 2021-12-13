@@ -110,7 +110,11 @@ fn preset_video_div(
     resolution: &str,
     description: &str,
 ) -> Node<GMsg> {
-    let file_path = format!("public/preset_videos/{}", file_name);
+    let file_path = format!(
+        "{}/public/preset_videos/{}",
+        window().location().pathname().unwrap(),
+        file_name
+    );
     div![
         C!["preset-video"],
         ev(Ev::Click, |_| wrap(Msg::FileChooserPresetClicked(
