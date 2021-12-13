@@ -739,8 +739,8 @@ fn preset_image_div(file_name: &str, _img_width: u32, _img_height: u32) -> Node<
         mini_file_path = format!("{}public/preset_images_mini/{}", pathname, file_name);
         file_path = format!("{}public/preset_images/{}", pathname, file_name);
     } else {
-        mini_file_path = format!("{}public/preset_images_mini/{}", pathname, file_name);
-        file_path = format!("{}public/preset_images/{}", pathname, file_name);
+        mini_file_path = format!("{}/public/preset_images_mini/{}", pathname, file_name);
+        file_path = format!("{}/public/preset_images/{}", pathname, file_name);
     }
 
     div![
